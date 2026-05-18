@@ -48,10 +48,10 @@ const WebhookBlockNode = ({ block, isSelected }: WebhookBlockNodeProps) => {
       }}
       className={`absolute border rounded-3xl p-5 transition-all n8n-node overflow-visible group cursor-pointer ${borderClasses} ${pulseClass}`}
       style={{
-        left: block.position.x,
-        top: block.position.y,
-        width: blockW,
-        minHeight: blockH,
+        left: Math.round(block.position.x),
+        top: Math.round(block.position.y),
+        width: Math.round(blockW),
+        minHeight: Math.round(blockH),
       }}
     >
       {/* Port - Input */}

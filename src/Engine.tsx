@@ -129,7 +129,7 @@ const Engine = () => {
              } else if (!state.execution?.projectPrompt && data.title && data.title !== 'Untitled Flow') {
                useWorkflowStore.setState({ projectPrompt: data.title });
              }
-             
+
              // Initialize flowTitle
              useWorkflowStore.setState({ flowTitle: data.title || 'Untitled Flow' });
              
@@ -137,8 +137,20 @@ const Engine = () => {
              if (state.deployedTemplateId) {
                useBuilderStore.setState({ deployedTemplateId: state.deployedTemplateId });
              }
-          } // end if data?.canvas_state
-          
+          } else if (data) {
+             // No canvas state yet: hydrate from landing prompt if present.
+             try {
+               const landingPrompt = window.localStorage.getItem('landing_prompt');
+               if (landingPrompt && landingPrompt.trim()) {
+                 useWorkflowStore.setState({ projectPrompt: landingPrompt, flowTitle: landingPrompt });
+               } else {
+                 useWorkflowStore.setState({ flowTitle: data.title || 'Untitled Flow' });
+               }
+             } catch {
+               useWorkflowStore.setState({ flowTitle: data.title || 'Untitled Flow' });
+             }
+          }
+
           // Fetch templates for the user (do this even if canvas_state is empty)
           const { data: { session } } = await supabase.auth.getSession();
           if (session) {

@@ -47,10 +47,10 @@ const AgentBlockNode = ({ block, isSelected }: AgentBlockNodeProps) => {
       }}
       className={`absolute border rounded-3xl p-5 transition-all n8n-node overflow-visible group cursor-pointer ${borderClasses} ${pulseClass}`}
       style={{
-        left: block.position.x,
-        top: block.position.y,
-        width: blockW,
-        minHeight: blockH,
+        left: Math.round(block.position.x),
+        top: Math.round(block.position.y),
+        width: Math.round(blockW),
+        minHeight: Math.round(blockH),
       }}
     >
       {/* Port - Input */}
@@ -78,13 +78,13 @@ const AgentBlockNode = ({ block, isSelected }: AgentBlockNodeProps) => {
       </p>
 
       {/* Footer Details */}
-      <div className="flex items-center justify-between mt-auto pt-4 border-t border-white/[0.04] text-[10px] text-slate-300 font-bold uppercase tracking-widest">
-        <div className="flex items-center gap-1.5 bg-white/5 hover:bg-white/10 transition-colors px-2.5 py-1.5 rounded-md">
-          <Play size={10} className="text-[#46B1FF]" /> {block.triggerConfig.type.substring(0, 4)}
+      <div className="flex items-center justify-between mt-auto pt-4 border-t border-white/[0.04] text-[10px] text-slate-300 font-bold uppercase tracking-widest gap-2">
+        <div className="flex items-center gap-1.5 bg-white/5 hover:bg-white/10 transition-colors px-3 py-1.5 rounded-md min-w-max whitespace-nowrap">
+          <Play size={10} className="text-[#46B1FF]" /> {String(block.triggerConfig.type || '').toUpperCase()}
         </div>
         {(block.waitConfig.type !== 'none') && (
-          <div className="flex items-center gap-1.5 bg-white/5 hover:bg-white/10 transition-colors px-2.5 py-1.5 rounded-md">
-            <Clock size={10} className="text-[#DEF767]" /> {block.waitConfig.type.substring(0, 4)}
+          <div className="flex items-center gap-1.5 bg-white/5 hover:bg-white/10 transition-colors px-3 py-1.5 rounded-md min-w-max whitespace-nowrap">
+            <Clock size={10} className="text-[#DEF767]" /> {String(block.waitConfig.type || '').toUpperCase()}
           </div>
         )}
       </div>

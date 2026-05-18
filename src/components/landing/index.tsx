@@ -21,9 +21,33 @@ const StarIcon = () => (
 export default function LandingPage() {
   const navigate = useNavigate();
   const [view, setView] = useState('landing');
+  const [landingPrompt, setLandingPrompt] = useState(() => {
+    try {
+      return window.localStorage.getItem('landing_prompt') || '';
+    } catch {
+      return '';
+    }
+  });
 
   // Get user state directly from Context
   const { user, signOut } = useAuth();
+
+  const persistLandingPrompt = (value: string) => {
+    setLandingPrompt(value);
+    try {
+      window.localStorage.setItem('landing_prompt', value);
+    } catch {
+      // ignore storage errors in private modes
+    }
+  };
+
+  const clearLandingPrompt = () => {
+    try {
+      window.localStorage.removeItem('landing_prompt');
+    } catch {
+      // ignore
+    }
+  };
 
   const handleInit = () => {
     if (user) {
@@ -95,7 +119,7 @@ export default function LandingPage() {
               </p>
 
               <div className="w-full mb-20 z-20">
-                <HeroPrompt onInit={handleInit} />
+                <HeroPrompt prompt={landingPrompt} onPromptChange={persistLandingPrompt} onInit={handleInit} />
               </div>
 
               <div className="w-full mt-12 mb-10 z-10">

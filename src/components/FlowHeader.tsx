@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, GitMerge, LayoutGrid, Play, Loader2, LayoutDashboard, AlertTriangle, X } from 'lucide-react';
 import { useBuilderStore } from '../lib/builderStore';
 import { useWorkflowStore } from '../lib/store';
@@ -68,6 +69,8 @@ const FlowHeader = () => {
     setViewMode('pipeline');
   };
 
+  const navigate = useNavigate();
+
   return (
     <>
       <header
@@ -88,7 +91,11 @@ const FlowHeader = () => {
           </a>
 
           {/* Logo and Title */}
-          <div className="flex items-center gap-6 flex-1 min-w-0">
+          <button
+            type="button"
+            onClick={() => navigate('/')}
+            className="flex items-center gap-6 flex-1 min-w-0 text-left focus:outline-none"
+          >
             <div className="flex items-center gap-4 border-r border-white/10 pr-6 flex-shrink-0">
               <div className="w-10 h-10 rounded-[14px] flex items-center justify-center shadow-lg logo-gradient-box">
                 <img src="/logo.png" alt="Logo" className="w-7 h-7 object-contain" />
@@ -109,7 +116,7 @@ const FlowHeader = () => {
                 className="bg-transparent border-none outline-none text-sm font-medium text-zinc-300 placeholder-zinc-600 focus:text-white transition-colors w-full min-w-0 text-ellipsis overflow-hidden whitespace-nowrap"
               />
             </div>
-          </div>
+          </button>
         </div>
 
         {/* Center: View Toggles */}

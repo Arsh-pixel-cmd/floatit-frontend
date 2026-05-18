@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Search, Plus, Star, LayoutGrid, Clock, Folder, Trash2, User, X, GripVertical } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabaseClient';
@@ -62,10 +63,20 @@ export default function Dashboard() {
   // ── Actions ──
   const handleNewFlow = async () => {
     if (!user) return;
+
+    let title = 'Untitled Flow';
+    try {
+      const landingPrompt = localStorage.getItem('landing_prompt') || '';
+      if (landingPrompt.trim()) {
+        title = landingPrompt.trim();
+      }
+    } catch {
+      // ignore
+    }
     
     const newSeq = {
       user_id: user.id,
-      title: 'Untitled Flow',
+      title,
       status: 'Idle',
       status_color: '#46B1FF',
       agents_active: 0,
@@ -83,6 +94,11 @@ export default function Dashboard() {
     if (data) {
       setSequences([data, ...sequences]);
       localStorage.setItem('active_sequence_id', data.id);
+      try {
+        window.localStorage.removeItem('landing_prompt');
+      } catch {
+        // ignore
+      }
       window.location.href = '/canvas'; 
     }
   };
@@ -192,20 +208,26 @@ export default function Dashboard() {
     folderCounts[f.id] = sequences.filter((s: any) => s.space_id === f.id).length;
   });
 
+  const navigate = useNavigate();
+
   return (
     <div className="h-screen w-screen bg-[#050507] text-slate-200 flex font-secondary overflow-hidden">
       
       {/* ── SIDEBAR ── */}
       <aside className="w-72 shrink-0 border-r border-white/[0.03] bg-[#0c0c12]/60 backdrop-blur-3xl flex flex-col z-20">
         <div className="p-8 mb-4">
-          <div className="flex items-center gap-6">
+          <button
+            type="button"
+            onClick={() => navigate('/')}
+            className="flex items-center gap-6 text-left focus:outline-none"
+          >
             <div className="w-11 h-11 rounded-xl shadow-lg flex items-center justify-center shrink-0 logo-gradient-box">
               <img src="/logo.png" alt="Logo" className="w-6 h-6 object-contain" />
             </div>
             <h1 className="text-2xl font-black text-white font-display tracking-tight">
               Agentic<span className="text-[#A259FF]">Flow</span>
             </h1>
-          </div>
+          </button>
         </div>
 
         <nav className="flex-1 px-4 space-y-10 mt-6 overflow-y-auto custom-scrollbar">

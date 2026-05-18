@@ -413,6 +413,9 @@ textarea:focus {
 /* ── Infinite Canvas ────────────────────────────────────────────── */
 .canvas-grid {
   cursor: grab;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  transform-style: preserve-3d;
 }
 
 .canvas-grid.is-panning {
@@ -420,10 +423,25 @@ textarea:focus {
 }
 
 .canvas-content {
-  transform: translate(var(--canvas-x), var(--canvas-y)) scale(var(--canvas-zoom));
+  transform: translate3d(var(--canvas-x), var(--canvas-y), 0) scale(var(--canvas-zoom));
   width: 3000px;
   height: 2000px;
   will-change: transform;
+  backface-visibility: hidden;
+  transform-style: preserve-3d;
+  text-rendering: geometricPrecision;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.n8n-node {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  transform-style: preserve-3d;
+  will-change: transform, opacity;
+  text-rendering: geometricPrecision;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* Specific Color Classes */

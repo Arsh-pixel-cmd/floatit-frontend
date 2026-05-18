@@ -8,7 +8,6 @@ export interface AuthContextType {
   isAuthenticated: boolean;
   signUp: (data: any) => Promise<any>;
   signIn: (credentials: any) => Promise<any>;
-  signInWithProvider: (provider: any) => Promise<any>;
   signOut: () => Promise<any>;
   getProfile: (userId: any) => Promise<any>;
   updateProfile: (userId: any, data: any) => Promise<any>;
@@ -71,10 +70,6 @@ export const AuthProvider = ({ children, adapter }: any) => {
     return result;
   }, [adapter]);
 
-  const signInWithProvider = useCallback(async (provider: any) => {
-    return adapter.signInWithProvider(provider);
-  }, [adapter]);
-
   const signOut = useCallback(async () => {
     const result = await adapter.signOut();
     if (!result.error) {
@@ -101,7 +96,6 @@ export const AuthProvider = ({ children, adapter }: any) => {
     isAuthenticated: !!user,
     signUp,
     signIn,
-    signInWithProvider,
     signOut,
     getProfile,
     updateProfile,

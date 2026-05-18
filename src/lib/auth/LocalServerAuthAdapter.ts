@@ -103,12 +103,6 @@ export class LocalServerAuthAdapter extends AuthAdapter {
     return { user, error: null };
   }
 
-  async signInWithProvider(provider: any) {
-    // For local server, this typically redirects to a passport.js /auth/google endpoint
-    window.location.href = `${this.baseUrl}/auth/${provider}`;
-    return { error: null }; // Redirects
-  }
-
   async signOut() {
     try {
       await this._fetch('/auth/logout', { method: 'POST' });

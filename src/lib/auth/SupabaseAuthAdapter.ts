@@ -57,16 +57,6 @@ export class SupabaseAuthAdapter extends AuthAdapter {
     };
   }
 
-  async signInWithProvider(provider: any) {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider,
-      options: {
-        redirectTo: `${window.location.origin}/dashboard`
-      }
-    });
-    return { error: normalizeError(error) };
-  }
-
   async signOut() {
     const { error } = await supabase.auth.signOut();
     return { error: normalizeError(error) };
