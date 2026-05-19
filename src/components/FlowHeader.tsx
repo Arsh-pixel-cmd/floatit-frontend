@@ -97,14 +97,14 @@ const FlowHeader = () => {
             className="flex items-center gap-6 flex-1 min-w-0 text-left focus:outline-none"
           >
             <div className="flex items-center gap-4 border-r border-white/10 pr-6 flex-shrink-0">
-              <div className="w-10 h-10 rounded-[14px] flex items-center justify-center ">
-                <img src="/uxism.svg" alt="Logo" className="w-10 h-10 object-contain" />
+              <div className="w-20 h-20 rounded-[14px] flex items-center justify-center ">
+                <img src="/o.svg" alt="Logo" className="w-25 h-25 object-contain" />
               </div>
-              <div>
+              {/* <div>
                 <h1 className="text-[18px] font-black tracking-tight text-white font-display leading-tight">
-                  Agentic<span className="text-[#DEF767]">Flow</span>
+                  Float<span className="text-[#EB9A21]">it</span>
                 </h1>
-              </div>
+              </div> */}
             </div>
 
             <div className="flex items-center group flex-1 min-w-0 mr-4">
@@ -125,7 +125,7 @@ const FlowHeader = () => {
             data-tour="pipeline-toggle"
             onClick={() => setViewMode('pipeline')}
             className={`flex items-center gap-2.5 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-300 ${viewMode === 'pipeline'
-              ? 'bg-[#46B1FF] text-white shadow-[0_5px_20px_rgba(70,177,255,0.3)]'
+              ? 'bg-[#242424] text-white '
               : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
               }`}
           >

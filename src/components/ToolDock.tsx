@@ -14,7 +14,7 @@ interface ToolDockProps {
 
 const ToolDock = ({ activeTool, setActiveTool, canvasLocked, setCanvasLocked, onScreenshot, onEraseAll, onLockToggle }: ToolDockProps) => {
   const { viewMode, setViewMode, addBlock, addWebhookBlock } = useBuilderStore();
-  
+
   // Apple-style persistent scaling state
   const [dockScale, setDockScale] = useState(1);
   const dockRef = useRef<HTMLDivElement>(null);
@@ -28,16 +28,16 @@ const ToolDock = ({ activeTool, setActiveTool, canvasLocked, setCanvasLocked, on
 
   const handleSeparatorDrag = (e: React.PointerEvent) => {
     e.preventDefault();
-    const startY = e.clientY;
+    const startX = e.clientX;
     const startScale = dockScale;
-    
-    document.body.style.cursor = 'ns-resize';
+
+    document.body.style.cursor = 'ew-resize';
 
     const onPointerMove = (moveEvent: PointerEvent) => {
-      const deltaY = startY - moveEvent.clientY;
+      const deltaX = startX - moveEvent.clientX;
       const sensitivity = 0.005;
-      const newScale = Math.min(Math.max(0.5, startScale + deltaY * sensitivity), 2.5);
-      
+      const newScale = Math.min(Math.max(0.5, startScale - deltaX * sensitivity), 2.5);
+
       setDockScale(newScale);
       localStorage.setItem('agentic_flow_dock_scale', newScale.toString());
     };
@@ -53,27 +53,27 @@ const ToolDock = ({ activeTool, setActiveTool, canvasLocked, setCanvasLocked, on
   };
 
   const Separator = () => (
-    <div 
-      className="w-4 h-12 flex items-center justify-center group/sep self-center"
-      style={{ cursor: 'ns-resize' }}
+    <div
+      className="w-12 h-4 flex items-center justify-center group/sep self-center"
+      style={{ cursor: 'ew-resize' }}
       onPointerDown={handleSeparatorDrag}
       title="Drag to resize dock"
     >
-      <div className="w-px h-8 bg-[#2e2e2e] group-hover/sep:bg-slate-500 transition-colors rounded-full" />
+      <div className="w-8 h-px bg-white/10 group-hover/sep:bg-slate-500 transition-colors rounded-full" />
     </div>
   );
 
   return (
-    <div 
+    <div
       ref={dockRef}
-      className="absolute bottom-8 left-1/2 z-50 flex items-end gap-4 p-3 px-6 rounded-2xl border border-[#2e2e2e] bg-[#181818] group/dock font-sans"
+      className="absolute left-6 top-1/2 z-[60] flex flex-col items-center gap-4 p-4 py-6 rounded-[32px] border border-white/10 bg-[#0a0a0f]/80 backdrop-blur-3xl shadow-[0_30px_60px_rgba(0,0,0,0.8)] group/dock font-sans"
       style={{
-        transform: `translateX(-50%) scale(${dockScale})`,
-        transformOrigin: 'bottom center',
+        transform: `translateY(-50%) scale(${dockScale})`,
+        transformOrigin: 'left center',
         transition: 'transform 0.1s ease-out, background-color 0.3s, border 0.3s'
       }}
     >
-      
+
       {viewMode === 'builder' && (
         <>
           <ToolButton data-tour="add-agent-btn" onClick={() => addBlock()} icon={<PlusSquare size={20} />} title="Add Agent Block" />
@@ -87,29 +87,29 @@ const ToolDock = ({ activeTool, setActiveTool, canvasLocked, setCanvasLocked, on
       <ToolButton active={activeTool === 'sticky'} onClick={() => setActiveTool('sticky')} icon={<StickyNote size={20} />} title="Sticky Note" />
       <ToolButton active={activeTool === 'text'} onClick={() => setActiveTool('text')} icon={<Type size={20} />} title="Text Label" />
       <ToolButton active={activeTool === 'highlighter'} onClick={() => setActiveTool('highlighter')} icon={<Highlighter size={20} />} title="Highlighter" />
-      
+
       <Separator />
-      
+
       <ToolButton onClick={onEraseAll} icon={<Eraser size={20} />} title="Clear & Reset" />
       <ToolButton onClick={onScreenshot} icon={<Camera size={20} />} title="Screenshot Canvas" />
-      <ToolButton 
-        active={canvasLocked} 
+      <ToolButton
+        active={canvasLocked}
         onClick={() => {
           const newState = !canvasLocked;
           setCanvasLocked(newState);
           onLockToggle?.(newState);
-        }} 
-        icon={canvasLocked ? <Lock size={20} /> : <Unlock size={20} />} 
-        title={canvasLocked ? "Unlock Canvas" : "Lock Canvas"} 
+        }}
+        icon={canvasLocked ? <Lock size={20} /> : <Unlock size={20} />}
+        title={canvasLocked ? "Unlock Canvas" : "Lock Canvas"}
       />
-      
+
       <Separator />
-      
-      <ToolButton 
-        active={viewMode === 'templates'} 
-        onClick={() => setViewMode(viewMode === 'templates' ? 'builder' : 'templates')} 
-        icon={<LayoutTemplate size={20} />} 
-        title="Templates Library" 
+
+      <ToolButton
+        active={viewMode === 'templates'}
+        onClick={() => setViewMode(viewMode === 'templates' ? 'builder' : 'templates')}
+        icon={<LayoutTemplate size={20} />}
+        title="Templates Library"
       />
     </div>
   );
@@ -124,21 +124,20 @@ interface ToolButtonProps {
 }
 
 const ToolButton = ({ active, onClick, icon, title, ...rest }: ToolButtonProps) => (
-  <div className="relative group/btn h-12 flex items-center font-sans" data-tour={rest['data-tour']}>
+  <div className="relative group/btn w-12 flex justify-center font-sans" data-tour={rest['data-tour']}>
     <button
       onClick={onClick}
-      className={`p-3 rounded-xl transition-all duration-300 origin-bottom group-hover/btn:scale-[1.2] group-hover/btn:-translate-y-2 active:scale-95 border ${
-        active 
-          ? 'bg-[#DEF767] text-[#181818] border-[#DEF767]' 
-          : 'text-slate-400 border-transparent group-hover/btn:text-white group-hover/btn:bg-[#2e2e2e] group-hover/btn:border-[#2e2e2e]'
-      }`}
+      className={`p-3 rounded-xl transition-all duration-300 origin-left group-hover/btn:scale-[1.2] group-hover/btn:translate-x-2 active:scale-95 border ${active
+          ? 'bg-[#DEF767] text-black border-[#DEF767] shadow-[0_0_20px_rgba(222,247,103,0.3)]'
+          : 'text-slate-400 border-transparent group-hover/btn:text-white group-hover/btn:bg-white/5 group-hover/btn:border-white/10'
+        }`}
     >
       {icon}
     </button>
-    <div className="absolute -top-12 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-lg bg-[#181818] border border-[#2e2e2e] text-[10px] font-bold text-white opacity-0 group-hover/btn:opacity-100 transition-opacity whitespace-nowrap pointer-events-none font-sans">
+    <div className="absolute left-16 top-1/2 -translate-y-1/2 px-3 py-2 rounded-xl bg-[#0a0a0f] border border-white/10 text-[10px] font-bold text-white uppercase tracking-widest opacity-0 group-hover/btn:opacity-100 transition-opacity whitespace-nowrap pointer-events-none shadow-[0_10px_30px_rgba(0,0,0,0.8)] font-sans z-50">
       {title}
     </div>
-    {active && <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[#DEF767]" />}
+    {active && <div className="absolute top-1/2 -left-1 -translate-y-1/2 w-1 h-1 rounded-full bg-[#DEF767]" />}
   </div>
 );
 

@@ -214,15 +214,15 @@ export default function Dashboard() {
             onClick={() => navigate('/')}
             className="flex items-center gap-4 text-left focus:outline-none"
           >
-            <div className="w-12 h-12 border border-[#2e2e2e] bg-[#242424] flex items-center justify-center shrink-0 rounded-2xl shadow-inner">
-              <img src="/uxism.svg" alt="Logo" className="w-6 h-6 object-contain" />
+            <div className="w-20 h-20  flex items-center justify-center shrink-0 rounded-2xl shadow-inner">
+              <img src="/o.svg" alt="Logo" className="w-25 h-25 object-contain" />
             </div>
-            <div>
+            {/* <div>
               <h1 className="text-lg font-bold font-serif uppercase tracking-wider text-white">
-                AGENTIC<span className="text-[#DEF767]">FLOW</span>
+                Float<span className="text-[#EB9A21]">it</span>
               </h1>
               <span className="text-[9px] font-mono text-zinc-400 tracking-widest block">v0.9.4.SYS</span>
-            </div>
+            </div> */}
           </button>
         </div>
 
@@ -259,7 +259,7 @@ export default function Dashboard() {
               <button
                 aria-label="Add project space"
                 title="Add project space"
-                className="text-zinc-400 hover:text-[#DEF767] transition-colors p-1"
+                className="text-zinc-400 hover:text-[#EB9A21] transition-colors p-1"
                 onClick={() => setShowNewFolderInput(true)}
               >
                 <Plus size={14} />
@@ -290,7 +290,7 @@ export default function Dashboard() {
                       />
                       <button
                         onClick={handleCreateFolder}
-                        className="p-1 border border-[#3e3e3e] hover:border-[#DEF767] hover:text-[#DEF767] text-zinc-400 bg-[#1c1c1c] transition-colors rounded-lg"
+                        className="p-1 border border-[#3e3e3e] hover:border-[#EB9A21] hover:text-[#EB9A21] text-zinc-400 bg-[#1c1c1c] transition-colors rounded-lg"
                         title="Create folder"
                         aria-label="Create folder"
                       >
@@ -352,20 +352,20 @@ export default function Dashboard() {
         {/* HEADER */}
         <header className="shrink-0 px-12 py-8 flex justify-between items-center z-10 border-b border-[#2e2e2e] bg-[#181818] gap-8 shadow-md">
           <div className="relative flex-1 max-w-4xl group">
-            <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-zinc-500 group-focus-within:text-[#DEF767] transition-colors" size={18} />
+            <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-zinc-500 group-focus-within:text-[#FFFFFF] transition-colors" size={18} />
             <input
               type="text"
               placeholder="SEARCH VIA SEQUENCE FINGERPRINT..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-[#1e1e1e] border border-[#2e2e2e] rounded-2xl py-3.5 pl-14 pr-6 text-xs uppercase tracking-wider focus:border-[#DEF767] outline-none text-white transition-colors placeholder:text-zinc-500 font-mono shadow-inner"
+              className="w-full bg-[#1e1e1e] border border-[#2e2e2e] rounded-2xl py-3.5 pl-14 pr-6 text-xs uppercase tracking-wider focus:border-[#EB9A21] outline-none text-white transition-colors placeholder:text-zinc-500 font-mono shadow-inner"
             />
           </div>
 
           <div className="flex items-center gap-4 shrink-0 justify-end">
             <button
               onClick={() => navigate('/profile')}
-              className="w-12 h-12 flex items-center justify-center rounded-2xl border border-[#2e2e2e] text-zinc-400 hover:text-[#DEF767] hover:border-[#DEF767] bg-[#1e1e1e] shadow-md hover:-translate-y-0.5 transition-all"
+              className="w-12 h-12 flex items-center justify-center rounded-2xl border border-[#2e2e2e] text-zinc-400 hover:text-[#EB9A21] hover:border-[#EB9A21] bg-[#1e1e1e] shadow-md hover:-translate-y-0.5 transition-all"
               aria-label="User Profile"
               title="User Profile"
             >
@@ -384,7 +384,7 @@ export default function Dashboard() {
 
           {loading ? (
             <div className="flex justify-center items-center h-40">
-              <div className="w-8 h-8 border-2 border-[#DEF767] border-t-transparent animate-spin"></div>
+              <div className="w-8 h-8 border-2 border-[#EB9A21] border-t-transparent animate-spin"></div>
             </div>
           ) : activeView === 'recent' ? (
             /* Recent Activity Timeline */
@@ -402,16 +402,16 @@ export default function Dashboard() {
                       localStorage.setItem('active_sequence_id', seq.id);
                       navigate('/canvas');
                     }}
-                    className="flex items-center gap-4 px-6 py-4 bg-[#242424] border border-[#3e3e3e] hover:border-[#DEF767] shadow-[0_4px_15px_rgba(0,0,0,0.3)] hover:shadow-[0_12px_30px_rgba(0,0,0,0.6)] hover:-translate-y-1 cursor-pointer transition-all duration-200 group rounded-2xl"
+                    className="flex items-center gap-4 px-6 py-4 bg-[#242424] border border-[#3e3e3e] hover:border-[#EB9A21] shadow-[0_4px_15px_rgba(0,0,0,0.3)] hover:shadow-[0_12px_30px_rgba(0,0,0,0.6)] hover:-translate-y-1 cursor-pointer transition-all duration-200 group rounded-2xl"
                   >
-                    <div className="w-2.5 h-2.5 bg-[#DEF767] rounded-full shrink-0" />
+                    <div className="w-2.5 h-2.5 bg-[#EB9A21] rounded-full shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <h4 className="text-sm font-bold text-white uppercase tracking-tight truncate font-sans group-hover:text-[#DEF767] transition-colors">{seq.title}</h4>
+                      <h4 className="text-sm font-bold text-white uppercase tracking-tight truncate font-sans group-hover:text-[#EB9A21] transition-colors">{seq.title}</h4>
                     </div>
                     <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider shrink-0">
                       {formatDate(seq.updated_at)}
                     </span>
-                    {seq.is_starred && <Star size={12} className="text-[#DEF767] shrink-0" fill="currentColor" />}
+                    {seq.is_starred && <Star size={12} className="text-[#EB9A21] shrink-0" fill="currentColor" />}
                   </motion.div>
                 ))
               )}
@@ -447,7 +447,7 @@ export default function Dashboard() {
         <button
           data-tour="create-flow-btn"
           onClick={handleNewFlow}
-          className="fixed bottom-8 right-8 z-50 w-14 h-14 rounded-full bg-[#DEF767] border border-[#b8cc33] shadow-[0_8px_30px_rgba(222,247,103,0.35)] hover:shadow-[0_15px_40px_rgba(222,247,103,0.6)] hover:-translate-y-1 hover:scale-105 transition-all duration-300 flex items-center justify-center text-[#121212]"
+          className="fixed bottom-8 right-8 z-50 w-14 h-14 rounded-full bg-[#EB9A21] border border-[#c57f12] shadow-[0_8px_30px_rgba(235,154,33,0.35)] hover:shadow-[0_15px_40px_rgba(235,154,33,0.6)] hover:-translate-y-1 hover:scale-105 transition-all duration-300 flex items-center justify-center text-[#FFFFFF]"
           aria-label="Create Flow"
           title="Create Flow"
         >
@@ -525,7 +525,7 @@ function FolderItem({ folder, count, active, isDragOver, onClick, onDelete, onDr
       onDragLeave={onDragLeave}
       onDrop={(e: any) => { e.preventDefault(); onDrop(); }}
       className={`group relative w-full min-h-[64px] flex items-center gap-4 px-6 border cursor-pointer transition-all duration-200 font-sans rounded-2xl shadow-[0_4px_15px_rgba(0,0,0,0.3)] hover:shadow-[0_8px_25px_rgba(0,0,0,0.5)] hover:-translate-y-0.5 ${isDragOver
-        ? 'bg-[#DEF767] text-[#171717] border-[#DEF767] shadow-[0_6px_20px_rgba(222,247,103,0.25)]'
+        ? 'bg-[#EB9A21] text-[#FFFFFF] border-[#EB9A21] shadow-[0_6px_20px_rgba(235,154,33,0.25)]'
         : active
           ? 'bg-[#ff6a6a] text-[#171717] border-[#ff6a6a] shadow-[0_6px_20px_rgba(255,106,106,0.25)]'
           : 'bg-[#1e1e1e] text-zinc-400 hover:text-white hover:bg-[#242424] border-[#2e2e2e]'
@@ -617,12 +617,12 @@ function SessionCard({ sequence, index, onDelete, onToggleStar, onDragStart, isD
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: isDragging ? 0.4 : 1, scale: isLongPressed ? 1.02 : 1 }}
       transition={{ duration: 0.3, delay: index * 0.02 }}
-      className={`bg-[#242424] p-8 border border-[#3e3e3e] hover:border-[#DEF767] shadow-[0_8px_30px_rgba(0,0,0,0.5)] hover:shadow-[0_20px_40px_rgba(0,0,0,0.7)] hover:-translate-y-1.5 hover:scale-[1.02] transition-all duration-300 ease-out group cursor-pointer relative overflow-hidden flex flex-col h-full rounded-3xl ${isLongPressed ? 'ring-1 ring-[#DEF767] cursor-grab' : ''}`}
+      className={`bg-[#242424] p-8 border border-[#3e3e3e] hover:border-[#EB9A21] shadow-[0_8px_30px_rgba(0,0,0,0.5)] hover:shadow-[0_20px_40px_rgba(0,0,0,0.7)] hover:-translate-y-1.5 hover:scale-[1.02] transition-all duration-300 ease-out group cursor-pointer relative overflow-hidden flex flex-col h-full rounded-3xl ${isLongPressed ? 'ring-1 ring-[#EB9A21] cursor-grab' : ''}`}
     >
       {/* Drag Handle Indicator */}
       {isLongPressed && (
         <div className="absolute top-3 left-1/2 -translate-x-1/2">
-          <GripVertical size={16} className="text-[#DEF767]" />
+          <GripVertical size={16} className="text-[#EB9A21]" />
         </div>
       )}
 
@@ -642,8 +642,8 @@ function SessionCard({ sequence, index, onDelete, onToggleStar, onDragStart, isD
             aria-label={isStarred ? "Unstar sequence" : "Star sequence"}
             title={isStarred ? "Unstar sequence" : "Star sequence"}
             className={`w-10 h-10 flex items-center justify-center border transition-all relative z-20 rounded-xl shadow-md bg-[#1c1c1c] ${isStarred
-              ? 'text-[#DEF767] border-[#DEF767]'
-              : 'text-zinc-400 border-[#3e3e3e] hover:text-[#DEF767] hover:border-[#DEF767]'
+              ? 'text-[#EB9A21] border-[#EB9A21]'
+              : 'text-zinc-400 border-[#3e3e3e] hover:text-[#EB9A21] hover:border-[#EB9A21]'
               }`}
           >
             <Star size={16} fill={isStarred ? 'currentColor' : 'none'} />
@@ -652,7 +652,7 @@ function SessionCard({ sequence, index, onDelete, onToggleStar, onDragStart, isD
       </div>
 
       <div className="z-10 relative flex-1">
-        <h3 className="text-xl font-bold font-sans text-white leading-tight mb-4 group-hover:text-[#DEF767] transition-colors uppercase tracking-tight">
+        <h3 className="text-xl font-bold font-sans text-white leading-tight mb-4 group-hover:text-[#EB9A21] transition-colors uppercase tracking-tight">
           {sequence.title}
         </h3>
       </div>

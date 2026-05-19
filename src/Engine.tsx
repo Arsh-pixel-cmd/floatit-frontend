@@ -31,14 +31,14 @@ import { useBuilderStore } from './lib/builderStore';
 
 const Engine = () => {
   const [initError, setInitError] = useState<string | null>(null);
-  
+
   // Zustand State
   const graphStatus = useWorkflowStore((state: any) => state.graphStatus);
   const setGraphStatus = useWorkflowStore((state: any) => state.setGraphStatus);
   const selectedNodeId = useWorkflowStore(selectActiveNodeId);
   const selectNode = useWorkflowStore((state: any) => state.selectNode);
   const nodeStates = useWorkflowStore((state: any) => state.nodeStates);
-  
+
   const viewMode = useBuilderStore((state: any) => state.viewMode);
   const nodeResults = useWorkflowStore((state: any) => state.nodeResults);
   const projectPrompt = useWorkflowStore((state: any) => state.projectPrompt);
@@ -50,7 +50,6 @@ const Engine = () => {
 
   const [phaseOverlay, setPhaseOverlay] = useState<any>(null);
   const [showOutputScreen, setShowOutputScreen] = useState(false);
-  const [isCommandExpanded, setIsCommandExpanded] = useState(false);
 
 
   // Canvas Viewport logic
@@ -110,45 +109,45 @@ const Engine = () => {
         if (seqId) {
           const { data } = await supabase.from('sequences').select('canvas_state, title').eq('id', seqId).single();
           if (data?.canvas_state) {
-             const state = data.canvas_state;
-             useBuilderStore.setState({
-               blocks: state.blocks || [],
-               connections: state.connections || [],
-               stickyNotes: state.stickyNotes || [],
-               textLabels: state.textLabels || [],
-             });
-             
-             // Restore the agent outputs and progress!
-             if (state.execution) {
-               useWorkflowStore.setState({
-                 nodeStates: state.execution.nodeStates || {},
-                 nodeResults: state.execution.nodeResults || {},
-                 currentPhaseIndex: state.execution.currentPhaseIndex || 0,
-                 projectPrompt: state.execution.projectPrompt || (data.title !== 'New Neural Sequence' ? data.title : '')
-               });
-             } else if (!state.execution?.projectPrompt && data.title && data.title !== 'Untitled Flow') {
-               useWorkflowStore.setState({ projectPrompt: data.title });
-             }
+            const state = data.canvas_state;
+            useBuilderStore.setState({
+              blocks: state.blocks || [],
+              connections: state.connections || [],
+              stickyNotes: state.stickyNotes || [],
+              textLabels: state.textLabels || [],
+            });
 
-             // Initialize flowTitle
-             useWorkflowStore.setState({ flowTitle: data.title || 'Untitled Flow' });
-             
-             // Restore the deployed template ID if it was saved in canvas_state
-             if (state.deployedTemplateId) {
-               useBuilderStore.setState({ deployedTemplateId: state.deployedTemplateId });
-             }
+            // Restore the agent outputs and progress!
+            if (state.execution) {
+              useWorkflowStore.setState({
+                nodeStates: state.execution.nodeStates || {},
+                nodeResults: state.execution.nodeResults || {},
+                currentPhaseIndex: state.execution.currentPhaseIndex || 0,
+                projectPrompt: state.execution.projectPrompt || (data.title !== 'New Neural Sequence' ? data.title : '')
+              });
+            } else if (!state.execution?.projectPrompt && data.title && data.title !== 'Untitled Flow') {
+              useWorkflowStore.setState({ projectPrompt: data.title });
+            }
+
+            // Initialize flowTitle
+            useWorkflowStore.setState({ flowTitle: data.title || 'Untitled Flow' });
+
+            // Restore the deployed template ID if it was saved in canvas_state
+            if (state.deployedTemplateId) {
+              useBuilderStore.setState({ deployedTemplateId: state.deployedTemplateId });
+            }
           } else if (data) {
-             // No canvas state yet: hydrate from landing prompt if present.
-             try {
-               const landingPrompt = window.localStorage.getItem('landing_prompt');
-               if (landingPrompt && landingPrompt.trim()) {
-                 useWorkflowStore.setState({ projectPrompt: landingPrompt, flowTitle: landingPrompt });
-               } else {
-                 useWorkflowStore.setState({ flowTitle: data.title || 'Untitled Flow' });
-               }
-             } catch {
-               useWorkflowStore.setState({ flowTitle: data.title || 'Untitled Flow' });
-             }
+            // No canvas state yet: hydrate from landing prompt if present.
+            try {
+              const landingPrompt = window.localStorage.getItem('landing_prompt');
+              if (landingPrompt && landingPrompt.trim()) {
+                useWorkflowStore.setState({ projectPrompt: landingPrompt, flowTitle: landingPrompt });
+              } else {
+                useWorkflowStore.setState({ flowTitle: data.title || 'Untitled Flow' });
+              }
+            } catch {
+              useWorkflowStore.setState({ flowTitle: data.title || 'Untitled Flow' });
+            }
           }
 
           // Fetch templates for the user (do this even if canvas_state is empty)
@@ -212,7 +211,7 @@ const Engine = () => {
     const buildSavePayload = () => {
       const state = useBuilderStore.getState();
       const workflowState = useWorkflowStore.getState();
-      
+
       const getSessionName = (title: string, prompt: string) => {
         if (title && title !== 'Untitled Flow') return title;
         const trimmed = prompt?.trim().replace(/\s+/g, ' ') || '';
@@ -246,7 +245,7 @@ const Engine = () => {
       try {
         const payload = buildSavePayload();
         const currentHash = JSON.stringify({ canvas_state: payload.canvas_state, title: payload.title });
-        
+
         if (currentHash === lastSavedHashRef.current) return;
 
         await supabase.from('sequences').update(payload).eq('id', seqId);
@@ -268,87 +267,87 @@ const Engine = () => {
   const layout = useMemo(() => {
     if (graphStatus === 'error') return null;
     if (deployedTemplateId && viewMode === 'pipeline') {
-       // First try to find in the loaded templates array
-       let activeTemplate = templates.find((t: any) => t.id === deployedTemplateId);
-       
-       // Fallback: If not in templates array yet (e.g. local deploy), build from builderStore blocks directly
-       if (!activeTemplate) {
-         const builderState = useBuilderStore.getState();
-         if (builderState.blocks.length > 0) {
-           activeTemplate = {
-             id: deployedTemplateId,
-             blocks: builderState.blocks,
-             connections: builderState.connections,
-           };
-         }
-       }
-       
-       if (activeTemplate) {
-           const depths: Record<string, number> = {};
-           const adj: Record<string, any[]> = {};
-           const inDegree: Record<string, number> = {};
-           
-           activeTemplate.blocks.forEach((b: any) => {
-             adj[b.id] = [];
-             inDegree[b.id] = 0;
-             depths[b.id] = 0;
-           });
-           
-           activeTemplate.connections.forEach((c: any) => {
-             if(adj[c.sourceBlockId] && inDegree[c.targetBlockId] !== undefined) {
-               adj[c.sourceBlockId]!.push(c.targetBlockId);
-               inDegree[c.targetBlockId]!++;
-             }
-           });
-           
-           let queue: any[] = [];
-           Object.keys(inDegree).forEach(id => {
-             if (inDegree[id] === 0) queue.push(id);
-           });
-           
-           while(queue.length > 0) {
-             const curr = queue.shift();
-             adj[curr]!.forEach(neighbor => {
-                depths[neighbor] = Math.max(depths[neighbor]!, depths[curr]! + 1);
-                inDegree[neighbor]!--;
-                if(inDegree[neighbor] === 0) queue.push(neighbor);
-             });
-           }
-           
-           const phaseIds = WORKFLOW_PHASES.map(p => p.id);
-           const depthGroups: Record<number, any[]> = {};
-           
-           activeTemplate.blocks.forEach((block: any) => {
-              const d = depths[block.id] || 0;
-              const phaseIndex = Math.min(d, phaseIds.length - 1);
-              block.dynamicPhase = phaseIds[phaseIndex];
-              if(!depthGroups[d]) depthGroups[d] = [];
-              depthGroups[d]!.push(block);
-           });
-           
-           const newLayout: Record<string, any> = {};
-           const maxDepth = Math.max(0, ...Object.keys(depthGroups).map(Number));
-           
-           for (let d = 0; d <= maxDepth; d++) {
-             const blocksInCol = depthGroups[d] || [];
-             const x = 350 + (d * 500);
-             const startY = 400 - ((blocksInCol.length - 1) * 200) / 2;
-             
-             blocksInCol.forEach((block: any, bIdx: any) => {
-                 const phaseIndex = Math.min(d, phaseIds.length - 1);
-                 newLayout[block.id] = {
-                     id: block.id,
-                     x: x + (bIdx % 2 !== 0 ? 60 : 0), 
-                     y: startY + (bIdx * 200),
-                     category: { name: block.name, description: block.description },
-                     phase: phaseIds[phaseIndex],
-                     tools: [],
-                     blockRef: block 
-                 };
-             });
-           }
-           return newLayout;
-       }
+      // First try to find in the loaded templates array
+      let activeTemplate = templates.find((t: any) => t.id === deployedTemplateId);
+
+      // Fallback: If not in templates array yet (e.g. local deploy), build from builderStore blocks directly
+      if (!activeTemplate) {
+        const builderState = useBuilderStore.getState();
+        if (builderState.blocks.length > 0) {
+          activeTemplate = {
+            id: deployedTemplateId,
+            blocks: builderState.blocks,
+            connections: builderState.connections,
+          };
+        }
+      }
+
+      if (activeTemplate) {
+        const depths: Record<string, number> = {};
+        const adj: Record<string, any[]> = {};
+        const inDegree: Record<string, number> = {};
+
+        activeTemplate.blocks.forEach((b: any) => {
+          adj[b.id] = [];
+          inDegree[b.id] = 0;
+          depths[b.id] = 0;
+        });
+
+        activeTemplate.connections.forEach((c: any) => {
+          if (adj[c.sourceBlockId] && inDegree[c.targetBlockId] !== undefined) {
+            adj[c.sourceBlockId]!.push(c.targetBlockId);
+            inDegree[c.targetBlockId]!++;
+          }
+        });
+
+        let queue: any[] = [];
+        Object.keys(inDegree).forEach(id => {
+          if (inDegree[id] === 0) queue.push(id);
+        });
+
+        while (queue.length > 0) {
+          const curr = queue.shift();
+          adj[curr]!.forEach(neighbor => {
+            depths[neighbor] = Math.max(depths[neighbor]!, depths[curr]! + 1);
+            inDegree[neighbor]!--;
+            if (inDegree[neighbor] === 0) queue.push(neighbor);
+          });
+        }
+
+        const phaseIds = WORKFLOW_PHASES.map(p => p.id);
+        const depthGroups: Record<number, any[]> = {};
+
+        activeTemplate.blocks.forEach((block: any) => {
+          const d = depths[block.id] || 0;
+          const phaseIndex = Math.min(d, phaseIds.length - 1);
+          block.dynamicPhase = phaseIds[phaseIndex];
+          if (!depthGroups[d]) depthGroups[d] = [];
+          depthGroups[d]!.push(block);
+        });
+
+        const newLayout: Record<string, any> = {};
+        const maxDepth = Math.max(0, ...Object.keys(depthGroups).map(Number));
+
+        for (let d = 0; d <= maxDepth; d++) {
+          const blocksInCol = depthGroups[d] || [];
+          const x = 350 + (d * 500);
+          const startY = 400 - ((blocksInCol.length - 1) * 200) / 2;
+
+          blocksInCol.forEach((block: any, bIdx: any) => {
+            const phaseIndex = Math.min(d, phaseIds.length - 1);
+            newLayout[block.id] = {
+              id: block.id,
+              x: x + (bIdx % 2 !== 0 ? 60 : 0),
+              y: startY + (bIdx * 200),
+              category: { name: block.name, description: block.description },
+              phase: phaseIds[phaseIndex],
+              tools: [],
+              blockRef: block
+            };
+          });
+        }
+        return newLayout;
+      }
     }
     return computeLayout('desktop', 2000, 1000);
   }, [graphStatus, deployedTemplateId, viewMode, templates]);
@@ -365,18 +364,18 @@ const Engine = () => {
     const activeTemplate = templates.find((t: any) => t.id === deployedTemplateId);
     if (!activeTemplate || !layout) return [];
     return activeTemplate.connections.map((c: any) => {
-        const s = layout[c.sourceBlockId];
-        const t = layout[c.targetBlockId];
-        if (!s || !t) return null;
-        const p1 = {x: s.x + 140, y: s.y + 70}; 
-        const p2 = {x: t.x, y: t.y + 70}; 
-        return {
-           _coreId: c.id,
-           id: c.id,
-           from: c.sourceBlockId,
-           to: c.targetBlockId,
-           d: computeEdgePath(p1, p2, { sPort: 'right', tPort: 'left' })
-        };
+      const s = layout[c.sourceBlockId];
+      const t = layout[c.targetBlockId];
+      if (!s || !t) return null;
+      const p1 = { x: s.x + 140, y: s.y + 70 };
+      const p2 = { x: t.x, y: t.y + 70 };
+      return {
+        _coreId: c.id,
+        id: c.id,
+        from: c.sourceBlockId,
+        to: c.targetBlockId,
+        d: computeEdgePath(p1, p2, { sPort: 'right', tPort: 'left' })
+      };
     }).filter(Boolean);
   }, [deployedTemplateId, viewMode, templates, layout]);
 
@@ -466,7 +465,7 @@ const Engine = () => {
         canvasRef.current.style.setProperty('--mouse-x', `${e.clientX - rect.left}px`);
         canvasRef.current.style.setProperty('--mouse-y', `${e.clientY - rect.top}px`);
       }
-      
+
       if (draggingAppElement) {
         const coords = getCanvasCoords(e.clientX, e.clientY);
         const dx = coords.x - draggingAppElement.startMouseX;
@@ -483,7 +482,7 @@ const Engine = () => {
         const newWidth = Math.max(120, coords.x - resizingAppElement.elemX);
         const newHeight = Math.max(120, coords.y - resizingAppElement.elemY);
         if (resizingAppElement.type === 'sticky') {
-           setStickyNotes((prev: any) => prev.map((n: any) => n.id === resizingAppElement.id ? { ...n, width: newWidth, height: newHeight } : n));
+          setStickyNotes((prev: any) => prev.map((n: any) => n.id === resizingAppElement.id ? { ...n, width: newWidth, height: newHeight } : n));
         }
       }
 
@@ -525,7 +524,7 @@ const Engine = () => {
   const runFullPipeline = useCallback(async () => {
     if (!layout || graphStatus === 'running') return;
     const store = useWorkflowStore.getState();
-    
+
     if (!projectPrompt || projectPrompt.trim() === '') {
       addToast('info', 'Please enter a project directive in the top bar.');
       return;
@@ -545,9 +544,9 @@ const Engine = () => {
 
     // Update sequence title in Supabase to match the prompt (handled by autosave)
     // No explicit call needed here anymore to avoid redundant writes
-    
+
     store.setGraphStatus('running');
-    store.resetExecution(Object.keys(layout)); 
+    store.resetExecution(Object.keys(layout));
 
     // Check if we're running a deployed template or default schema
     const activeTemplate = deployedTemplateId ? templates.find((t: any) => t.id === deployedTemplateId) : null;
@@ -557,25 +556,25 @@ const Engine = () => {
       const depths: Record<string, number> = {};
       const adj: Record<string, any[]> = {};
       const inDegree: Record<string, number> = {};
-      
+
       activeTemplate.blocks.forEach((b: any) => {
         adj[b.id] = [];
         inDegree[b.id] = 0;
         depths[b.id] = 0;
       });
-      
+
       activeTemplate.connections.forEach((c: any) => {
         if (adj[c.sourceBlockId] && inDegree[c.targetBlockId] !== undefined) {
           adj[c.sourceBlockId]!.push(c.targetBlockId);
           inDegree[c.targetBlockId]!++;
         }
       });
-      
+
       let queue: any[] = [];
       Object.keys(inDegree).forEach(id => {
         if (inDegree[id] === 0) queue.push(id);
       });
-      
+
       while (queue.length > 0) {
         const curr = queue.shift();
         (adj[curr] || []).forEach((neighbor: any) => {
@@ -584,21 +583,21 @@ const Engine = () => {
           if (inDegree[neighbor] === 0) queue.push(neighbor);
         });
       }
-      
+
       const maxDepth = Math.max(0, ...Object.values(depths));
       const phaseLabels = WORKFLOW_PHASES.map(p => p.label);
-      
+
       setCompletedPhases([]);
       for (let d = 0; d <= maxDepth; d++) {
         const phaseIndex = Math.min(d, WORKFLOW_PHASES.length - 1);
         const currentPhaseObj = WORKFLOW_PHASES[phaseIndex];
         if (currentPhaseObj) setRunningPhaseId(currentPhaseObj.id);
         store.setCurrentPhaseIndex(phaseIndex);
-        
+
         const nodesAtDepth = activeTemplate.blocks.filter((b: any) => (depths[b.id] || 0) === d).map((b: any) => b.id);
         const currentActive = store.animationState.activeNodes;
         store.setAnimationState({ activeNodes: [...currentActive, ...nodesAtDepth] });
-        
+
         let neuralContext = '';
         if (d > 0) {
           const prevNodes = activeTemplate.blocks.filter((b: any) => (depths[b.id] || 0) === d - 1).map((b: any) => b.id);
@@ -608,63 +607,63 @@ const Engine = () => {
             .filter(Boolean)
             .join('\n\n---\n\n');
         }
-        
+
         const CONCURRENCY_LIMIT = 2;
         for (let batchIdx = 0; batchIdx < nodesAtDepth.length; batchIdx += CONCURRENCY_LIMIT) {
           const batch = nodesAtDepth.slice(batchIdx, batchIdx + CONCURRENCY_LIMIT);
           await Promise.all(batch.map(async (nId: any, idx: number) => {
-          // Stagger requests to avoid burst rate limits (1.5 seconds per node in batch)
-          if (idx > 0) await new Promise(resolve => setTimeout(resolve, idx * 1500));
-          const nodeInfo = (layout as any)[nId];
-          const agentData = {
-            id: nId,
-            phaseLabel: phaseLabels[phaseIndex] || `Phase ${d + 1}`,
-            categoryName: nodeInfo?.category?.name || 'Agent',
-            name: nodeInfo?.category?.name || 'Agent'
-          };
+            // Stagger requests to avoid burst rate limits (1.5 seconds per node in batch)
+            if (idx > 0) await new Promise(resolve => setTimeout(resolve, idx * 1500));
+            const nodeInfo = (layout as any)[nId];
+            const agentData = {
+              id: nId,
+              phaseLabel: phaseLabels[phaseIndex] || `Phase ${d + 1}`,
+              categoryName: nodeInfo?.category?.name || 'Agent',
+              name: nodeInfo?.category?.name || 'Agent'
+            };
 
-          let resolved = false;
-          while (!resolved) {
-            store.setNodeState(nId, 'running');
-            try {
-              const taskObj = `Project directive: ${store.projectPrompt}\n\nExecute agentic objective for ${agentData.name} within the ${agentData.phaseLabel} architecture phase. Provide deep expert analysis based on the project directive.`;
-              
-              const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT_STUCK')), 45000));
-              const result: any = await Promise.race([
-                callLLM(taskObj, agentData, neuralContext, store.projectAttachment),
-                timeoutPromise
-              ]);
+            let resolved = false;
+            while (!resolved) {
+              store.setNodeState(nId, 'running');
+              try {
+                const taskObj = `Project directive: ${store.projectPrompt}\n\nExecute agentic objective for ${agentData.name} within the ${agentData.phaseLabel} architecture phase. Provide deep expert analysis based on the project directive.`;
 
-              if (result && result._errorType) {
-                 store.setNodeResult(nId, { ...result, agentName: agentData.name });
-                 store.setNodeState(nId, 'stuck_debugger');
-              } else {
-                 store.setNodeResult(nId, { ...result, agentName: agentData.name });
-                 store.setNodeState(nId, 'completed');
-                 resolved = true;
-                 break;
+                const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT_STUCK')), 45000));
+                const result: any = await Promise.race([
+                  callLLM(taskObj, agentData, neuralContext, store.projectAttachment),
+                  timeoutPromise
+                ]);
+
+                if (result && result._errorType) {
+                  store.setNodeResult(nId, { ...result, agentName: agentData.name });
+                  store.setNodeState(nId, 'stuck_debugger');
+                } else {
+                  store.setNodeResult(nId, { ...result, agentName: agentData.name });
+                  store.setNodeState(nId, 'completed');
+                  resolved = true;
+                  break;
+                }
+              } catch (err: any) {
+                console.error(`[${nId}] Error:`, err);
+                store.setNodeState(nId, 'stuck_debugger');
               }
-            } catch (err: any) {
-              console.error(`[${nId}] Error:`, err);
-              store.setNodeState(nId, 'stuck_debugger');
-            }
 
-            if (!resolved) {
-              await new Promise<void>((resolve) => {
-                const checkInterval = setInterval(() => {
-                  const currentState = useWorkflowStore.getState().nodeStates[nId];
-                  if (currentState === 'completed') {
-                    clearInterval(checkInterval);
-                    resolved = true;
-                    resolve();
-                  } else if (currentState === 'running') {
-                    clearInterval(checkInterval);
-                    resolve();
-                  }
-                }, 500);
-              });
+              if (!resolved) {
+                await new Promise<void>((resolve) => {
+                  const checkInterval = setInterval(() => {
+                    const currentState = useWorkflowStore.getState().nodeStates[nId];
+                    if (currentState === 'completed') {
+                      clearInterval(checkInterval);
+                      resolved = true;
+                      resolve();
+                    } else if (currentState === 'running') {
+                      clearInterval(checkInterval);
+                      resolve();
+                    }
+                  }, 500);
+                });
+              }
             }
-          }
           }));
         }
 
@@ -675,10 +674,10 @@ const Engine = () => {
 
         if (d < maxDepth) {
           const nextPhaseIndex = Math.min(d + 1, WORKFLOW_PHASES.length - 1);
-          setPhaseOverlay({ 
-            phase: d + 1, 
-            phaseName: phaseLabels[phaseIndex] || `Phase ${d + 1}`, 
-            nextPhaseName: phaseLabels[nextPhaseIndex] || `Phase ${d + 2}` 
+          setPhaseOverlay({
+            phase: d + 1,
+            phaseName: phaseLabels[phaseIndex] || `Phase ${d + 1}`,
+            nextPhaseName: phaseLabels[nextPhaseIndex] || `Phase ${d + 2}`
           });
           await new Promise(r => setTimeout(r, 2000));
           setPhaseOverlay(null);
@@ -691,7 +690,7 @@ const Engine = () => {
         const phase = WORKFLOW_PHASES[i]!;
         setRunningPhaseId(phase.id);
         store.setCurrentPhaseIndex(i);
-        
+
         const phaseNodes = phase.categories.map((c: any) => `${phase.id}::${c}`);
         const currentActive = store.animationState.activeNodes;
         store.setAnimationState({ activeNodes: [...currentActive, ...phaseNodes] });
@@ -711,58 +710,58 @@ const Engine = () => {
         for (let batchIdx = 0; batchIdx < phaseNodes.length; batchIdx += CONCURRENCY_LIMIT) {
           const batch = phaseNodes.slice(batchIdx, batchIdx + CONCURRENCY_LIMIT);
           await Promise.all(batch.map(async (nId: any, idx: number) => {
-          // Stagger requests to avoid burst rate limits (1.5 seconds per node in batch)
-          if (idx > 0) await new Promise(resolve => setTimeout(resolve, idx * 1500));
-          const nodeCategory = nId.split('::')[1];
-          const agentData = {
-            id: nId,
-            phaseLabel: phase.label,
-            categoryName: nodeCategory,
-            name: (layout as any)[nId]?.category?.name || nodeCategory
-          };
+            // Stagger requests to avoid burst rate limits (1.5 seconds per node in batch)
+            if (idx > 0) await new Promise(resolve => setTimeout(resolve, idx * 1500));
+            const nodeCategory = nId.split('::')[1];
+            const agentData = {
+              id: nId,
+              phaseLabel: phase.label,
+              categoryName: nodeCategory,
+              name: (layout as any)[nId]?.category?.name || nodeCategory
+            };
 
-          let resolved = false;
-          while (!resolved) {
-            store.setNodeState(nId, 'running');
-            try {
-              const taskObj = `Project directive: ${store.projectPrompt}\n\nExecute agentic objective for ${agentData.name} within the ${agentData.phaseLabel} architecture phase. Provide deep expert analysis based on the project directive.`;
-              
-              const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT_STUCK')), 45000));
-              const result: any = await Promise.race([
-                callLLM(taskObj, agentData, neuralContext, store.projectAttachment),
-                timeoutPromise
-              ]);
+            let resolved = false;
+            while (!resolved) {
+              store.setNodeState(nId, 'running');
+              try {
+                const taskObj = `Project directive: ${store.projectPrompt}\n\nExecute agentic objective for ${agentData.name} within the ${agentData.phaseLabel} architecture phase. Provide deep expert analysis based on the project directive.`;
 
-              if (result && result._errorType) {
-                 store.setNodeResult(nId, result);
-                 store.setNodeState(nId, 'stuck_debugger');
-              } else {
-                 store.setNodeResult(nId, result);
-                 store.setNodeState(nId, 'completed');
-                 resolved = true;
-                 break;
+                const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT_STUCK')), 45000));
+                const result: any = await Promise.race([
+                  callLLM(taskObj, agentData, neuralContext, store.projectAttachment),
+                  timeoutPromise
+                ]);
+
+                if (result && result._errorType) {
+                  store.setNodeResult(nId, result);
+                  store.setNodeState(nId, 'stuck_debugger');
+                } else {
+                  store.setNodeResult(nId, result);
+                  store.setNodeState(nId, 'completed');
+                  resolved = true;
+                  break;
+                }
+              } catch (err: any) {
+                console.error(`[${nId}] Error:`, err);
+                store.setNodeState(nId, 'stuck_debugger');
               }
-            } catch (err: any) {
-              console.error(`[${nId}] Error:`, err);
-              store.setNodeState(nId, 'stuck_debugger');
-            }
 
-            if (!resolved) {
-              await new Promise<void>((resolve) => {
-                const checkInterval = setInterval(() => {
-                  const currentState = useWorkflowStore.getState().nodeStates[nId];
-                  if (currentState === 'completed') {
-                    clearInterval(checkInterval);
-                    resolved = true;
-                    resolve();
-                  } else if (currentState === 'running') {
-                    clearInterval(checkInterval);
-                    resolve();
-                  }
-                }, 500);
-              });
+              if (!resolved) {
+                await new Promise<void>((resolve) => {
+                  const checkInterval = setInterval(() => {
+                    const currentState = useWorkflowStore.getState().nodeStates[nId];
+                    if (currentState === 'completed') {
+                      clearInterval(checkInterval);
+                      resolved = true;
+                      resolve();
+                    } else if (currentState === 'running') {
+                      clearInterval(checkInterval);
+                      resolve();
+                    }
+                  }, 500);
+                });
+              }
             }
-          }
           }));
         }
 
@@ -770,10 +769,10 @@ const Engine = () => {
         setRunningPhaseId(null);
 
         if (i < WORKFLOW_PHASES.length - 1) {
-          setPhaseOverlay({ 
-            phase: i + 1, 
-            phaseName: phase.label, 
-            nextPhaseName: WORKFLOW_PHASES[i + 1]!.label 
+          setPhaseOverlay({
+            phase: i + 1,
+            phaseName: phase.label,
+            nextPhaseName: WORKFLOW_PHASES[i + 1]!.label
           });
           await new Promise(r => setTimeout(r, 2000));
           setPhaseOverlay(null);
@@ -790,7 +789,7 @@ const Engine = () => {
       confetti({ particleCount: 8, angle: 120, spread: 70, origin: { x: 1 }, colors: ['#A259FF', '#DEF767', '#ffffff'] });
       if (Date.now() < end) requestAnimationFrame(frame);
     }());
-    
+
     setTimeout(() => setShowOutputScreen(true), 2500);
   }, [layout, graphStatus, projectPrompt, deployedTemplateId, templates]);
 
@@ -962,10 +961,10 @@ const Engine = () => {
       `;
       return (
         <div className="flex-1 w-full relative h-[600px]">
-          <iframe 
-            srcDoc={safeHtml} 
-            className="w-full h-full border-0 bg-transparent rounded-2xl" 
-            sandbox="allow-scripts" 
+          <iframe
+            srcDoc={safeHtml}
+            className="w-full h-full border-0 bg-transparent rounded-2xl"
+            sandbox="allow-scripts"
             title="Agent Output"
           />
         </div>
@@ -1006,25 +1005,25 @@ const Engine = () => {
     return (
       <div className="h-screen w-screen flex flex-col items-center justify-center bg-[#0a0a10] text-slate-200 relative p-6">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,106,106,0.03)_0%,transparent_70%)] pointer-events-none" />
-        
+
         <div className="relative flex flex-col items-center bg-[#0d0d15] border border-[#ff6a6a]/20 p-10 rounded-[32px] shadow-[0_40px_100px_rgba(0,0,0,0.8)] overflow-hidden max-w-md w-full text-center">
           {/* Glow decoration */}
           <div className="absolute -top-24 -right-24 w-48 h-48 bg-[#ff6a6a]/10 blur-[60px] rounded-full pointer-events-none" />
-          
+
           <div className="w-16 h-16 rounded-2xl bg-[#ff6a6a]/10 border border-[#ff6a6a]/20 flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(255,106,106,0.15)] pointer-events-none">
             <AlertTriangle className="text-[#ff6a6a]" size={28} />
           </div>
-          
+
           <div className="text-[#ff6a6a] font-black tracking-[0.25em] text-[10px] uppercase mb-2">
             CRITICAL SYSTEM HALT
           </div>
-          
+
           <h2 className="text-2xl font-black text-white uppercase tracking-wider font-display mb-4">
             Graph Validation Failed
           </h2>
-          
+
           <div className="w-12 h-0.5 bg-white/10 my-4" />
-          
+
           <p className="text-slate-400 text-xs font-mono bg-white/[0.02] border border-white/5 p-4 rounded-xl w-full break-all leading-relaxed">
             {initError}
           </p>
@@ -1037,23 +1036,23 @@ const Engine = () => {
     return (
       <div className="h-screen w-screen bg-[#0a0a10] flex flex-col items-center justify-center relative p-6">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(162,89,255,0.03)_0%,transparent_70%)] pointer-events-none" />
-        
+
         <div className="relative flex flex-col items-center bg-[#0d0d15] border border-white/10 p-10 rounded-[32px] shadow-[0_40px_100px_rgba(0,0,0,0.8)] overflow-hidden max-w-sm w-full text-center">
           <div className="relative w-16 h-16 mb-6">
             <div className="absolute inset-0 rounded-full border-4 border-white/5" />
             <div className="absolute inset-0 rounded-full border-4 border-[#A259FF] border-t-transparent animate-spin" />
           </div>
-          
+
           <div className="text-[#A259FF] font-black tracking-[0.25em] text-[10px] uppercase mb-2">
             INITIALIZING CANVAS
           </div>
-          
+
           <h2 className="text-xl font-black text-white uppercase tracking-wider font-display mb-4">
             Loading Neural Pipeline
           </h2>
-          
+
           <div className="w-12 h-0.5 bg-white/10 my-2" />
-          
+
           <p className="text-slate-500 text-xs mt-2">
             Connecting node matrices and building visual canvas layers...
           </p>
@@ -1072,21 +1071,21 @@ const Engine = () => {
           <div className="relative flex flex-col items-center bg-[#0a0a0f] border border-white/10 p-10 rounded-[32px] shadow-[0_40px_100px_rgba(0,0,0,0.8)] overflow-hidden max-w-md w-full animate-fade-in-up text-center">
             {/* Glow decoration */}
             <div className="absolute -top-24 -right-24 w-48 h-48 bg-[#DEF767]/10 blur-[60px] rounded-full pointer-events-none" />
-            
+
             <div className="w-16 h-16 rounded-2xl bg-[#DEF767]/10 border border-[#DEF767]/20 flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(222,247,103,0.15)] pointer-events-none">
               <Sparkles className="text-[#DEF767]" size={28} />
             </div>
-            
+
             <div className="text-[#DEF767] font-black tracking-[0.25em] text-[10px] uppercase mb-2">
               PHASE {phaseOverlay.phase} COMPLETE
             </div>
-            
+
             <h2 className="text-2xl font-black text-white uppercase tracking-wider font-display mb-4">
               {phaseOverlay.phaseName}
             </h2>
-            
+
             <div className="w-12 h-0.5 bg-white/10 my-4" />
-            
+
             <div className="text-slate-400 text-xs tracking-widest uppercase font-bold">
               Initializing {phaseOverlay.nextPhaseName}
             </div>
@@ -1094,261 +1093,218 @@ const Engine = () => {
         </div>
       )}
 
-      
+
       {viewMode === 'templates' && <TemplatesView />}
 
-      {/* ── Expandable Neuro-Command (Project Prompt) ── */}
+      {/* ── Permanent Neuro-Command (Project Prompt) ── */}
       {viewMode === 'pipeline' && (
-      <>
-        {/* Toggle Button in Top Right */}
-        <AnimatePresence>
-          {!isCommandExpanded && (
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.8 }}
-              className="absolute top-24 right-8 z-50 cursor-grab active:cursor-grabbing"
-              drag
-              dragMomentum={false}
-              whileDrag={{ scale: 1.1 }}
-            >
-               <motion.button 
-                 onTap={() => setIsCommandExpanded(true)}
-                 className="w-14 h-14 rounded-full bg-[#0a0a0f]/90 backdrop-blur-3xl border border-white/10 shadow-[0_20px_50px_rgba(162,89,255,0.3)] flex items-center justify-center text-white hover:text-[#A259FF] hover:border-white/30 hover:shadow-[0_20px_50px_rgba(162,89,255,0.5)] transition-all group pointer-events-auto"
-                 title="Open Command Center"
-               >
-                 <Activity size={24} className="group-hover:scale-110 transition-transform pointer-events-none" />
-               </motion.button>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Wide Horizontal Command Bar */}
-        <AnimatePresence>
-          {isCommandExpanded && (
-            <motion.div 
-              initial={{ y: -20, opacity: 0, scale: 0.98 }} 
-              animate={{ y: 0, opacity: 1, scale: 1 }} 
-              exit={{ y: -20, opacity: 0, scale: 0.98 }}
-              transition={{ duration: 0.4, ease: 'circOut' }}
-              className="absolute top-[80px] left-1/2 -translate-x-1/2 z-50 w-full max-w-5xl px-8 pointer-events-none"
-            >
-              <div className="flex flex-col items-center gap-2 pointer-events-auto bg-[#0a0a0f]/80 backdrop-blur-3xl border border-white/10 rounded-3xl p-5 shadow-[0_30px_60px_rgba(0,0,0,0.8)]">
-                <div className="flex items-center gap-4 w-full">
-                   <div className="flex-1 relative group">
-                      <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-slate-500 group-focus-within:text-[#46B1FF] transition-colors">
-                        <Activity size={18} />
-                      </div>
-                      <input
-                        value={projectPrompt}
-                        onChange={(e) => setProjectPrompt(e.target.value)}
-                        placeholder="Orchestrate your objective... (e.g. Design a technical whitepaper for a DeFi protocol)"
-                        className="w-full bg-black/60 border border-white/5 rounded-[18px] py-4 pl-12 pr-6 outline-none focus:border-[#46B1FF]/40 transition-all text-white text-sm shadow-inner placeholder:text-slate-600 font-secondary"
-                        disabled={graphStatus === 'running'}
-                      />
-                   </div>
-                   
-                   {/* Action Buttons */}
-                   <div className="flex items-center gap-2">
-                     <input
-                       ref={fileInputRef}
-                       type="file"
-                       accept=".txt,.md,.json,.pdf"
-                       className="hidden"
-                       title="Upload attachment"
-                       aria-label="Upload attachment"
-                       onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (!file) return;
-                          const reader = new FileReader();
-                          reader.onload = (ev: any) => {
-                            const content = ev.target.result as string;
-                            setProjectAttachment({ name: file.name, content, type: file.type });
-
-                            // Auto-fill the prompt bar from file content
-                            let extractedPrompt = '';
-                            if (file.type === 'application/json' || file.name.endsWith('.json')) {
-                              try {
-                                const json = JSON.parse(content);
-                                extractedPrompt = json.title || json.description || json.prompt || json.name || '';
-                                if (!extractedPrompt && typeof json === 'object') {
-                                  extractedPrompt = JSON.stringify(json).substring(0, 200);
-                                }
-                              } catch {
-                                extractedPrompt = content.split('\n').find((l: string) => l.trim().length > 0) || '';
-                              }
-                            } else {
-                              // For .txt, .md — use the first non-empty line as prompt
-                              const lines = content.split('\n').map((l: string) => l.replace(/^#+\s*/, '').trim()).filter((l: string) => l.length > 0);
-                              extractedPrompt = lines[0] || '';
-                            }
-
-                            if (extractedPrompt) {
-                              setProjectPrompt(extractedPrompt.substring(0, 200));
-                            }
-
-                            addToast('success', `File "${file.name}" loaded — prompt auto-filled from content`);
-                          };
-                          reader.readAsText(file);
-                          e.target.value = '';
-                        }}
-                     />
-                     <button
-                       onClick={() => fileInputRef.current?.click()}
-                       disabled={graphStatus === 'running'}
-                       className="w-14 h-14 rounded-2xl bg-white/[0.03] border border-white/5 text-slate-400 hover:text-[#46B1FF] hover:border-[#46B1FF]/30 transition-all flex items-center justify-center group"
-                       title="Attach context (.txt, .md, .pdf)"
-                       aria-label="Attach context file"
-                     >
-                       <Paperclip size={20} className="group-hover:rotate-12 transition-transform" />
-                     </button>
-
-
-                     {/* Close Button */}
-                     <button 
-                       onClick={() => setIsCommandExpanded(false)}
-                       className="w-14 h-14 rounded-2xl bg-white/[0.03] border border-white/5 text-slate-400 hover:text-red-400 hover:bg-red-400/10 transition-all flex items-center justify-center ml-1"
-                       title="Close Command Center"
-                     >
-                       <X size={20} />
-                     </button>
-                   </div>
+        <>
+          {/* Wide Horizontal Command Bar */}
+          <div
+            className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[60] w-full max-w-5xl px-8 pointer-events-none"
+          >
+            <div className="flex flex-col items-center gap-2 pointer-events-auto bg-[#0a0a0f]/80 backdrop-blur-3xl border border-white/10 rounded-[32px] p-5 shadow-[0_30px_60px_rgba(0,0,0,0.8)]">
+              <div className="flex items-center gap-4 w-full">
+                <div className="flex-1 relative group">
+                  <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-slate-500 group-focus-within:text-[#46B1FF] transition-colors">
+                    <Activity size={18} />
+                  </div>
+                  <input
+                    value={projectPrompt}
+                    onChange={(e) => setProjectPrompt(e.target.value)}
+                    placeholder="Orchestrate your objective... (e.g. Design a technical whitepaper for a DeFi protocol)"
+                    className="w-full bg-black/60 border border-white/5 rounded-[20px] py-4 pl-12 pr-6 outline-none focus:border-[#46B1FF]/40 transition-all text-white text-sm shadow-inner placeholder:text-slate-600 font-secondary"
+                    disabled={graphStatus === 'running'}
+                  />
                 </div>
 
-                {/* Key Source Indicator & Attachment */}
-                 <div className="flex items-center gap-4 w-full mt-3 px-1 justify-between">
-                   <div className="flex items-center gap-4">
-                     <div 
-                       className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-[10px] font-bold uppercase tracking-wider cursor-pointer transition-all ${
-                         keyInfo.activeSource === 'project' 
-                           ? 'bg-[#A259FF]/10 border-[#A259FF]/30 text-[#A259FF] shadow-[0_0_15px_rgba(162,89,255,0.1)]' 
-                           : keyInfo.activeSource === 'global'
-                             ? 'bg-[#46B1FF]/10 border-[#46B1FF]/30 text-[#46B1FF]'
-                             : 'bg-white/5 border-white/10 text-slate-500'
-                       }`}
-                       onClick={() => {
-                         setKeyModalType('NO_KEY');
-                         setShowKeyModal(true);
-                       }}
-                     >
-                       <Key size={12} />
-                       {keyInfo.activeSource === 'project' 
-                         ? `Project Key (••••${keyInfo.project.lastFour})` 
-                         : keyInfo.activeSource === 'global'
-                           ? `Global Key (••••${keyInfo.global.lastFour})`
-                           : 'No API Key Configured'}
-                     </div>
-                     <div className="text-[10px] text-slate-600 font-medium">
-                       Priority: Project Key &gt; Global Key
-                     </div>
-                   </div>
+                {/* Action Buttons */}
+                <div className="flex items-center gap-2">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".txt,.md,.json,.pdf"
+                    className="hidden"
+                    title="Upload attachment"
+                    aria-label="Upload attachment"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const reader = new FileReader();
+                      reader.onload = (ev: any) => {
+                        const content = ev.target.result as string;
+                        setProjectAttachment({ name: file.name, content, type: file.type });
 
-                   {/* Attachment Chip */}
-                  {projectAttachment && (
-                    <div className="flex items-center gap-3 bg-[#46B1FF]/10 border-[#46B1FF]/20 text-[#46B1FF] px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider animate-fade-in">
-                      <Folder size={14} />
-                      {projectAttachment.name}
-                      <button 
-                        onClick={() => setProjectAttachment(null)}
-                        className="ml-2 hover:text-white transition-colors"
-                        title="Remove attachment"
-                        aria-label="Remove attachment"
-                      >
-                        <X size={12} />
-                      </button>
-                    </div>
-                  )}
-                 </div>
-                 
-                 {/* Phase Execution Panel — Auto-run button and gated phase cards */}
-                 <div className="flex items-center justify-between mt-3 w-full px-1 mb-2">
-                   <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Pipeline Execution</h3>
-                   <button 
-                     onClick={() => {
-                       runFullPipeline();
-                       setIsCommandExpanded(false);
-                     }}
-                     disabled={graphStatus === 'running' || !projectPrompt}
-                     className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-white hover:bg-[#A259FF] hover:border-[#A259FF] transition-all text-[9px] font-black uppercase tracking-widest shadow-lg active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-                     title="Run all phases automatically"
-                   >
-                     {graphStatus === 'running' ? (
-                       <><div className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" /> Orchestrating...</>
-                     ) : (
-                       <><Play size={12} fill="currentColor" /> Run</>
-                     )}
-                   </button>
-                 </div>
-                 <div className="w-full grid grid-cols-4 gap-2">
-                   {WORKFLOW_PHASES.map((phase, idx) => {
-                     const isCompleted = completedPhases.includes(phase.id);
-                     const isRunning = runningPhaseId === phase.id;
-                     const prevDone = idx === 0 || completedPhases.includes(WORKFLOW_PHASES[idx - 1]!.id);
-                     const isLocked = !prevDone && !isCompleted;
-                     const phaseColors = [
-                       { accent: '#46B1FF', glow: 'rgba(70,177,255,0.15)' },
-                       { accent: '#CEA3FF', glow: 'rgba(206,163,255,0.15)' },
-                       { accent: '#A259FF', glow: 'rgba(162,89,255,0.15)' },
-                       { accent: '#DEF767', glow: 'rgba(222,247,103,0.15)' },
-                     ][idx]!;
-                     return (
-                       <div
-                         key={phase.id}
-                         className="flex flex-col gap-1.5 rounded-2xl border p-3 transition-all duration-300"
-                         style={{
-                           borderColor: isCompleted ? phaseColors.accent + '60' : isRunning ? phaseColors.accent + '40' : 'rgba(255,255,255,0.05)',
-                           background: isCompleted ? phaseColors.glow : isRunning ? phaseColors.glow : 'rgba(255,255,255,0.02)',
-                           boxShadow: isRunning ? `0 0 20px ${phaseColors.glow}` : 'none'
-                         }}
-                       >
-                         <div className="flex items-center justify-between mb-0.5">
-                           <span className="text-[9px] font-black uppercase tracking-widest" style={{ color: phaseColors.accent }}>
-                             {phase.label}
-                           </span>
-                           {isCompleted && <span className="text-[10px] text-green-400">✓</span>}
-                           {isRunning && <div className="w-2.5 h-2.5 rounded-full animate-pulse" style={{ background: phaseColors.accent }} />}
-                         </div>
-                         {isCompleted ? (
-                           <button
-                             onClick={() => setPhaseOutputModal(phase.id)}
-                             className="w-full py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1 hover:opacity-80"
-                             style={{
-                               background: `${phaseColors.accent}10`,
-                               color: phaseColors.accent,
-                               border: `1px solid ${phaseColors.accent}30`
-                             }}
-                           >
-                             <FileText size={9} /> View Report
-                           </button>
-                         ) : (
-                           <button
-                             onClick={() => runPhase(phase.id)}
-                             disabled={isLocked || isRunning || !!runningPhaseId || !projectPrompt}
-                             className="w-full py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1"
-                             style={{
-                               background: isLocked || !projectPrompt ? 'rgba(255,255,255,0.03)' : `${phaseColors.accent}20`,
-                               color: isLocked || !projectPrompt ? '#475569' : phaseColors.accent,
-                               border: `1px solid ${isLocked ? 'rgba(255,255,255,0.05)' : phaseColors.accent + '30'}`
-                             }}
-                           >
-                             {isRunning ? (
-                               <><div className="w-2.5 h-2.5 border border-current border-t-transparent rounded-full animate-spin" /> Running</>
-                             ) : (
-                               <><Play size={9} fill="currentColor" /> Run</>
-                             )}
-                           </button>
-                         )}
-                       </div>
-                     );
-                   })}
-                 </div>
+                        // Auto-fill the prompt bar from file content
+                        let extractedPrompt = '';
+                        if (file.type === 'application/json' || file.name.endsWith('.json')) {
+                          try {
+                            const json = JSON.parse(content);
+                            extractedPrompt = json.title || json.description || json.prompt || json.name || '';
+                            if (!extractedPrompt && typeof json === 'object') {
+                              extractedPrompt = JSON.stringify(json).substring(0, 200);
+                            }
+                          } catch {
+                            extractedPrompt = content.split('\n').find((l: string) => l.trim().length > 0) || '';
+                          }
+                        } else {
+                          // For .txt, .md — use the first non-empty line as prompt
+                          const lines = content.split('\n').map((l: string) => l.replace(/^#+\s*/, '').trim()).filter((l: string) => l.length > 0);
+                          extractedPrompt = lines[0] || '';
+                        }
+
+                        if (extractedPrompt) {
+                          setProjectPrompt(extractedPrompt.substring(0, 200));
+                        }
+
+                        addToast('success', `File "${file.name}" loaded — prompt auto-filled from content`);
+                      };
+                      reader.readAsText(file);
+                      e.target.value = '';
+                    }}
+                  />
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={graphStatus === 'running'}
+                    className="w-14 h-14 rounded-[20px] bg-white/[0.03] border border-white/5 text-slate-400 hover:text-[#46B1FF] hover:border-[#46B1FF]/30 transition-all flex items-center justify-center group"
+                    title="Attach context (.txt, .md, .pdf)"
+                    aria-label="Attach context file"
+                  >
+                    <Paperclip size={20} className="group-hover:rotate-12 transition-transform" />
+                  </button>
+                </div>
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </>
+
+              {/* Key Source Indicator & Attachment */}
+              <div className="flex items-center gap-4 w-full mt-3 px-1 justify-between">
+                <div className="flex items-center gap-4">
+                  <div
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-[10px] font-bold uppercase tracking-wider cursor-pointer transition-all ${keyInfo.activeSource === 'project'
+                        ? 'bg-[#A259FF]/10 border-[#A259FF]/30 text-[#A259FF] shadow-[0_0_15px_rgba(162,89,255,0.1)]'
+                        : keyInfo.activeSource === 'global'
+                          ? 'bg-[#46B1FF]/10 border-[#46B1FF]/30 text-[#46B1FF]'
+                          : 'bg-white/5 border-white/10 text-slate-500'
+                      }`}
+                    onClick={() => {
+                      setKeyModalType('NO_KEY');
+                      setShowKeyModal(true);
+                    }}
+                  >
+                    <Key size={12} />
+                    {keyInfo.activeSource === 'project'
+                      ? `Project Key (••••${keyInfo.project.lastFour})`
+                      : keyInfo.activeSource === 'global'
+                        ? `Global Key (••••${keyInfo.global.lastFour})`
+                        : 'No API Key Configured'}
+                  </div>
+                  <div className="text-[10px] text-slate-600 font-medium">
+                    Priority: Project Key &gt; Global Key
+                  </div>
+                </div>
+
+                {/* Attachment Chip */}
+                {projectAttachment && (
+                  <div className="flex items-center gap-3 bg-[#46B1FF]/10 border-[#46B1FF]/20 text-[#46B1FF] px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider animate-fade-in">
+                    <Folder size={14} />
+                    {projectAttachment.name}
+                    <button
+                      onClick={() => setProjectAttachment(null)}
+                      className="ml-2 hover:text-white transition-colors"
+                      title="Remove attachment"
+                      aria-label="Remove attachment"
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Phase Execution Panel — Auto-run button and gated phase cards */}
+              <div className="flex items-center justify-between mt-3 w-full px-1 mb-2">
+                <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Pipeline Execution</h3>
+                <button
+                  onClick={() => {
+                    runFullPipeline();
+                  }}
+                  disabled={graphStatus === 'running' || !projectPrompt}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-white hover:bg-[#A259FF] hover:border-[#A259FF] transition-all text-[9px] font-black uppercase tracking-widest shadow-lg active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Run all phases automatically"
+                >
+                  {graphStatus === 'running' ? (
+                    <><div className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" /> Orchestrating...</>
+                  ) : (
+                    <><Play size={12} fill="currentColor" /> Run</>
+                  )}
+                </button>
+              </div>
+              <div className="w-full grid grid-cols-4 gap-2">
+                {WORKFLOW_PHASES.map((phase, idx) => {
+                  const isCompleted = completedPhases.includes(phase.id);
+                  const isRunning = runningPhaseId === phase.id;
+                  const prevDone = idx === 0 || completedPhases.includes(WORKFLOW_PHASES[idx - 1]!.id);
+                  const isLocked = !prevDone && !isCompleted;
+                  const phaseColors = [
+                    { accent: '#FFFFFF', glow: 'rgba(70,177,255,0.15)' },
+                    { accent: '#FFFFFF', glow: 'rgba(206,163,255,0.15)' },
+                    { accent: '#FFFFFF', glow: 'rgba(162,89,255,0.15)' },
+                    { accent: '#FFFFFF', glow: 'rgba(222,247,103,0.15)' },
+                  ][idx]!;
+                  return (
+                    <div
+                      key={phase.id}
+                      className="flex flex-col gap-1.5 rounded-2xl border p-3 transition-all duration-300"
+                      style={{
+                        borderColor: isCompleted ? phaseColors.accent + '60' : isRunning ? phaseColors.accent + '40' : 'rgba(255,255,255,0.05)',
+                        background: isCompleted ? phaseColors.glow : isRunning ? phaseColors.glow : 'rgba(255,255,255,0.02)',
+                        boxShadow: isRunning ? `0 0 20px ${phaseColors.glow}` : 'none'
+                      }}
+                    >
+                      <div className="flex items-center justify-between mb-0.5">
+                        <span className="text-[9px] font-black uppercase tracking-widest" style={{ color: phaseColors.accent }}>
+                          {phase.label}
+                        </span>
+                        {isCompleted && <span className="text-[10px] text-green-400">✓</span>}
+                        {isRunning && <div className="w-2.5 h-2.5 rounded-full animate-pulse" style={{ background: phaseColors.accent }} />}
+                      </div>
+                      {isCompleted ? (
+                        <button
+                          onClick={() => setPhaseOutputModal(phase.id)}
+                          className="w-full py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1 hover:opacity-80"
+                          style={{
+                            background: `${phaseColors.accent}10`,
+                            color: phaseColors.accent,
+                            border: `1px solid ${phaseColors.accent}30`
+                          }}
+                        >
+                          <FileText size={9} /> View Report
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => runPhase(phase.id)}
+                          disabled={isLocked || isRunning || !!runningPhaseId || !projectPrompt}
+                          className="w-full py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1"
+                          style={{
+                            background: isLocked || !projectPrompt ? 'rgba(255,255,255,0.03)' : `${phaseColors.accent}20`,
+                            color: isLocked || !projectPrompt ? '#475569' : phaseColors.accent,
+                            border: `1px solid ${isLocked ? 'rgba(255,255,255,0.05)' : phaseColors.accent + '30'}`
+                          }}
+                        >
+                          {isRunning ? (
+                            <><div className="w-2.5 h-2.5 border border-current border-t-transparent rounded-full animate-spin" /> Running</>
+                          ) : (
+                            <><Play size={9} fill="currentColor" /> Run</>
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </>
       )}
-      
+
       {viewMode === 'pipeline' && <FlowControls setCamera={setCamera} camera={camera} />}
       <ToolDock
         activeTool={activeTool}
@@ -1368,8 +1324,8 @@ const Engine = () => {
         onScreenshot={async () => {
           try {
             // Use html2canvas on the entire document body for reliable capture
-            const shot = await html2canvas(document.body, { 
-              backgroundColor: '#0a0a10', 
+            const shot = await html2canvas(document.body, {
+              backgroundColor: '#0a0a10',
               useCORS: true,
               scale: window.devicePixelRatio || 1,
               logging: false,
@@ -1414,7 +1370,7 @@ const Engine = () => {
             {viewMode === 'pipeline' && WORKFLOW_PHASES.map((p, idx) => {
               const phaseNodes = Object.values(layout).filter(n => n.phase === p.id);
               if (phaseNodes.length === 0) return null;
-              
+
               const minX = Math.min(...phaseNodes.map(n => n.x));
               const maxX = Math.max(...phaseNodes.map(n => n.x));
               const centerX = minX + (maxX - minX) / 2;
@@ -1436,7 +1392,7 @@ const Engine = () => {
                       {p.subtitle}
                     </div>
                   </div>
-                  
+
                   <PhaseSummaryBox phase={p} x={centerX} y={800} />
                 </React.Fragment>
               );
@@ -1451,18 +1407,18 @@ const Engine = () => {
               </defs>
 
               {strokes.map((stroke: any) => (
-                <polyline 
-                  key={`stroke-${stroke.id}`} 
-                  points={stroke.points.map((p: any) => `${p.x},${p.y}`).join(' ')} 
-                  stroke="#DEF767" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" 
-                  fill="none" 
+                <polyline
+                  key={`stroke-${stroke.id}`}
+                  points={stroke.points.map((p: any) => `${p.x},${p.y}`).join(' ')}
+                  stroke="#DEF767" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"
+                  fill="none"
                   opacity="0.6"
                 />
               ))}
               {currentStroke && (
-                <polyline 
-                  points={currentStroke.map((p: any) => `${p.x},${p.y}`).join(' ')} 
-                  stroke="#DEF767" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" 
+                <polyline
+                  points={currentStroke.map((p: any) => `${p.x},${p.y}`).join(' ')}
+                  stroke="#DEF767" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"
                   fill="none" opacity="0.6"
                 />
               )}
@@ -1504,14 +1460,14 @@ const Engine = () => {
 
             {/* Builder Canvas */}
             {viewMode === 'builder' && (
-               <BuilderCanvas activeTool={activeTool} setActiveTool={setActiveTool} getCanvasCoords={getCanvasCoords} />
+              <BuilderCanvas activeTool={activeTool} setActiveTool={setActiveTool} getCanvasCoords={getCanvasCoords} />
             )}
 
             {/* Agent Nodes */}
             {viewMode === 'pipeline' && Object.values(layout as any).map((node: any) => {
               const animState = useWorkflowStore.getState().animationState;
-              const isVisible = animState.activeNodes.includes(node.id) || graphStatus === 'ready' || graphStatus === 'completed' || graphStatus === 'running'; 
-              
+              const isVisible = animState.activeNodes.includes(node.id) || graphStatus === 'ready' || graphStatus === 'completed' || graphStatus === 'running';
+
               // Determine phase index for opacity - works for both schema and builder nodes
               let parsePhaseIdx = -1;
               if (node.phase) {
@@ -1520,7 +1476,7 @@ const Engine = () => {
                 parsePhaseIdx = WORKFLOW_PHASES.findIndex(p => p.id === node.id.split('::')[0]);
               }
               const isPendingPhase = parsePhaseIdx >= 0 && parsePhaseIdx > currentPhaseIndex;
-              
+
               return (
                 <div key={node.id} style={{ opacity: isPendingPhase ? 0.5 : 1 }} className="transition-opacity duration-700">
                   <NodeContainer
@@ -1540,87 +1496,86 @@ const Engine = () => {
               const isEditing = editingStickyId === note.id;
 
               return (
-              <div key={`sticky-${note.id}`} 
-                className={`absolute sticky-note p-3 rounded-2xl z-30 transition-shadow font-secondary flex flex-col group shadow-2xl cursor-grab active:cursor-grabbing ${
-                  isEditing ? 'border-[#DEF767]' : 'border-[#2e2e2e]'
-                }`}
-                onMouseDown={(e: any) => {
-                  if (isEditing) return; // Don't drag while editing
-                  if ((e.target as any).classList.contains('resize-handle')) {
-                    e.stopPropagation();
-                    setResizingAppElement({ type: 'sticky', id: note.id, elemX: note.x, elemY: note.y });
-                    return;
-                  }
-                  if (activeTool === 'cursor') {
-                    e.stopPropagation();
-                    const coords = getCanvasCoords(e.clientX, e.clientY);
-                    setDraggingAppElement({ type: 'sticky', id: note.id, startX: note.x, startY: note.y, startMouseX: coords.x, startMouseY: coords.y });
-                  }
-                }}
-                style={{
-                  left: note.x, top: note.y, width: noteW, height: noteH,
-                  background: '#181818',
-                  pointerEvents: 'auto',
-                }}>
-                <div className="w-full h-1 rounded-t-xl absolute top-0 left-0" style={{ background: isEditing ? '#DEF767' : '#5b5b5b' }} />
-                
-                <button
-                  title="Delete sticky note"
-                  aria-label="Delete sticky note"
-                  onClick={(e: React.MouseEvent) => {
-                    e.stopPropagation();
-                    setStickyNotes(prev => prev.filter(n => n.id !== note.id));
-                    if (editingStickyId === note.id) setEditingStickyId(null);
-                  }}
-                  className="absolute top-3 right-3 p-1.5 rounded-lg bg-[#2e2e2e] text-slate-400 hover:text-white hover:bg-[#ff6a6a] transition-all opacity-0 group-hover:opacity-100 z-50 font-sans"
-                >
-                  <X size={12} />
-                </button>
-
-                <textarea 
-                  className="flex-1 w-full mt-3 bg-transparent outline-none resize-none text-slate-200 text-sm placeholder-slate-500 custom-scrollbar-neon font-sans"
-                  placeholder="Note insights here..."
-                  value={note.text}
-                  onMouseDown={e => e.stopPropagation()}
-                  onFocus={() => {
-                    // Auto-zoom to this sticky note
-                    preFocusCamera.current = { ...camera };
-                    setEditingStickyId(note.id);
-                    const canvasEl = canvasRef.current;
-                    if (canvasEl) {
-                      const rect = canvasEl.getBoundingClientRect();
-                      const targetZoom = 1.0;
-                      const centerX = rect.width / 2 - (note.x + noteW / 2) * targetZoom;
-                      const centerY = rect.height / 2 - (note.y + noteH / 2) * targetZoom;
-                      setCamera({ x: centerX, y: centerY, zoom: targetZoom });
+                <div key={`sticky-${note.id}`}
+                  className={`absolute sticky-note p-3 rounded-2xl z-30 transition-shadow font-secondary flex flex-col group shadow-2xl cursor-grab active:cursor-grabbing ${isEditing ? 'border-[#DEF767]' : 'border-[#2e2e2e]'
+                    }`}
+                  onMouseDown={(e: any) => {
+                    if (isEditing) return; // Don't drag while editing
+                    if ((e.target as any).classList.contains('resize-handle')) {
+                      e.stopPropagation();
+                      setResizingAppElement({ type: 'sticky', id: note.id, elemX: note.x, elemY: note.y });
+                      return;
+                    }
+                    if (activeTool === 'cursor') {
+                      e.stopPropagation();
+                      const coords = getCanvasCoords(e.clientX, e.clientY);
+                      setDraggingAppElement({ type: 'sticky', id: note.id, startX: note.x, startY: note.y, startMouseX: coords.x, startMouseY: coords.y });
                     }
                   }}
-                  onBlur={() => {
-                    if (preFocusCamera.current) {
-                      setCamera(preFocusCamera.current);
-                      preFocusCamera.current = null;
-                    }
-                    setEditingStickyId(null);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Escape') {
-                      (e.target as HTMLTextAreaElement).blur();
-                    }
-                  }}
-                  onChange={(e) => {
-                    setStickyNotes(prev => prev.map(n => n.id === note.id ? { ...n, text: e.target.value } : n));
-                  }}
-                />
-
-                {/* Resize Handle */}
-                <div
-                  className="resize-handle absolute bottom-0 right-0 w-6 h-6 cursor-nwse-resize opacity-0 group-hover:opacity-100 transition-opacity z-30"
                   style={{
-                    background: `linear-gradient(135deg, transparent 50%, ${isEditing ? '#DEF767' : '#5b5b5b'} 50%)`,
-                    borderRadius: '0 0 16px 0',
-                  }}
-                />
-              </div>
+                    left: note.x, top: note.y, width: noteW, height: noteH,
+                    background: '#181818',
+                    pointerEvents: 'auto',
+                  }}>
+                  <div className="w-full h-1 rounded-t-xl absolute top-0 left-0" style={{ background: isEditing ? '#DEF767' : '#5b5b5b' }} />
+
+                  <button
+                    title="Delete sticky note"
+                    aria-label="Delete sticky note"
+                    onClick={(e: React.MouseEvent) => {
+                      e.stopPropagation();
+                      setStickyNotes(prev => prev.filter(n => n.id !== note.id));
+                      if (editingStickyId === note.id) setEditingStickyId(null);
+                    }}
+                    className="absolute top-3 right-3 p-1.5 rounded-lg bg-[#2e2e2e] text-slate-400 hover:text-white hover:bg-[#ff6a6a] transition-all opacity-0 group-hover:opacity-100 z-50 font-sans"
+                  >
+                    <X size={12} />
+                  </button>
+
+                  <textarea
+                    className="flex-1 w-full mt-3 bg-transparent outline-none resize-none text-slate-200 text-sm placeholder-slate-500 custom-scrollbar-neon font-sans"
+                    placeholder="Note insights here..."
+                    value={note.text}
+                    onMouseDown={e => e.stopPropagation()}
+                    onFocus={() => {
+                      // Auto-zoom to this sticky note
+                      preFocusCamera.current = { ...camera };
+                      setEditingStickyId(note.id);
+                      const canvasEl = canvasRef.current;
+                      if (canvasEl) {
+                        const rect = canvasEl.getBoundingClientRect();
+                        const targetZoom = 1.0;
+                        const centerX = rect.width / 2 - (note.x + noteW / 2) * targetZoom;
+                        const centerY = rect.height / 2 - (note.y + noteH / 2) * targetZoom;
+                        setCamera({ x: centerX, y: centerY, zoom: targetZoom });
+                      }
+                    }}
+                    onBlur={() => {
+                      if (preFocusCamera.current) {
+                        setCamera(preFocusCamera.current);
+                        preFocusCamera.current = null;
+                      }
+                      setEditingStickyId(null);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Escape') {
+                        (e.target as HTMLTextAreaElement).blur();
+                      }
+                    }}
+                    onChange={(e) => {
+                      setStickyNotes(prev => prev.map(n => n.id === note.id ? { ...n, text: e.target.value } : n));
+                    }}
+                  />
+
+                  {/* Resize Handle */}
+                  <div
+                    className="resize-handle absolute bottom-0 right-0 w-6 h-6 cursor-nwse-resize opacity-0 group-hover:opacity-100 transition-opacity z-30"
+                    style={{
+                      background: `linear-gradient(135deg, transparent 50%, ${isEditing ? '#DEF767' : '#5b5b5b'} 50%)`,
+                      borderRadius: '0 0 16px 0',
+                    }}
+                  />
+                </div>
               );
             })}
 
@@ -1628,60 +1583,59 @@ const Engine = () => {
             {textLabels.map(label => {
               const isEditing = editingLabelId === label.id;
               return (
-              <div
-                key={`label-${label.id}`}
-                className="absolute z-20 pointer-events-auto group cursor-grab active:cursor-grabbing"
-                style={{ left: label.x - 75, top: label.y - 15 }}
-                onMouseDown={(e: any) => {
-                  if (isEditing) return;
-                  if (e.target.tagName === 'INPUT') return;
-                  e.stopPropagation();
-                  const coords = getCanvasCoords(e.clientX, e.clientY);
-                  setDraggingAppElement({ type: 'label', id: label.id, startX: label.x, startY: label.y, startMouseX: coords.x, startMouseY: coords.y });
-                }}
-              >
-                <input
-                  className={`bg-transparent outline-none text-white font-bold w-[150px] placeholder-slate-500 border-b border-dashed pb-1 transition-all font-sans ${
-                    isEditing ? 'text-lg border-[#DEF767]' : 'text-sm border-[#2e2e2e] focus:border-[#DEF767]'
-                  }`}
-                  placeholder="Type label..."
-                  value={label.text}
-                  onMouseDown={e => e.stopPropagation()}
-                  onFocus={() => {
-                    preFocusCamera.current = { ...camera };
-                    setEditingLabelId(label.id);
-                    const canvasEl = canvasRef.current;
-                    if (canvasEl) {
-                      const rect = canvasEl.getBoundingClientRect();
-                      const targetZoom = 1.0;
-                      const centerX = rect.width / 2 - label.x * targetZoom;
-                      const centerY = rect.height / 2 - label.y * targetZoom;
-                      setCamera({ x: centerX, y: centerY, zoom: targetZoom });
-                    }
+                <div
+                  key={`label-${label.id}`}
+                  className="absolute z-20 pointer-events-auto group cursor-grab active:cursor-grabbing"
+                  style={{ left: label.x - 75, top: label.y - 15 }}
+                  onMouseDown={(e: any) => {
+                    if (isEditing) return;
+                    if (e.target.tagName === 'INPUT') return;
+                    e.stopPropagation();
+                    const coords = getCanvasCoords(e.clientX, e.clientY);
+                    setDraggingAppElement({ type: 'label', id: label.id, startX: label.x, startY: label.y, startMouseX: coords.x, startMouseY: coords.y });
                   }}
-                  onBlur={() => {
-                    if (preFocusCamera.current) {
-                      setCamera(preFocusCamera.current);
-                      preFocusCamera.current = null;
-                    }
-                    setEditingLabelId(null);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === 'Escape') {
-                      (e.target as HTMLInputElement).blur();
-                    }
-                  }}
-                  onChange={(e) => {
-                    setTextLabels(prev => prev.map(l => l.id === label.id ? { ...l, text: e.target.value } : l));
-                  }}
-                />
-                <button
-                  onClick={() => setTextLabels(prev => prev.filter(l => l.id !== label.id))}
-                  className="absolute -top-2 -right-2 w-5 h-5 rounded-md bg-[#2e2e2e] hover:bg-[#ff6a6a] border border-[#2e2e2e] text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity font-sans"
                 >
-                  ✕
-                </button>
-              </div>
+                  <input
+                    className={`bg-transparent outline-none text-white font-bold w-[150px] placeholder-slate-500 border-b border-dashed pb-1 transition-all font-sans ${isEditing ? 'text-lg border-[#DEF767]' : 'text-sm border-[#2e2e2e] focus:border-[#DEF767]'
+                      }`}
+                    placeholder="Type label..."
+                    value={label.text}
+                    onMouseDown={e => e.stopPropagation()}
+                    onFocus={() => {
+                      preFocusCamera.current = { ...camera };
+                      setEditingLabelId(label.id);
+                      const canvasEl = canvasRef.current;
+                      if (canvasEl) {
+                        const rect = canvasEl.getBoundingClientRect();
+                        const targetZoom = 1.0;
+                        const centerX = rect.width / 2 - label.x * targetZoom;
+                        const centerY = rect.height / 2 - label.y * targetZoom;
+                        setCamera({ x: centerX, y: centerY, zoom: targetZoom });
+                      }
+                    }}
+                    onBlur={() => {
+                      if (preFocusCamera.current) {
+                        setCamera(preFocusCamera.current);
+                        preFocusCamera.current = null;
+                      }
+                      setEditingLabelId(null);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === 'Escape') {
+                        (e.target as HTMLInputElement).blur();
+                      }
+                    }}
+                    onChange={(e) => {
+                      setTextLabels(prev => prev.map(l => l.id === label.id ? { ...l, text: e.target.value } : l));
+                    }}
+                  />
+                  <button
+                    onClick={() => setTextLabels(prev => prev.filter(l => l.id !== label.id))}
+                    className="absolute -top-2 -right-2 w-5 h-5 rounded-md bg-[#2e2e2e] hover:bg-[#ff6a6a] border border-[#2e2e2e] text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity font-sans"
+                  >
+                    ✕
+                  </button>
+                </div>
               );
             })}
           </div>
@@ -1689,29 +1643,29 @@ const Engine = () => {
 
         {/* ── Intelligence Layer Output Sidebar ── */}
         {viewMode === 'builder' ? (
-           <BuilderSidebar />
+          <BuilderSidebar />
         ) : (
-        <div 
-          className={`absolute right-0 top-0 h-full w-[460px] bg-[#0c0c14]/60 backdrop-blur-2xl border-l border-white/5 p-0 shadow-2xl transition-transform duration-500 z-50 flex flex-col ${selectedNodeId ? 'translate-x-0' : 'translate-x-full'}`}
-        >
-           <div className="flex justify-between items-center p-6 border-b border-white/[0.04] bg-black/40">
-             <div>
-               <h2 className="font-bold text-[10px] uppercase tracking-widest text-[#46B1FF] mb-1">Delivered Asset Output</h2>
-               <span className="text-white font-black tracking-wide font-display text-lg">
-                 {selectedNodeId?.startsWith('sticky-') ? 'Sticky Note insight' : layout[selectedNodeId]?.category.name}
-               </span>
-             </div>
-             <button onClick={() => selectNode(null)} className="p-2 bg-white/5 rounded-full text-slate-500 hover:text-white hover:bg-white/10 transition-colors">✕</button>
-           </div>
-           
-           <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
-           {selectedNodeId ? (
+          <div
+            className={`absolute right-0 top-0 h-full w-[460px] bg-[#0c0c14]/60 backdrop-blur-2xl border-l border-white/5 p-0 shadow-2xl transition-transform duration-500 z-50 flex flex-col ${selectedNodeId ? 'translate-x-0' : 'translate-x-full'}`}
+          >
+            <div className="flex justify-between items-center p-6 border-b border-white/[0.04] bg-black/40">
+              <div>
+                <h2 className="font-bold text-[10px] uppercase tracking-widest text-[#46B1FF] mb-1">Delivered Asset Output</h2>
+                <span className="text-white font-black tracking-wide font-display text-lg">
+                  {selectedNodeId?.startsWith('sticky-') ? 'Sticky Note insight' : layout[selectedNodeId]?.category.name}
+                </span>
+              </div>
+              <button onClick={() => selectNode(null)} className="p-2 bg-white/5 rounded-full text-slate-500 hover:text-white hover:bg-white/10 transition-colors">✕</button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
+              {selectedNodeId ? (
                 <div className="animate-fade-in flex flex-col h-full">
                   {renderPipelineSidebarContent()}
-              </div>
-           ) : null}
-           </div>
-        </div>
+                </div>
+              ) : null}
+            </div>
+          </div>
         )}
       </div>
 
@@ -1813,9 +1767,9 @@ const Engine = () => {
       {/* API Key Modal */}
       <AnimatePresence>
         {showKeyModal && (
-          <ApiKeyModal 
-            type={keyModalType} 
-            onClose={() => setShowKeyModal(false)} 
+          <ApiKeyModal
+            type={keyModalType}
+            onClose={() => setShowKeyModal(false)}
             onSaved={() => {
               const seqId = localStorage.getItem('active_sequence_id');
               if (seqId) checkKeyAvailability(seqId).then(setKeyInfo);
@@ -1846,7 +1800,7 @@ const ApiKeyModal = ({ type, onClose, onSaved }: { type: string, onClose: () => 
 
       const seqId = localStorage.getItem('active_sequence_id');
       const endpoint = scope === 'project' ? '/api/keys/save-project' : '/api/keys/save';
-      const payload = scope === 'project' 
+      const payload = scope === 'project'
         ? { userId: session.user.id, sequenceId: seqId, apiKey: key.trim() }
         : { userId: session.user.id, apiKey: key.trim() };
 
@@ -1882,14 +1836,14 @@ const ApiKeyModal = ({ type, onClose, onSaved }: { type: string, onClose: () => 
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-6 pointer-events-auto">
-      <motion.div 
-        initial={{ opacity: 0 }} 
-        animate={{ opacity: 1 }} 
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         onClick={onClose}
         className="absolute inset-0 bg-black/80 backdrop-blur-sm pointer-events-auto"
       />
-      
+
       <motion.div
         initial={{ opacity: 0, scale: 0.9, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -1898,7 +1852,7 @@ const ApiKeyModal = ({ type, onClose, onSaved }: { type: string, onClose: () => 
       >
         {/* Glow decoration */}
         <div className="absolute -top-24 -right-24 w-48 h-48 bg-[#A259FF]/20 blur-[60px] rounded-full" />
-        
+
         <div className="relative z-10">
           <div className="flex items-center gap-4 mb-6">
             <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#A259FF] to-[#46B1FF] flex items-center justify-center text-white shadow-lg">
@@ -1939,22 +1893,20 @@ const ApiKeyModal = ({ type, onClose, onSaved }: { type: string, onClose: () => 
             <div className="grid grid-cols-2 gap-3">
               <button
                 onClick={() => setScope('project')}
-                className={`flex flex-col items-center gap-2 p-4 rounded-2xl border transition-all ${
-                  scope === 'project' 
-                    ? 'bg-[#A259FF]/10 border-[#A259FF]/40 text-white' 
+                className={`flex flex-col items-center gap-2 p-4 rounded-2xl border transition-all ${scope === 'project'
+                    ? 'bg-[#A259FF]/10 border-[#A259FF]/40 text-white'
                     : 'bg-white/[0.02] border-white/5 text-slate-500 hover:border-white/10'
-                }`}
+                  }`}
               >
                 <ShieldCheck size={20} className={scope === 'project' ? 'text-[#A259FF]' : ''} />
                 <span className="text-[10px] font-black uppercase tracking-wider">Project Only</span>
               </button>
               <button
                 onClick={() => setScope('global')}
-                className={`flex flex-col items-center gap-2 p-4 rounded-2xl border transition-all ${
-                  scope === 'global' 
-                    ? 'bg-[#46B1FF]/10 border-[#46B1FF]/40 text-white' 
+                className={`flex flex-col items-center gap-2 p-4 rounded-2xl border transition-all ${scope === 'global'
+                    ? 'bg-[#46B1FF]/10 border-[#46B1FF]/40 text-white'
                     : 'bg-white/[0.02] border-white/5 text-slate-500 hover:border-white/10'
-                }`}
+                  }`}
               >
                 <Globe size={20} className={scope === 'global' ? 'text-[#46B1FF]' : ''} />
                 <span className="text-[10px] font-black uppercase tracking-wider">Global Use</span>
@@ -1964,8 +1916,8 @@ const ApiKeyModal = ({ type, onClose, onSaved }: { type: string, onClose: () => 
             <div className="flex items-center gap-3 bg-white/[0.02] p-4 rounded-2xl border border-white/5">
               <InfoIcon size={16} className="text-slate-600 shrink-0" />
               <p className="text-[10px] text-slate-500 leading-normal">
-                {scope === 'project' 
-                  ? 'Project keys are encrypted and stored specifically for this neural sequence.' 
+                {scope === 'project'
+                  ? 'Project keys are encrypted and stored specifically for this neural sequence.'
                   : 'Global keys are saved to your profile and used as a fallback for all your sequences.'}
               </p>
             </div>

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLocation } from 'react-router-dom';
-import { 
-  Sparkles, LayoutDashboard, PlusSquare, FolderOpen, 
+import {
+  Sparkles, LayoutDashboard, PlusSquare, FolderOpen,
   Layers, Play, Webhook, Save, ArrowRight, X, Rocket
 } from 'lucide-react';
 
@@ -89,7 +89,7 @@ const TOUR_STEPS = [
     route: '/dashboard',
     target: '[data-tour="create-flow-btn"]',
     placement: 'bottom-start',
-    onNext: () => { 
+    onNext: () => {
       const btn = document.querySelector('[data-tour="create-flow-btn"]') as HTMLButtonElement;
       if (btn) btn.click();
       else window.location.href = '/canvas';
@@ -158,7 +158,7 @@ function useTargetRect(selector: string | null) {
       setRect(null);
       return;
     }
-    
+
     let lastRectStr = '';
 
     const updateRect = () => {
@@ -177,7 +177,7 @@ function useTargetRect(selector: string | null) {
           left: Math.round(newRect.left)
         };
         const currentRectStr = JSON.stringify(roundedRect);
-        
+
         if (currentRectStr !== lastRectStr) {
           lastRectStr = currentRectStr;
           // Return a mock DOMRect object with the properties
@@ -190,7 +190,7 @@ function useTargetRect(selector: string | null) {
         }
       }
     };
-    
+
     updateRect();
     window.addEventListener('resize', updateRect);
     window.addEventListener('scroll', updateRect, true);
@@ -329,32 +329,32 @@ export default function OnboardingTour({ onComplete, user }: OnboardingTourProps
           </mask>
         </defs>
         {/* Background layer */}
-        <motion.rect 
-          x="0" y="0" width="100%" height="100%" 
-          fill="rgba(5,5,7,0.9)" 
-          mask="url(#tour-mask)" 
+        <motion.rect
+          x="0" y="0" width="100%" height="100%"
+          fill="rgba(5,5,7,0.9)"
+          mask="url(#tour-mask)"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
         />
-        
+
         {/* Optional glowing outline around the cutout */}
         {targetRect && (
-           <motion.rect
-             fill="none"
-             stroke={step.accentColor}
-             strokeWidth={2}
-             rx={12}
-             initial={false}
-             animate={{
-               x: targetRect.left - 8,
-               y: targetRect.top - 8,
-               width: targetRect.width + 16,
-               height: targetRect.height + 16,
-               opacity: 0.8
-             }}
-             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-           />
+          <motion.rect
+            fill="none"
+            stroke={step.accentColor}
+            strokeWidth={2}
+            rx={12}
+            initial={false}
+            animate={{
+              x: targetRect.left - 8,
+              y: targetRect.top - 8,
+              width: targetRect.width + 16,
+              height: targetRect.height + 16,
+              opacity: 0.8
+            }}
+            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+          />
         )}
       </svg>
 
@@ -396,10 +396,10 @@ export default function OnboardingTour({ onComplete, user }: OnboardingTourProps
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.2 }}
-            className="bg-[#0c0c14]/90 backdrop-blur-3xl border border-white/[0.06] rounded-[24px] p-6 shadow-[0_30px_80px_rgba(0,0,0,0.8)] relative overflow-hidden"
+            className="bg-[#0c0c14]/90 backdrop-blur-3xl border border-white/[0.06] rounded-none p-6 shadow-[0_30px_80px_rgba(0,0,0,0.8)] relative overflow-hidden"
           >
             {/* Gradient accent top bar */}
-            <div 
+            <div
               className={`absolute top-0 left-0 right-0 h-1 rounded-t-[24px] bg-gradient-to-r ${TOPBAR_CLASSES[step.accentColor]}`}
             />
 
@@ -415,7 +415,7 @@ export default function OnboardingTour({ onComplete, user }: OnboardingTourProps
                   {step.icon}
                 </div>
               </motion.div>
-              
+
               <div className="pt-1">
                 <h2 className="text-xl font-black text-white font-display tracking-tight leading-none mb-1">
                   {step.title}
@@ -439,29 +439,28 @@ export default function OnboardingTour({ onComplete, user }: OnboardingTourProps
             {/* Action Buttons */}
             <div className="flex items-center justify-between">
               <div className="flex gap-1.5">
-                 {TOUR_STEPS.map((_, i) => (
-                    <motion.div
-                      key={i}
-                      className="rounded-full transition-all"
-                      animate={{
-                        width: i === stepIndex ? 16 : 4,
-                        height: 4,
-                        backgroundColor: i === stepIndex ? step.accentColor : 'rgba(255,255,255,0.08)',
-                      }}
-                      transition={{ duration: 0.3 }}
-                    />
-                  ))}
+                {TOUR_STEPS.map((_, i) => (
+                  <motion.div
+                    key={i}
+                    className="rounded-full transition-all"
+                    animate={{
+                      width: i === stepIndex ? 16 : 4,
+                      height: 4,
+                      backgroundColor: i === stepIndex ? step.accentColor : 'rgba(255,255,255,0.08)',
+                    }}
+                    transition={{ duration: 0.3 }}
+                  />
+                ))}
               </div>
 
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={handleNext}
-                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-black text-[11px] uppercase tracking-widest transition-all shadow-xl bg-gradient-to-br ${
-                  isLast 
-                    ? 'from-[#DEF767] to-[#A259FF] text-black shadow-[#DEF767]/40' 
-                    : BUTTON_CLASSES[step.accentColor]
-                }`}
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-black text-[11px] uppercase tracking-widest transition-all shadow-xl bg-gradient-to-br ${isLast
+                  ? 'from-[#DEF767] to-[#A259FF] text-black shadow-[#DEF767]/40'
+                  : BUTTON_CLASSES[step.accentColor]
+                  }`}
               >
                 {isLast ? (
                   <>
@@ -490,10 +489,10 @@ export function useOnboardingStatus() {
 
   useEffect(() => {
     if (!user) return; // Don't show tour if no user is logged in
-    
+
     const userOnboardingKey = `${ONBOARDING_KEY}_${user.id}`;
     const completed = localStorage.getItem(userOnboardingKey);
-    
+
     if (!completed) {
       // Small delay so elements mount before querying rects
       const timer = setTimeout(() => setShowOnboarding(true), 500);
@@ -507,7 +506,7 @@ export function useOnboardingStatus() {
     if (!user) return;
     const userOnboardingKey = `${ONBOARDING_KEY}_${user.id}`;
     const userStepKey = `${ONBOARDING_STEP_KEY}_${user.id}`;
-    
+
     setShowOnboarding(false);
     localStorage.setItem(userOnboardingKey, 'true');
     localStorage.removeItem(userStepKey);
