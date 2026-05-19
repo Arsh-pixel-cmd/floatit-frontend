@@ -3,6 +3,7 @@ import { useBuilderStore } from '../lib/builderStore';
 import AgentBlockNode from './AgentBlockNode';
 import WebhookBlockNode from './WebhookBlockNode';
 import { Trash2 } from 'lucide-react';
+import { computeEdgePath } from '../lib/edgeRouter';
 
 interface Coords { x: number; y: number; }
 
@@ -128,10 +129,18 @@ const BuilderCanvas = ({ activeTool, setActiveTool, getCanvasCoords }: BuilderCa
     if (target.classList.contains('connection-port')) {
        e.stopPropagation();
        const portPosition = target.getAttribute('data-port-position');
-       const blockRect = target.getBoundingClientRect();
-       const portCenterX = blockRect.left + blockRect.width / 2;
-       const portCenterY = blockRect.top + blockRect.height / 2;
-       const canvasStartCoords = getCanvasCoords(portCenterX, portCenterY);
+       const blockW = block.size?.width || 260;
+       const blockH = block.size?.height || 150;
+       
+       const getAnchorCoords = (b: any, port: string, w: number, h: number) => {
+         if (port === 'top') return { x: b.position.x + w / 2, y: b.position.y };
+         if (port === 'bottom') return { x: b.position.x + w / 2, y: b.position.y + h };
+         if (port === 'left') return { x: b.position.x, y: b.position.y + h / 2 };
+         if (port === 'right') return { x: b.position.x + w, y: b.position.y + h / 2 };
+         return { x: b.position.x + w / 2, y: b.position.y };
+       };
+
+       const canvasStartCoords = getAnchorCoords(block, portPosition!, blockW, blockH);
        const coords = getCanvasCoords(e.clientX, e.clientY);
        
        setWiringState({
@@ -218,49 +227,38 @@ const BuilderCanvas = ({ activeTool, setActiveTool, getCanvasCoords }: BuilderCa
       const tPort = conn.targetPort || (isSrcAbove ? 'top' : 'bottom');
 
       const getAnchor = (block: any, port: string, width: number, height: number) => {
-        if (port === 'top') return { x: block.position.x + width / 2, y: block.position.y - 12 };
+        if (port === 'top') return { x: block.position.x + width / 2, y: block.position.y };
         if (port === 'bottom') return { x: block.position.x + width / 2, y: block.position.y + height };
-        if (port === 'left') return { x: block.position.x - 12, y: block.position.y + height / 2 };
+        if (port === 'left') return { x: block.position.x, y: block.position.y + height / 2 };
         if (port === 'right') return { x: block.position.x + width, y: block.position.y + height / 2 };
-        return { x: block.position.x + width / 2, y: block.position.y - 12 };
+        return { x: block.position.x + width / 2, y: block.position.y };
       };
 
       const p1 = getAnchor(srcBlock, sPort, srcW, srcH);
       const p2 = getAnchor(tgtBlock, tPort, tgtW, tgtH);
 
-      const dist = Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
-      const offset = dist * 0.4 + 40; 
-      
-      const cp1 = { ...p1 };
-      if (sPort === 'top') cp1.y -= offset;
-      if (sPort === 'bottom') cp1.y += offset;
-      if (sPort === 'left') cp1.x -= offset;
-      if (sPort === 'right') cp1.x += offset;
-
-      const cp2 = { ...p2 };
-      if (tPort === 'top') cp2.y -= offset;
-      if (tPort === 'bottom') cp2.y += offset;
-      if (tPort === 'left') cp2.x -= offset;
-      if (tPort === 'right') cp2.x += offset;
-
-      const pathData = `M ${p1.x} ${p1.y} C ${cp1.x} ${cp1.y}, ${cp2.x} ${cp2.y}, ${p2.x} ${p2.y}`;
       const isSelected = selectedElementId === conn.id;
-
       const srcStatus = nodeStatus[conn.sourceBlockId];
       const tgtStatus = nodeStatus[conn.targetBlockId];
       const isAnimating = srcStatus === 'success' && tgtStatus === 'running';
 
+      // Generate Manhattan Path
+      const pathData = computeEdgePath(p1, p2, { sPort: sPort as any, tPort: tPort as any });
+
       return (
         <g key={conn.id} onClick={(e) => { e.stopPropagation(); setSelectedElementId(conn.id); }}>
-          <path d={pathData} stroke="transparent" strokeWidth="20" fill="none" className="cursor-pointer" />
+          {/* Thick hover buffer wire */}
+          <path d={pathData} stroke="transparent" strokeWidth="20" fill="none" className="cursor-pointer" style={{ strokeLinejoin: 'round', strokeLinecap: 'round' }} />
+          {/* Main wire path */}
           <path
             d={pathData}
-            stroke={isSelected ? "#DEF767" : "#A259FF"}
-            strokeWidth={isSelected ? "4" : "2"}
+            stroke={isSelected || isAnimating ? "#b5b5b5" : "#5b5b5b"}
+            strokeWidth={isSelected || isAnimating ? "3" : "1.5"}
             fill="none"
-            strokeDasharray="8 6"
-            className={`transition-all cursor-pointer thread-wire ${isAnimating ? 'thread-active' : 'hover:stroke-[#DEF767]'}`}
-            style={{ opacity: isSelected || isAnimating ? 1 : 0.6 }}
+            strokeDasharray={isSelected || isAnimating ? undefined : "6 4"}
+            strokeLinejoin="round"
+            strokeLinecap="round"
+            className={`transition-all cursor-pointer thread-wire ${isAnimating ? 'thread-active' : 'hover:stroke-[#b5b5b5]'}`}
           />
         </g>
       );
@@ -271,25 +269,35 @@ const BuilderCanvas = ({ activeTool, setActiveTool, getCanvasCoords }: BuilderCa
       const p2 = wiringState.currentMousePos;
       const sPort = wiringState.sourcePort;
 
-      const dist = Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
-      const offset = dist * 0.4 + 40; 
-      
-      const cp1 = { ...p1 };
-      if (sPort === 'top') cp1.y -= offset;
-      if (sPort === 'bottom') cp1.y += offset;
-      if (sPort === 'left') cp1.x -= offset;
-      if (sPort === 'right') cp1.x += offset;
+      const dx = Math.abs(p2.x - p1.x);
+      const dy = Math.abs(p2.y - p1.y);
+      const controlDist = Math.max(5, Math.min(100, Math.max(dx, dy) * 0.5));
 
-      const cp2 = { ...p2 };
-      if (sPort === 'top' || sPort === 'bottom') {
-         cp2.y += (p1.y < p2.y ? -offset : offset);
+      let cp1 = { x: p1.x, y: p1.y };
+      if (sPort === 'right') cp1.x += controlDist;
+      else if (sPort === 'left') cp1.x -= controlDist;
+      else if (sPort === 'bottom') cp1.y += controlDist;
+      else if (sPort === 'top') cp1.y -= controlDist;
+
+      let cp2 = { x: p2.x, y: p2.y };
+      if (sPort === 'bottom' || sPort === 'top') {
+        cp2.y += p2.y < p1.y ? controlDist : -controlDist;
       } else {
-         cp2.x += (p1.x < p2.x ? -offset : offset);
+        cp2.x += p2.x < p1.x ? controlDist : -controlDist;
       }
-      
+
       const actPath = `M ${p1.x} ${p1.y} C ${cp1.x} ${cp1.y}, ${cp2.x} ${cp2.y}, ${p2.x} ${p2.y}`;
       paths.push(
-        <path key="active-wire" d={actPath} stroke="#A259FF" strokeWidth="2" fill="none" strokeDasharray="8 6" opacity="0.8" />
+        <path 
+          key="active-wire" 
+          d={actPath} 
+          stroke="#b5b5b5" 
+          strokeWidth="2" 
+          fill="none" 
+          strokeDasharray="6 4" 
+          strokeLinejoin="round" 
+          strokeLinecap="round" 
+        />
       );
     }
 
@@ -321,17 +329,18 @@ const BuilderCanvas = ({ activeTool, setActiveTool, getCanvasCoords }: BuilderCa
         </div>
       ))}
 
-      {/* Builder Sticky Notes */}
+      {/* Builder Sticky Notes (Flat Brutalist Styling) */}
       {stickyNotes.map((note: any) => {
-        const noteColor = note.color || '#A259FF';
+        const noteColor = '#DEF767'; // Enforce binary Lime accent
         const noteW = note.size?.width || 220;
         const noteH = note.size?.height || 160;
+        const isSelected = selectedElementId === `sticky-${note.id}`;
 
         return (
           <div
             key={`builder-sticky-${note.id}`}
-            className={`absolute sticky-note p-3 rounded-2xl z-20 transition-all font-secondary flex flex-col group shadow-2xl cursor-pointer ${
-              selectedElementId === `sticky-${note.id}` ? 'border' : 'border border-transparent'
+            className={`absolute sticky-note p-3 rounded-2xl z-20 transition-all font-sans flex flex-col group cursor-pointer border ${
+              isSelected ? 'border-[#DEF767]' : 'border-[#2e2e2e]'
             }`}
             onMouseDown={(e) => handleStickyMouseDown(e, note)}
             style={{
@@ -339,14 +348,14 @@ const BuilderCanvas = ({ activeTool, setActiveTool, getCanvasCoords }: BuilderCa
               top: note.position.y,
               width: noteW,
               height: noteH,
-              background: 'rgba(26, 26, 46, 0.75)',
-              borderColor: selectedElementId === `sticky-${note.id}` ? noteColor : `${noteColor}40`,
-              backdropFilter: 'blur(16px)',
+              background: '#181818',
               pointerEvents: 'auto',
-              boxShadow: selectedElementId === `sticky-${note.id}` ? `0 0 30px ${noteColor}40` : `0 10px 30px rgba(0,0,0,0.5)`,
             }}
           >
-            <div className="w-full h-1.5 rounded-t-xl absolute top-0 left-0" style={{ background: `linear-gradient(to right, ${noteColor}, ${noteColor}80)` }} />
+            <div 
+              className="w-full h-1 rounded-t-xl absolute top-0 left-0" 
+              style={{ background: isSelected ? '#DEF767' : '#5b5b5b' }} 
+            />
             
             <button
               aria-label="Delete Sticky Note"
@@ -355,9 +364,9 @@ const BuilderCanvas = ({ activeTool, setActiveTool, getCanvasCoords }: BuilderCa
                 e.stopPropagation();
                 deleteStickyNote(note.id);
               }}
-              className="absolute top-3 right-3 p-1.5 rounded-lg bg-black/60 text-slate-400 hover:text-white hover:bg-[#ff4b4b] transition-all opacity-0 group-hover:opacity-100 z-50 shadow-md"
+              className="absolute top-3 right-3 p-1.5 rounded-lg bg-[#2e2e2e] text-slate-400 hover:text-white hover:bg-[#ff6a6a] transition-all opacity-0 group-hover:opacity-100 z-50"
             >
-              <Trash2 size={14} />
+              <Trash2 size={12} />
             </button>
             
             <textarea
@@ -370,9 +379,9 @@ const BuilderCanvas = ({ activeTool, setActiveTool, getCanvasCoords }: BuilderCa
 
             {/* Resize Handle */}
             <div
-              className="resize-handle absolute bottom-0 right-0 w-6 h-6 cursor-nwse-resize opacity-0 group-hover:opacity-100 transition-opacity z-30"
+              className="resize-handle absolute bottom-0 right-0 w-5 h-5 cursor-nwse-resize opacity-0 group-hover:opacity-100 transition-opacity z-30"
               style={{
-                background: `linear-gradient(135deg, transparent 50%, ${noteColor}80 50%)`,
+                background: `linear-gradient(135deg, transparent 50%, ${isSelected ? '#DEF767' : '#5b5b5b'} 50%)`,
                 borderRadius: '0 0 16px 0',
               }}
             />
@@ -389,7 +398,7 @@ const BuilderCanvas = ({ activeTool, setActiveTool, getCanvasCoords }: BuilderCa
           style={{ left: label.x - 75, top: label.y - 15 }}
         >
           <input
-            className="bg-transparent outline-none text-white text-sm font-bold w-[150px] placeholder-slate-500 border-b border-dashed border-white/20 focus:border-[#46B1FF]/50 pb-1 transition-colors"
+            className="bg-transparent outline-none text-white text-sm font-bold w-[150px] placeholder-slate-500 border-b border-dashed border-[#2e2e2e] focus:border-[#DEF767] pb-1 transition-colors font-sans"
             placeholder="Type label..."
             value={label.text}
             onMouseDown={e => e.stopPropagation()}
@@ -399,7 +408,7 @@ const BuilderCanvas = ({ activeTool, setActiveTool, getCanvasCoords }: BuilderCa
             aria-label="Delete Label"
             title="Delete Label"
             onClick={() => deleteTextLabel(label.id)}
-            className="absolute -top-2 -right-2 w-5 h-5 rounded-md bg-[#ff4b4b]/20 hover:bg-[#ff4b4b]/80 border border-[#ff4b4b]/50 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all shadow-lg"
+            className="absolute -top-2 -right-2 w-5 h-5 rounded-md bg-[#2e2e2e] hover:bg-[#ff6a6a] border border-[#2e2e2e] text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all"
           >
             <Trash2 size={10} />
           </button>

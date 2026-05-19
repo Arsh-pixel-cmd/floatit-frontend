@@ -1,4 +1,5 @@
-import { Sparkles, Play } from 'lucide-react';
+import React from 'react';
+import { Mic, Paperclip, Send } from 'lucide-react';
 
 interface HeroPromptProps {
   prompt: string;
@@ -7,21 +8,47 @@ interface HeroPromptProps {
 }
 
 export const HeroPrompt = ({ prompt, onPromptChange, onInit }: HeroPromptProps) => (
-  <div className="w-full max-w-3xl mx-auto mb-16 relative group z-20">
-    <div className="absolute -inset-0.5 bg-gradient-to-r from-zinc-500/20 via-zinc-300/20 to-zinc-500/20 rounded-2xl blur opacity-30 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
-    <div className="relative flex items-center bg-[#0A0A0A]/80 backdrop-blur-md border border-white/10 rounded-2xl px-6 py-5 shadow-2xl transition-all duration-300 hover:border-white/20">
-      <Sparkles className="w-5 h-5 text-zinc-400 mr-4 flex-shrink-0" />
+  <div className="w-full max-w-2xl mx-auto mb-10 font-onest relative z-20 select-none">
+    {/* Brutalist prompt container: Deep BG, rounded corners, focus snaps to Lime */}
+    <div className="relative flex items-center bg-[#171717] border border-[#2e2e2e] focus-within:border-[#DEF767] px-4 py-4 rounded-none transition-colors duration-100">
+
+      {/* Left: Attach File Icon Button */}
+      <button
+        type="button"
+        aria-label="Attach File"
+        className="p-2 text-[#5b5b5b] hover:text-[#ff6a6a] transition-colors duration-100 mr-2 flex-shrink-0"
+      >
+        <Paperclip className="w-4 h-4" />
+      </button>
+
+      {/* Middle: Text Input Area */}
       <input
         type="text"
         value={prompt}
         onChange={(e) => onPromptChange(e.target.value)}
-        placeholder="Orchestrate your objective... (e.g. Design a technical whitepaper for a DeFi protocol)"
-        className="w-full bg-transparent border-none outline-none text-zinc-200 placeholder-zinc-600 text-sm md:text-base font-mono font-light tracking-wide"
+        placeholder="Ask anything or orchestrate your pipeline..."
+        className="w-full bg-transparent border-none outline-none text-white placeholder-[#5b5b5b] text-[14px] font-onest tracking-normal py-1"
       />
+
+      {/* Right: Action Buttons */}
       <div className="ml-4 flex items-center gap-2 flex-shrink-0">
-        <span className="text-xs font-mono text-zinc-500 hidden sm:inline-block border border-white/10 px-2 py-1 rounded bg-white/5">⌘ + K</span>
-        <button onClick={onInit} aria-label="Initialize Engine" title="Initialize Engine" className="bg-white/10 hover:bg-white/20 text-zinc-100 rounded-lg p-2 transition-colors">
-          <Play className="w-4 h-4 fill-current" />
+        {/* Voice Input Mic Button */}
+        <button
+          type="button"
+          aria-label="Voice Input"
+          className="p-2 text-[#5b5b5b] hover:text-[#DEF767] transition-colors duration-100 flex-shrink-0"
+        >
+          <Mic className="w-4 h-4" />
+        </button>
+
+        {/* Submit Arrow Button */}
+        <button
+          onClick={onInit}
+          aria-label="Submit Prompt"
+          title="Submit Prompt"
+          className="w-8 h-8 rounded-full border border-[#2e2e2e] hover:border-[#DEF767] hover:bg-[#DEF767] text-[#929292] hover:text-[#171717] flex items-center justify-center transition-all duration-100 bg-[#181818]"
+        >
+          <Send className="w-3.5 h-3.5 fill-current" />
         </button>
       </div>
     </div>

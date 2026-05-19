@@ -1,21 +1,18 @@
 @import "tailwindcss";
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Outfit:wght@300;400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
 
 /* ── Design Tokens ───────────────────────────────────────────────── */
 :root {
-  --accent-purple: #A259FF;
-  --accent-lavender: #CEA3FF;
-  --accent-blue: #46B1FF;
   --accent-lime: #DEF767;
   --accent-coral: #FF6A6A;
-  
-  --bg-base: #000000;
-  --bg-card: #0a0a0f;
-  --bg-card-hover: #111118;
-  
-  --font-primary: 'Syne', sans-serif;
+
+  --bg-base: #181818;
+  --bg-card: #181818;
+  --bg-card-hover: #1e1e1e;
+
+  --font-primary: 'Outfit', sans-serif;
   --font-secondary: 'Outfit', sans-serif;
-  
+
   font-family: var(--font-secondary);
   line-height: 1.5;
   font-weight: 400;
@@ -24,17 +21,19 @@
 }
 
 /* ── Base Reset ──────────────────────────────────────────────────── */
-/* Removed overly aggressive global reset that was overriding Tailwind v4 layered utilities */
-
 body {
   background: var(--bg-base);
   color: #e2e8f0;
   overflow: hidden;
+  font-family: var(--font-secondary);
 }
 
-h1, h2, h3, .font-display {
+h1,
+h2,
+h3,
+.font-display {
   font-family: var(--font-primary);
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
 }
 
 #root {
@@ -47,38 +46,36 @@ h1, h2, h3, .font-display {
   width: 4px;
   height: 4px;
 }
+
 ::-webkit-scrollbar-track {
   background: transparent;
 }
+
 ::-webkit-scrollbar-thumb {
-  background: rgba(162, 89, 255, 0.2);
+  background: #2e2e2e;
   border-radius: 4px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(162, 89, 255, 0.4);
+  background: #DEF767;
 }
 
-/* ── Glassmorphism ───────────────────────────────────────────────── */
+/* ── Flat Glassmorphism (UXISM Flat Style) ───────────────────────── */
 .glass {
-  background: rgba(10, 10, 15, 0.85);
-  backdrop-filter: blur(24px) saturate(1.2);
-  -webkit-backdrop-filter: blur(24px) saturate(1.2);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: #181818;
+  border: 1px solid #2e2e2e;
 }
 
 .logo-gradient-box {
-  background: linear-gradient(135deg, #A259FF 0%, #46B1FF 100%);
-  box-shadow: 0 8px 24px rgba(162, 89, 255, 0.3);
+  background: #DEF767;
+  color: #181818;
 }
 
-/* ── n8n Inspired Nodes ─────────────────────────────────────────── */
+/* ── n8n Inspired Nodes (UXISM Flat Style) ────────────────────────── */
 .n8n-node {
-  background: rgba(12, 12, 18, 0.95);
-  border: 1.5px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 
-    0 12px 36px rgba(0, 0, 0, 0.5),
-    0 0 0 1px rgba(255, 255, 255, 0.02);
-  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  background: #181818;
+  border: 1.5px solid #2e2e2e;
+  transition: border-color 0.25s ease-out;
   overflow: visible !important;
 }
 
@@ -97,61 +94,45 @@ h1, h2, h3, .font-display {
     opacity: 0;
     transform: scale(0.8) translateY(20px);
   }
+
   100% {
     opacity: 1;
     transform: scale(1) translateY(0);
   }
 }
 
-/* ── Node Glow States ────────────────────────────────────────────── */
+/* ── Node Border States (Flat, No Shadows) ────────────────────────── */
 .node-idle {
-  box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.04),
-    0 8px 32px rgba(0, 0, 0, 0.8);
-  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  border-color: #2e2e2e;
+  transition: border-color 0.2s ease-out;
 }
 
 .node-idle:hover {
-  box-shadow:
-    0 0 0 1px var(--accent-blue),
-    0 8px 40px rgba(70, 177, 255, 0.15);
-  border-color: rgba(70, 177, 255, 0.3);
-  transform: translateY(-2px);
+  border-color: #DEF767;
 }
 
 .node-running {
-  box-shadow:
-    0 0 0 1px var(--accent-purple),
-    0 8px 48px rgba(162, 89, 255, 0.3),
-    0 0 80px rgba(162, 89, 255, 0.1);
-  border-color: rgba(162, 89, 255, 0.5);
+  border-color: #FF6A6A;
   animation: node-breathe 2s ease-in-out infinite;
 }
 
 .node-completed {
-  box-shadow:
-    0 0 0 1px rgba(222, 247, 103, 0.3),
-    0 8px 32px rgba(222, 247, 103, 0.05);
-  border-color: rgba(222, 247, 103, 0.2);
-  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  border-color: #DEF767;
 }
 
 @keyframes node-breathe {
-  0%, 100% {
-    box-shadow:
-      0 0 0 1px rgba(162, 89, 255, 0.4),
-      0 8px 40px rgba(162, 89, 255, 0.2),
-      0 0 60px rgba(162, 89, 255, 0.08);
+
+  0%,
+  100% {
+    border-color: #FF6A6A;
   }
+
   50% {
-    box-shadow:
-      0 0 0 1.5px var(--accent-purple),
-      0 8px 56px rgba(162, 89, 255, 0.4),
-      0 0 100px rgba(162, 89, 255, 0.15);
+    border-color: #DEF767;
   }
 }
 
-/* ── Wire Animations ─────────────────────────────────────────────── */
+/* ── Wire Animations (Flat Wires, No Shadows) ────────────────────── */
 @keyframes dash-flow {
   to {
     stroke-dashoffset: -24;
@@ -164,20 +145,26 @@ h1, h2, h3, .font-display {
 }
 
 @keyframes wire-glow-pulse {
-  0%, 100% { opacity: 0.3; }
-  50% { opacity: 0.9; }
+
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+
+  50% {
+    opacity: 1.0;
+  }
 }
 
 .wire-pulse {
   animation: wire-glow-pulse 1.5s ease-in-out infinite;
 }
 
-/* ── Single Thread Glowing Wire ──────────────────────────────────── */
+/* ── Single Thread Flat Wire ─────────────────────────────────────── */
 .thread-wire {
   stroke-dasharray: 1000;
   stroke-dashoffset: 1000;
   animation: thread-draw 1.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-  filter: drop-shadow(0 0 8px currentColor);
 }
 
 @keyframes thread-draw {
@@ -188,7 +175,6 @@ h1, h2, h3, .font-display {
 
 .thread-active {
   stroke-width: 2.5;
-  filter: drop-shadow(0 0 12px currentColor);
   opacity: 1 !important;
 }
 
@@ -198,6 +184,7 @@ h1, h2, h3, .font-display {
     transform: translateX(100%);
     opacity: 0;
   }
+
   to {
     transform: translateX(0);
     opacity: 1;
@@ -210,8 +197,13 @@ h1, h2, h3, .font-display {
 
 /* ── Modal Animations ────────────────────────────────────────────── */
 @keyframes fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes scale-in {
@@ -219,6 +211,7 @@ h1, h2, h3, .font-display {
     transform: scale(0.95);
     opacity: 0;
   }
+
   to {
     transform: scale(1);
     opacity: 1;
@@ -235,29 +228,32 @@ h1, h2, h3, .font-display {
 
 /* ── Status Dot Pulse ────────────────────────────────────────────── */
 @keyframes status-pulse {
-  0%, 100% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.6); opacity: 0.4; }
+
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+
+  50% {
+    transform: scale(1.4);
+    opacity: 0.5;
+  }
 }
 
 .status-running {
   animation: status-pulse 1.2s ease-in-out infinite;
 }
 
-/* ── Phase Overlay ───────────────────────────────────────────────── */
+/* ── Phase Overlay (UXISM Flat Style) ────────────────────────────── */
 .phase-overlay-backdrop {
-  background: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(10, 10, 10, 0.8);
   z-index: 1000;
 }
 
 .phase-card {
-  background: rgba(15, 15, 22, 0.95);
-  border: 1px solid rgba(162, 89, 255, 0.2);
-  box-shadow: 
-    0 0 0 1px rgba(162, 89, 255, 0.1),
-    0 32px 64px rgba(0, 0, 0, 0.8),
-    0 0 80px rgba(162, 89, 255, 0.1);
+  background: #181818;
+  border: 1px solid #2e2e2e;
   animation: scale-up-center 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
@@ -266,6 +262,7 @@ h1, h2, h3, .font-display {
     transform: scale(0.8);
     opacity: 0;
   }
+
   to {
     transform: scale(1);
     opacity: 1;
@@ -275,143 +272,16 @@ h1, h2, h3, .font-display {
 /* ── Phase Labels ────────────────────────────────────────────────── */
 .phase-label {
   font-family: var(--font-primary);
-  text-shadow: 0 0 40px rgba(162, 89, 255, 0.3);
   letter-spacing: 0.4em !important;
-}
-
-/* ── Canvas Grid ─────────────────────────────────────────────────── */
-.canvas-grid {
-  width: 100%;
-  height: 100%;
-}
-
-/* Tracking Glow Removed for cleaner professional look */
-/* .canvas-grid::after { ... } */
-
-/* ── Button Interactions ─────────────────────────────────────────── */
-.btn-glass {
-  font-family: var(--font-secondary);
-  font-weight: 500;
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.btn-glass:hover {
-  background: rgba(162, 89, 255, 0.1);
-  border-color: rgba(162, 89, 255, 0.3);
-  box-shadow: 0 0 24px rgba(162, 89, 255, 0.1);
-  transform: translateY(-1px);
-}
-
-/* ── Input Focus ─────────────────────────────────────────────────── */
-input:focus,
-textarea:focus {
-  outline: none;
-  border-color: var(--accent-purple) !important;
-  box-shadow: 0 0 0 4px rgba(162, 89, 255, 0.08);
-}
-
-/* ── No Scrollbar Utility ────────────────────────────────────────── */
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-.no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-
-/* ── Run Button Gradient ─────────────────────────────────────────── */
-.btn-run {
-  font-family: var(--font-primary);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  background: linear-gradient(135deg, var(--accent-purple) 0%, #8b5cf6 100%);
-  box-shadow:
-    0 4px 20px rgba(162, 89, 255, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2);
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.btn-run:hover {
-  box-shadow:
-    0 8px 32px rgba(162, 89, 255, 0.5),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3);
-  transform: translateY(-2px);
-  filter: brightness(1.1);
-}
-
-.btn-run:active {
-  transform: translateY(0) scale(0.96);
-}
-
-.btn-run:disabled {
-  opacity: 0.4;
-  pointer-events: none;
-  filter: grayscale(0.5);
-}
-
-/* ── Log Entry Animation ─────────────────────────────────────────── */
-@keyframes log-enter {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.log-enter {
-  animation: log-enter 0.3s ease-out forwards;
-}
-
-/* ── Preview Frame ───────────────────────────────────────────────── */
-.preview-frame {
-  background: linear-gradient(180deg, rgba(10, 10, 15, 0.98) 0%, rgba(5, 5, 8, 1) 100%);
-}
-
-
-
-/* SVG Wires Drawing Animation */
-.thread-wire {
-  stroke-dasharray: 2000;
-  stroke-dashoffset: 2000;
-  transition: stroke-dashoffset 1.5s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.5s ease;
-  pointer-events: none;
-}
-.thread-active {
-  stroke-dashoffset: 0 !important;
-  stroke: #A259FF !important;
-  opacity: 0.9 !important;
-}
-.thread-idle {
-  stroke-dasharray: 0; /* Fallback flat line if no animation */
-  stroke: #46B1FF;
-  opacity: 0.15;
-}
-
-/* ── Color Picker ────────────────────────────────────────────────── */
-.color-picker-btn {
-  width: 1.25rem;
-  height: 1.25rem;
-  border-radius: 9999px;
-  border-width: 2px;
-  border-style: solid;
-  border-color: transparent;
-  transition: all 0.2s ease-out;
-  cursor: pointer;
-}
-
-.color-picker-btn:hover {
-  transform: scale(1.25);
-}
-
-.color-picker-btn.is-active {
-  border-color: #fff;
 }
 
 /* ── Infinite Canvas ────────────────────────────────────────────── */
 .canvas-grid {
+  width: 100%;
+  height: 100%;
+  background-color: #181818;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.15) 1px, transparent 1px);
+  background-size: 24px 24px;
   cursor: grab;
   transform: translateZ(0);
   backface-visibility: hidden;
@@ -434,29 +304,162 @@ textarea:focus {
   -moz-osx-font-smoothing: grayscale;
 }
 
-.n8n-node {
-  transform: translateZ(0);
-  backface-visibility: hidden;
-  transform-style: preserve-3d;
-  will-change: transform, opacity;
-  text-rendering: geometricPrecision;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+/* ── Button Interactions ─────────────────────────────────────────── */
+.btn-glass {
+  font-family: var(--font-secondary);
+  font-weight: 500;
+  transition: all 0.2s ease-out;
+  border: 1.5px solid #2e2e2e;
+  background: #181818;
+  color: #e2e8f0;
+}
+
+.btn-glass:hover {
+  border-color: #DEF767;
+  color: #fff;
+}
+
+/* ── Input Focus ─────────────────────────────────────────────────── */
+input:focus,
+textarea:focus {
+  outline: none;
+  border-color: #DEF767 !important;
+}
+
+/* ── No Scrollbar Utility ────────────────────────────────────────── */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* ── Run Button Gradient (UXISM Flat Style) ──────────────────────── */
+.btn-run {
+  font-family: var(--font-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: #DEF767;
+  color: #181818;
+  border: 1.5px solid #DEF767;
+  transition: all 0.2s ease-out;
+}
+
+.btn-run:hover {
+  background: #181818;
+  color: #DEF767;
+}
+
+.btn-run:active {
+  transform: scale(0.97);
+}
+
+.btn-run:disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+/* ── Log Entry Animation ─────────────────────────────────────────── */
+@keyframes log-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.log-enter {
+  animation: log-enter 0.3s ease-out forwards;
+}
+
+/* ── Preview Frame ───────────────────────────────────────────────── */
+.preview-frame {
+  background: #181818;
+}
+
+/* SVG Wires Drawing Animation */
+.thread-wire {
+  stroke-dasharray: 2000;
+  stroke-dashoffset: 2000;
+  transition: stroke-dashoffset 1.5s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.5s ease;
+  pointer-events: none;
+}
+
+.thread-active {
+  stroke-dashoffset: 0 !important;
+  stroke: #b5b5b5 !important;
+  opacity: 1.0 !important;
+}
+
+.thread-idle {
+  stroke-dasharray: 0;
+  stroke: #5b5b5b;
+  opacity: 0.4;
+}
+
+/* ── Color Picker ────────────────────────────────────────────────── */
+.color-picker-btn {
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 9999px;
+  border-width: 2px;
+  border-style: solid;
+  border-color: transparent;
+  transition: all 0.2s ease-out;
+  cursor: pointer;
+}
+
+.color-picker-btn:hover {
+  transform: scale(1.25);
+}
+
+.color-picker-btn.is-active {
+  border-color: #fff;
 }
 
 /* Specific Color Classes */
-.color-A259FF { background-color: #A259FF; }
-.color-A259FF.is-active { box-shadow: 0 0 12px #A259FF; }
+.color-A259FF {
+  background-color: #DEF767;
+}
 
-.color-46B1FF { background-color: #46B1FF; }
-.color-46B1FF.is-active { box-shadow: 0 0 12px #46B1FF; }
+.color-A259FF.is-active {
+  border-color: #fff;
+}
 
-.color-DEF767 { background-color: #DEF767; }
-.color-DEF767.is-active { box-shadow: 0 0 12px #DEF767; }
+.color-46B1FF {
+  background-color: #FF6A6A;
+}
 
-.color-FF6A6A { background-color: #FF6A6A; }
-.color-FF6A6A.is-active { box-shadow: 0 0 12px #FF6A6A; }
+.color-46B1FF.is-active {
+  border-color: #fff;
+}
 
-.color-FACC15 { background-color: #FACC15; }
-.color-FACC15.is-active { box-shadow: 0 0 12px #FACC15; }
+.color-DEF767 {
+  background-color: #DEF767;
+}
 
+.color-DEF767.is-active {
+  border-color: #fff;
+}
+
+.color-FF6A6A {
+  background-color: #FF6A6A;
+}
+
+.color-FF6A6A.is-active {
+  border-color: #fff;
+}
+
+.color-FACC15 {
+  background-color: #DEF767;
+}
+
+.color-FACC15.is-active {
+  border-color: #fff;
+}

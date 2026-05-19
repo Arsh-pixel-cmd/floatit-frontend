@@ -38,11 +38,11 @@ const FlowHeader = () => {
     }
 
     setIsDeploying(true);
-    
+
     // Zoom out canvas elements visually
     const canvasRef = document.getElementById('builder-canvas-area');
     if (canvasRef) canvasRef.classList.add('scale-75', 'opacity-0', 'transition-all', 'duration-1000');
-    
+
     // Gradient Pulse transition effect portal hook
     const transitionOverlay = document.createElement('div');
     transitionOverlay.className = "fixed inset-0 z-[150] bg-gradient-to-r from-cyan-500/0 via-purple-500/20 to-cyan-500/0 backdrop-blur-3xl animate-fade-in pointer-events-none flex flex-col items-center justify-center";
@@ -56,10 +56,10 @@ const FlowHeader = () => {
     // Remove Overlay
     document.body.removeChild(transitionOverlay);
     setIsDeploying(false);
-    
+
     // Clear styles
     if (canvasRef) canvasRef.classList.remove('scale-75', 'opacity-0');
-    
+
     if (!deployedId) {
       alert('Compilation failed. Please try again or add blocks first.');
       return;
@@ -78,9 +78,9 @@ const FlowHeader = () => {
       >
         {/* Left: Navigation & Logo */}
         <div className="flex items-center gap-6 flex-1 min-w-0">
-          
+
           {/* Return to Hub */}
-          <a 
+          <a
             href="/dashboard"
             className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/[0.03] backdrop-blur-md border border-white/10 text-gray-400 transition-all duration-300 hover:border-[#A259FF]/50 hover:text-white hover:bg-white/10 shadow-lg text-[11px] font-black uppercase tracking-wider group"
             title="Return to Dashboard"
@@ -97,18 +97,18 @@ const FlowHeader = () => {
             className="flex items-center gap-6 flex-1 min-w-0 text-left focus:outline-none"
           >
             <div className="flex items-center gap-4 border-r border-white/10 pr-6 flex-shrink-0">
-              <div className="w-10 h-10 rounded-[14px] flex items-center justify-center shadow-lg logo-gradient-box">
-                <img src="/logo.png" alt="Logo" className="w-7 h-7 object-contain" />
+              <div className="w-10 h-10 rounded-[14px] flex items-center justify-center ">
+                <img src="/uxism.svg" alt="Logo" className="w-10 h-10 object-contain" />
               </div>
               <div>
                 <h1 className="text-[18px] font-black tracking-tight text-white font-display leading-tight">
-                  Agentic<span className="text-[#A259FF]">Flow</span>
+                  Agentic<span className="text-[#DEF767]">Flow</span>
                 </h1>
               </div>
             </div>
-            
+
             <div className="flex items-center group flex-1 min-w-0 mr-4">
-              <input 
+              <input
                 type="text"
                 value={useWorkflowStore(state => state.flowTitle) || ''}
                 onChange={(e) => useWorkflowStore.getState().setFlowTitle(e.target.value)}
@@ -124,21 +124,19 @@ const FlowHeader = () => {
           <button
             data-tour="pipeline-toggle"
             onClick={() => setViewMode('pipeline')}
-            className={`flex items-center gap-2.5 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-300 ${
-              viewMode === 'pipeline' 
-                ? 'bg-[#46B1FF] text-white shadow-[0_5px_20px_rgba(70,177,255,0.3)]' 
-                : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
-            }`}
+            className={`flex items-center gap-2.5 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-300 ${viewMode === 'pipeline'
+              ? 'bg-[#46B1FF] text-white shadow-[0_5px_20px_rgba(70,177,255,0.3)]'
+              : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
+              }`}
           >
             <GitMerge size={14} className={viewMode === 'pipeline' ? 'animate-pulse' : ''} /> Pipeline
           </button>
           <button
             onClick={() => setViewMode('builder')}
-            className={`flex items-center gap-2.5 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-300 ${
-              viewMode === 'builder' 
-                ? 'bg-[#A259FF] text-white shadow-[0_5px_20px_rgba(162,89,255,0.3)]' 
-                : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
-            }`}
+            className={`flex items-center gap-2.5 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-300 ${viewMode === 'builder'
+              ? 'bg-[#A259FF] text-white shadow-[0_5px_20px_rgba(162,89,255,0.3)]'
+              : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
+              }`}
           >
             <LayoutGrid size={14} /> Builder
           </button>
@@ -147,7 +145,7 @@ const FlowHeader = () => {
         {/* Right: Action */}
         <div className="flex items-center justify-end gap-4 flex-1">
           {viewMode === 'builder' && (
-            <button 
+            <button
               onClick={handleInitializeEngine}
               disabled={isDeploying}
               className={`bg-gradient-to-r from-[#A259FF] to-[#6c39b3] text-white px-6 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-transform flex items-center gap-2 shadow-[0_0_20px_rgba(162,89,255,0.4)] ${isDeploying ? 'opacity-80 scale-95 cursor-wait' : 'hover:scale-105'}`}
@@ -161,32 +159,26 @@ const FlowHeader = () => {
 
       {/* ── VALIDATION POPUP ── */}
       {showValidationPopup && (
-        <div 
-          className="fixed inset-0 z-[200] flex items-center justify-center"
-          style={{ background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(12px)' }}
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-md pointer-events-auto"
           onClick={() => setShowValidationPopup(false)}
         >
-          <div 
-            className="w-full max-w-lg rounded-3xl overflow-hidden"
-            style={{
-              background: 'linear-gradient(180deg, #14141f 0%, #0a0a12 100%)',
-              border: '1px solid rgba(255,75,75,0.25)',
-              boxShadow: '0 32px 80px rgba(0,0,0,0.8), 0 0 60px rgba(255,75,75,0.1)',
-            }}
+          <div
+            className="w-full max-w-lg rounded-[32px] overflow-hidden flex flex-col border border-[#ff6a6a]/20 bg-[#0a0a0f] shadow-[0_40px_100px_rgba(0,0,0,0.8)] relative"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.06] bg-[#ff4b4b]/5">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-white/5 bg-[#ff6a6a]/5">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-[#ff4b4b]/10 border border-[#ff4b4b]/20">
-                  <AlertTriangle size={18} className="text-[#ff4b4b]" />
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-[#ff6a6a]/10 border border-[#ff6a6a]/20">
+                  <AlertTriangle size={18} className="text-[#ff6a6a]" />
                 </div>
                 <div>
-                  <h2 className="text-base font-bold text-white font-display">Pipeline Setup Incomplete</h2>
-                  <p className="text-[10px] text-slate-500 uppercase tracking-wider font-bold mt-0.5">Please fix the following before compiling</p>
+                  <h2 className="text-base font-bold text-white font-display uppercase tracking-wide">Pipeline Setup Incomplete</h2>
+                  <p className="text-[10px] text-slate-500 uppercase tracking-widest font-mono font-bold mt-0.5">Please resolve before compiling</p>
                 </div>
               </div>
-              <button 
+              <button
                 onClick={() => setShowValidationPopup(false)}
                 className="p-2 rounded-xl hover:bg-white/5 transition-all text-slate-500 hover:text-white"
               >
@@ -197,21 +189,21 @@ const FlowHeader = () => {
             {/* Error List */}
             <div className="px-6 py-5 max-h-[50vh] overflow-y-auto custom-scrollbar space-y-2">
               {validationErrors.map((err, i) => (
-                <div 
-                  key={i} 
-                  className="flex items-start gap-3 px-4 py-3 rounded-xl bg-white/[0.02] border border-white/[0.04]"
+                <div
+                  key={i}
+                  className="flex items-start gap-3 px-4 py-3 rounded-xl bg-white/[0.02] border border-white/5"
                 >
-                  <span className="text-[#ff4b4b] text-xs font-black mt-0.5 shrink-0">{i + 1}.</span>
-                  <span className="text-sm text-slate-300 leading-relaxed">{err}</span>
+                  <span className="text-[#ff6a6a] text-xs font-mono font-bold mt-0.5 shrink-0">{i + 1}.</span>
+                  <span className="text-sm text-slate-300 leading-relaxed font-sans">{err}</span>
                 </div>
               ))}
             </div>
 
             {/* Footer */}
-            <div className="px-6 py-4 border-t border-white/[0.06] bg-black/30">
-              <button 
+            <div className="px-6 py-4 border-t border-white/5 bg-black/20">
+              <button
                 onClick={() => setShowValidationPopup(false)}
-                className="w-full py-3 rounded-xl bg-[#A259FF] text-white text-xs font-bold uppercase tracking-widest hover:bg-[#A259FF]/80 transition-colors"
+                className="w-full py-3 rounded-xl bg-[#ff6a6a] text-black font-black uppercase tracking-widest hover:opacity-90 transition-opacity text-xs"
               >
                 Got it — I'll fix it
               </button>

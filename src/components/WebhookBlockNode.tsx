@@ -25,18 +25,19 @@ const WebhookBlockNode = ({ block, isSelected }: WebhookBlockNodeProps) => {
   const blockW = block.size?.width || 260;
   const blockH = block.size?.height || 150;
 
-  let borderClasses = 'border-[#46B1FF]/20 bg-[#0d1520] hover:border-[#46B1FF]/50 shadow-xl z-10';
+  // Accessible Depth Design: Elevated 3D look with custom shadow states
+  let borderClasses = 'border-[#3e3e3e] bg-[#242424] shadow-[0_12px_30px_rgba(0,0,0,0.5)] hover:shadow-[0_20px_45px_rgba(0,0,0,0.7)] hover:-translate-y-1 hover:scale-[1.01] z-10';
   let pulseClass = '';
 
   if (isSelected) {
-    borderClasses = 'border-[#46B1FF] bg-[#111d2e] shadow-[0_0_30px_rgba(70,177,255,0.4)] z-50';
+    borderClasses = 'border-[#DEF767] bg-[#242424] shadow-[0_15px_40px_rgba(222,247,103,0.2)] scale-[1.01] -translate-y-0.5 z-50';
   } else if (status === 'running') {
-    borderClasses = 'border-[#F6E27F] bg-[#181824] shadow-[0_0_30px_rgba(246,226,127,0.4)] z-40';
+    borderClasses = 'border-white bg-[#242424] shadow-[0_0_30px_rgba(255,255,255,0.25)] scale-[1.01] -translate-y-0.5 z-40';
     pulseClass = 'animate-pulse';
   } else if (status === 'success') {
-    borderClasses = 'border-[#DEF767] bg-[#0d1520] shadow-[0_0_20px_rgba(222,247,103,0.2)] z-30';
+    borderClasses = 'border-[#5b8a62] bg-[#242424] shadow-[0_12px_30px_rgba(0,0,0,0.5),0_0_20px_rgba(91,138,98,0.15)] z-30';
   } else if (status === 'error') {
-    borderClasses = 'border-[#ff4b4b] bg-[#0d1520] shadow-[0_0_20px_rgba(255,75,75,0.2)] z-30';
+    borderClasses = 'border-[#ff6a6a] bg-[#242424] shadow-[0_15px_40px_rgba(255,106,106,0.15)] z-30';
   }
 
   return (
@@ -46,7 +47,7 @@ const WebhookBlockNode = ({ block, isSelected }: WebhookBlockNodeProps) => {
         e.stopPropagation();
         setSelectedElementId(block.id);
       }}
-      className={`absolute border rounded-3xl p-5 transition-all n8n-node overflow-visible group cursor-pointer ${borderClasses} ${pulseClass}`}
+      className={`absolute border rounded-3xl p-5 transition-all duration-300 ease-out n8n-node overflow-visible group cursor-pointer font-sans ${borderClasses} ${pulseClass}`}
       style={{
         left: Math.round(block.position.x),
         top: Math.round(block.position.y),
@@ -56,60 +57,60 @@ const WebhookBlockNode = ({ block, isSelected }: WebhookBlockNodeProps) => {
     >
       {/* Port - Input */}
       <div
-        className="absolute w-4 h-4 bg-[#0d1520] border-2 border-[#46B1FF] rounded-full left-1/2 -translate-x-1/2 -top-2 z-20 hover:scale-[2] hover:bg-[#46B1FF] transition-all cursor-crosshair connection-port"
+        className="absolute w-3.5 h-3.5 bg-[#181818] border border-[#5b5b5b] hover:border-[#DEF767] hover:bg-[#DEF767] rounded-full left-1/2 -translate-x-1/2 -top-1.5 z-20 transition-colors duration-150 cursor-crosshair connection-port"
         data-port-id={block.id}
         data-port-position="top"
       />
 
       {/* Header */}
-      <div className="flex items-start justify-between mb-4 pb-3">
+      <div className="flex items-start justify-between mb-4 pb-3 border-b border-[#3e3e3e] w-full">
         <div className="flex items-center gap-3">
-          <div className="p-1.5 rounded-lg bg-gradient-to-br from-[#46B1FF] to-[#1a6db0] text-white shadow-lg">
+          <div className="p-1.5 rounded-lg bg-[#1a1a1a] border border-[#3e3e3e] text-[#DEF767]">
             <Webhook size={14} />
           </div>
-          <h3 className="text-[14px] font-bold text-white tracking-wide truncate max-w-[150px]">
+          <h3 className="text-[14px] font-bold text-white tracking-wide truncate max-w-[150px] font-sans">
             {block.name || 'Webhook Bridge'}
           </h3>
         </div>
       </div>
 
       {/* Body */}
-      <p className="text-[11px] text-slate-400 line-clamp-2 min-h-[32px] font-secondary mb-3 leading-relaxed">
+      <p className="text-[11px] text-zinc-300 line-clamp-2 min-h-[32px] font-sans mb-3 leading-relaxed w-full">
         {block.description || 'Links to another workflow...'}
       </p>
 
       {/* Linked Sequence Badge */}
-      <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-[#46B1FF]/10 border border-[#46B1FF]/20 mb-3">
-        <Link2 size={12} className="text-[#46B1FF]" />
-        <span className="text-[10px] font-bold text-[#46B1FF] uppercase tracking-wider truncate">
+      <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-[#1a1a1a] border border-[#3e3e3e] mb-3 w-full">
+        <Link2 size={12} className="text-[#DEF767]" />
+        <span className="text-[10px] font-bold text-[#DEF767] uppercase tracking-wider truncate font-sans">
           {block.linkedSequenceName || 'No workflow linked'}
         </span>
       </div>
 
       {/* Footer Details */}
-      <div className="flex items-center justify-between mt-auto pt-3 border-t border-[#46B1FF]/10 text-[10px] text-slate-300 font-bold uppercase tracking-widest">
-        <div className="flex items-center gap-1.5 bg-[#46B1FF]/10 px-2.5 py-1.5 rounded-md">
-          <Webhook size={10} className="text-[#46B1FF]" /> Bridge
+      <div className="flex items-center justify-between mt-auto pt-3 border-t border-[#3e3e3e] text-[10px] text-zinc-400 font-bold uppercase tracking-widest font-sans w-full">
+        <div className="flex items-center gap-1.5 bg-[#1a1a1a] border border-[#3e3e3e] px-2.5 py-1.5 rounded-md">
+          <Webhook size={10} className="text-[#DEF767]" /> Bridge
         </div>
       </div>
 
       {/* Port - Output (Bottom) */}
       <div
-        className="absolute w-4 h-4 bg-[#0d1520] border-2 border-[#46B1FF] rounded-full left-1/2 -translate-x-1/2 -bottom-2 z-20 hover:scale-150 hover:bg-[#46B1FF] transition-all cursor-crosshair connection-port"
+        className="absolute w-3.5 h-3.5 bg-[#181818] border border-[#5b5b5b] hover:border-[#DEF767] hover:bg-[#DEF767] rounded-full left-1/2 -translate-x-1/2 -bottom-1.5 z-20 transition-colors duration-150 cursor-crosshair connection-port"
         data-port-id={block.id}
         data-port-position="bottom"
       />
 
       {/* Port - Left */}
       <div
-        className="absolute w-4 h-4 bg-[#0d1520] border-2 border-[#46B1FF] rounded-full -left-2 top-1/2 -translate-y-1/2 z-20 hover:scale-150 hover:bg-[#46B1FF] transition-all cursor-crosshair connection-port"
+        className="absolute w-3.5 h-3.5 bg-[#181818] border border-[#5b5b5b] hover:border-[#DEF767] hover:bg-[#DEF767] rounded-full -left-1.5 top-1/2 -translate-y-1/2 z-20 transition-colors duration-150 cursor-crosshair connection-port"
         data-port-id={block.id}
         data-port-position="left"
       />
 
       {/* Port - Right */}
       <div
-        className="absolute w-4 h-4 bg-[#0d1520] border-2 border-[#46B1FF] rounded-full -right-2 top-1/2 -translate-y-1/2 z-20 hover:scale-150 hover:bg-[#46B1FF] transition-all cursor-crosshair connection-port"
+        className="absolute w-3.5 h-3.5 bg-[#181818] border border-[#5b5b5b] hover:border-[#DEF767] hover:bg-[#DEF767] rounded-full -right-1.5 top-1/2 -translate-y-1/2 z-20 transition-colors duration-150 cursor-crosshair connection-port"
         data-port-id={block.id}
         data-port-position="right"
       />
@@ -117,12 +118,10 @@ const WebhookBlockNode = ({ block, isSelected }: WebhookBlockNodeProps) => {
       {/* Resize Handle */}
       {/* eslint-disable-next-line */}
       <div
-        className="resize-handle absolute bottom-0 right-0 w-5 h-5 cursor-nwse-resize opacity-0 group-hover:opacity-100 transition-opacity z-30"
-        style={{
-          background: 'linear-gradient(135deg, transparent 50%, rgba(70,177,255,0.5) 50%)',
-          borderRadius: '0 0 12px 0',
-        }}
-      />
+        className="resize-handle absolute bottom-0 right-0 w-6 h-6 cursor-nwse-resize opacity-0 group-hover:opacity-100 transition-opacity z-30 flex items-end justify-end p-1.5"
+      >
+        <div className="w-2.5 h-2.5 border-r-2 border-b-2 border-[#5b5b5b] group-hover:border-[#DEF767] transition-colors pointer-events-none" />
+      </div>
     </div>
   );
 };

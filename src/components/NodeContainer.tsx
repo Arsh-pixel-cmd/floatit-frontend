@@ -6,6 +6,7 @@ import {
 import StatusBadge from './StatusBadge';
 import ThinkingTerminal from './ThinkingTerminal';
 import { useWorkflowStore } from '../lib/store';
+import { useBuilderStore } from '../lib/builderStore';
 
 const ICON_MAP = {
   Search, Eye, Users, BookOpen, User, Compass, Target, Lightbulb,
@@ -13,13 +14,14 @@ const ICON_MAP = {
 };
 
 const PHASE_COLORS = {
-  'discover': { accent: '#46B1FF', bg: 'rgba(70,177,255,0.1)' },
-  'define': { accent: '#CEA3FF', bg: 'rgba(206,163,255,0.1)' },
-  'develop': { accent: '#A259FF', bg: 'rgba(162,89,255,0.1)' },
-  'deliver': { accent: '#DEF767', bg: 'rgba(222,247,103,0.1)' },
+  'discover': { accent: '#DEF767', bg: '#1a1a1a' },
+  'define': { accent: '#ff6a6a', bg: '#1a1a1a' },
+  'develop': { accent: '#DEF767', bg: '#1a1a1a' },
+  'deliver': { accent: '#ff6a6a', bg: '#1a1a1a' },
 };
 
 interface NodeData {
+  id: string;
   x: number;
   y: number;
   icon: string;
@@ -39,87 +41,135 @@ const NodeContainer = ({ node, state, onClick, isVisible = true }: NodeContainer
   const IconComponent = ICON_MAP[node.icon as keyof typeof ICON_MAP] || Box;
   const phaseColor = PHASE_COLORS[node.phase as keyof typeof PHASE_COLORS] || PHASE_COLORS['discover'];
 
-  const stateClass =
-    state === 'running'
-      ? 'node-running'
-      : state === 'completed'
-      ? 'node-completed'
-      : 'node-idle';
+  const [size, setSize] = React.useState({
+    width: node.blockRef?.size?.width || node.size?.width || 260,
+    height: node.blockRef?.size?.height || node.size?.height || 150
+  });
+
+  // Keep size in sync if node properties change (e.g. database hydration)
+  React.useEffect(() => {
+    setSize({
+      width: node.blockRef?.size?.width || node.size?.width || 260,
+      height: node.blockRef?.size?.height || node.size?.height || 150
+    });
+  }, [node]);
+
+  const handleResizeMouseDown = (mouseDownEvent: React.MouseEvent) => {
+    mouseDownEvent.stopPropagation();
+    mouseDownEvent.preventDefault();
+
+    const startWidth = size.width;
+    const startHeight = size.height;
+    const startMouseX = mouseDownEvent.clientX;
+    const startMouseY = mouseDownEvent.clientY;
+
+    // Dynamically retrieve canvas zoom level from DOM state custom property
+    const canvasContent = document.querySelector('.canvas-content') as HTMLElement;
+    const zoom = canvasContent ? parseFloat(getComputedStyle(canvasContent).getPropertyValue('--canvas-zoom')) || 1.0 : 1.0;
+
+    const handleMouseMove = (mouseMoveEvent: MouseEvent) => {
+      const dx = (mouseMoveEvent.clientX - startMouseX) / zoom;
+      const dy = (mouseMoveEvent.clientY - startMouseY) / zoom;
+
+      const newWidth = Math.max(180, startWidth + dx);
+      const newHeight = Math.max(120, startHeight + dy);
+
+      setSize({ width: newWidth, height: newHeight });
+
+      // Propagate dimension changes to the Builder Zustand store
+      const store = useBuilderStore.getState();
+      if (store.updateBlock && node.id) {
+        store.updateBlock(node.id, {
+          size: { width: newWidth, height: newHeight }
+        });
+      }
+    };
+
+    const handleMouseUp = () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+  };
 
   return (
     <div
-      className={`absolute pointer-events-auto n8n-node rounded-2xl cursor-pointer
-        ${isVisible ? 'revealed' : 'hidden'} ${stateClass}`}
+      className={`absolute border rounded-3xl p-5 transition-all duration-300 ease-out n8n-node overflow-visible cursor-pointer font-sans flex flex-col pointer-events-auto group ${
+        isVisible ? 'revealed' : 'hidden'
+      } ${
+        state === 'running'
+          ? 'border-white bg-[#242424] shadow-[0_0_30px_rgba(255,255,255,0.25)] scale-[1.01] -translate-y-0.5 z-40 animate-pulse'
+          : state === 'completed'
+          ? 'border-[#5b8a62] bg-[#242424] shadow-[0_12px_30px_rgba(0,0,0,0.5),0_0_20px_rgba(91,138,98,0.15)] z-30'
+          : 'border-[#3e3e3e] bg-[#242424] shadow-[0_12px_30px_rgba(0,0,0,0.5)] hover:shadow-[0_20px_45px_rgba(0,0,0,0.7)] hover:-translate-y-1 hover:scale-[1.01] z-10'
+      }`}
       style={{
         left: node.x,
         top: node.y,
-        width: 140, // Match config
-        height: 140,
-        borderColor: state === 'running' ? phaseColor.accent : 'rgba(255,255,255,0.1)',
+        width: Math.round(size.width),
+        height: Math.round(size.height),
       }}
       onClick={onClick}
     >
+      {/* Stream Logs & Thinking Terminal integration */}
       <ThinkingTerminal node={node} isRunning={state === 'running'} />
-      <div className="flex flex-col items-center justify-center h-full p-4 gap-3">
-        {/* Icon Unit */}
-        <div
-          className="w-14 h-14 rounded-xl flex items-center justify-center shadow-lg"
-          style={{ 
-            background: phaseColor.bg,
-            border: `1px solid ${phaseColor.accent}33`
-          }}
-        >
-          <IconComponent size={24} style={{ color: phaseColor.accent }} />
-        </div>
 
-        {/* Info */}
-        <div className="text-center">
-          <h3 className="text-[11px] font-bold text-slate-100 uppercase tracking-wider font-display line-clamp-2">
+      {/* Port - Input (Left) */}
+      <div
+        className="absolute w-3.5 h-3.5 bg-[#181818] rounded-full -left-1.5 top-1/2 -translate-y-1/2 z-20 transition-colors duration-150 border"
+        style={{
+          borderColor: state === 'running' ? '#ffffff' : state === 'completed' ? '#5b8a62' : '#5b5b5b'
+        }}
+      />
+
+      {/* Header */}
+      <div className="flex items-start justify-between mb-3 pb-3 border-b border-[#3e3e3e] shrink-0 w-full">
+        <div className="flex items-center gap-3">
+          <div className="p-1.5 rounded-lg bg-[#1a1a1a] border border-[#3e3e3e] flex items-center justify-center shrink-0">
+            <IconComponent size={14} style={{ color: phaseColor.accent }} />
+          </div>
+          <h3 className="text-[14px] font-bold text-white tracking-wide truncate max-w-[150px] font-sans">
             {node.category.name}
           </h3>
-          <div className="mt-1 flex items-center justify-center">
-             <StatusBadge state={state} mini />
-          </div>
         </div>
       </div>
 
-      {/* Input Port (Left Center) */}
-      <div
-        className="absolute w-3.5 h-3.5 rounded-full flex items-center justify-center bg-black"
-        style={{
-          left: -7,
-          top: '50%',
-          transform: 'translateY(-50%)',
-          border: `1.5px solid ${state === 'running' ? phaseColor.accent : '#334155'}`,
-          zIndex: 10,
-        }}
-      >
-        <div className="w-1 h-1 rounded-full" style={{ background: '#334155' }} />
+      {/* Body Description */}
+      <p className="text-[11px] text-zinc-300 line-clamp-3 font-sans mb-3 leading-relaxed flex-grow overflow-y-auto custom-scrollbar-neon pr-1 shrink text-left w-full">
+        {node.category.description || `Orchestrating ${node.category.name.toLowerCase()} agent protocols...`}
+      </p>
+
+      {/* Footer Details */}
+      <div className="flex items-center justify-between mt-auto pt-3 border-t border-[#3e3e3e] text-[10px] text-zinc-400 font-bold uppercase tracking-widest gap-2 font-sans shrink-0 w-full">
+        <div className="flex items-center gap-1.5 bg-[#1a1a1a] border border-[#3e3e3e] px-2.5 py-1 rounded-md min-w-max whitespace-nowrap">
+          <StatusBadge state={state} />
+        </div>
+        {node.phase && (
+          <div className="flex items-center gap-1.5 bg-[#1a1a1a] border border-[#3e3e3e] px-2.5 py-1 rounded-md min-w-max whitespace-nowrap">
+            <span style={{ color: phaseColor.accent }}>{node.phase.toUpperCase()}</span>
+          </div>
+        )}
       </div>
 
-      {/* Output Port (Right Center) */}
+      {/* Port - Output (Right) */}
       <div
-        className="absolute w-3.5 h-3.5 rounded-full flex items-center justify-center bg-black"
+        className="absolute w-3.5 h-3.5 bg-[#181818] rounded-full -right-1.5 top-1/2 -translate-y-1/2 z-20 transition-colors duration-150 border"
         style={{
-          right: -7,
-          top: '50%',
-          transform: 'translateY(-50%)',
-          border: `1.5px solid ${state === 'completed' ? '#DEF767' : '#334155'}`,
-          zIndex: 10,
+          borderColor: state === 'completed' ? '#5b8a62' : state === 'running' ? '#ffffff' : '#5b5b5b'
         }}
-      >
-        <div className="w-1 h-1 rounded-full" style={{ background: '#334155' }} />
-      </div>
+      />
 
       {/* Stuck Debugger Overlay */}
       {state === 'stuck_debugger' && (
-        <div className="absolute inset-0 bg-red-950/95 rounded-2xl backdrop-blur-md flex flex-col items-center justify-center p-2 z-20 border border-red-500/50">
-          <AlertTriangle size={20} className="text-red-400 mb-1" />
-          <span className="text-[9px] font-bold text-red-200 uppercase tracking-widest text-center leading-tight mb-2">Process<br/>Halted</span>
-          <div className="flex gap-1.5 mt-auto w-full px-1">
+        <div className="absolute inset-0 bg-[#242424] rounded-3xl flex flex-col items-center justify-center p-5 z-50 border border-[#ff6a6a] shadow-[0_15px_40px_rgba(255,106,106,0.2)]">
+          <AlertTriangle size={24} className="text-[#ff6a6a] mb-2" />
+          <span className="text-[11px] font-bold text-red-200 uppercase tracking-widest text-center leading-tight mb-4 font-sans">Process Halted</span>
+          <div className="flex gap-2.5 mt-auto w-full">
              <button 
                onClick={(e) => { e.stopPropagation(); useWorkflowStore.getState().setNodeState(node.id, 'running'); }}
-               className="flex-1 bg-red-500/20 text-red-200 text-[9px] font-bold py-1.5 rounded hover:bg-red-500/40 transition-colors"
+               className="flex-1 bg-[#ff6a6a]/20 text-[#ff6a6a] text-[10px] font-bold py-2 rounded-xl border border-[#ff6a6a]/40 hover:bg-[#ff6a6a]/40 transition-all duration-200 font-sans"
              >
                RETRY
              </button>
@@ -129,13 +179,22 @@ const NodeContainer = ({ node, state, onClick, isVisible = true }: NodeContainer
                  useWorkflowStore.getState().setNodeResult(node.id, { content: 'Skipped manually', ui: '<div style="padding:20px;color:#888;">Manually skipped by user.</div>' });
                  useWorkflowStore.getState().setNodeState(node.id, 'completed'); 
                }}
-               className="flex-1 bg-white/10 text-white text-[9px] font-bold py-1.5 rounded hover:bg-white/20 transition-colors"
+               className="flex-1 bg-[#1a1a1a] text-white text-[10px] font-bold py-2 rounded-xl border border-[#3e3e3e] hover:bg-white/10 transition-all duration-200 font-sans"
              >
                SKIP
              </button>
           </div>
         </div>
       )}
+
+      {/* Resize Handle */}
+      {/* eslint-disable-next-line */}
+      <div
+        onMouseDown={handleResizeMouseDown}
+        className="resize-handle absolute bottom-0 right-0 w-6 h-6 cursor-nwse-resize opacity-0 group-hover:opacity-100 transition-opacity z-30 flex items-end justify-end p-1.5"
+      >
+        <div className="w-2.5 h-2.5 border-r-2 border-b-2 border-[#5b5b5b] group-hover:border-[#DEF767] transition-colors pointer-events-none" />
+      </div>
     </div>
   );
 };

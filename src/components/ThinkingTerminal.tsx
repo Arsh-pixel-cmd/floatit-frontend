@@ -6,6 +6,13 @@ import { X, Maximize2 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { useWorkflowStore } from '../lib/store';
 
+const PHASE_COLORS: Record<string, string> = {
+  discover: '#DEF767',
+  define: '#FF6A6A',
+  develop: '#DEF767',
+  deliver: '#FF6A6A',
+};
+
 const ThinkingTerminal = ({ node, isRunning }: any) => {
   const [text, setText] = useState('');
   const [active, setActive] = useState(false);
@@ -15,6 +22,8 @@ const ThinkingTerminal = ({ node, isRunning }: any) => {
   const expandedRef = useRef(false);
   const scrollSmallRef = useRef<HTMLDivElement>(null);
   const scrollLargeRef = useRef<HTMLDivElement>(null);
+
+  const phaseColor = PHASE_COLORS[node?.phase] || '#DEF767';
 
   useEffect(() => {
     if (scrollSmallRef.current) scrollSmallRef.current.scrollTop = scrollSmallRef.current.scrollHeight;
@@ -127,14 +136,31 @@ const ThinkingTerminal = ({ node, isRunning }: any) => {
                setExpanded(true);
              }}
           >
-             <div className="flex flex-col overflow-hidden relative transition-all duration-300 bg-[#050505]/95 backdrop-blur-xl border border-[#8B5CF6]/50 rounded-lg w-64 shadow-[0_0_20px_rgba(139,92,246,0.15)] group-hover:border-[#8B5CF6] group-hover:shadow-[0_0_30px_rgba(139,92,246,0.3)]">
+             <div 
+                className="flex flex-col overflow-hidden relative transition-all duration-300 bg-[#050505]/95 backdrop-blur-xl border rounded-xl w-64"
+                style={{
+                  borderColor: `${phaseColor}80`,
+                  boxShadow: `0 12px 40px rgba(0,0,0,0.7), 0 0 20px ${phaseColor}20`,
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = phaseColor;
+                  e.currentTarget.style.boxShadow = `0 20px 50px rgba(0,0,0,0.85), 0 0 30px ${phaseColor}40`;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = `${phaseColor}80`;
+                  e.currentTarget.style.boxShadow = `0 12px 40px rgba(0,0,0,0.7), 0 0 20px ${phaseColor}20`;
+                }}
+             >
                 
                 {/* Header */}
                 <div className="flex items-center gap-1.5 px-3 py-2 border-b border-white/10 bg-white/[0.02]">
                    <div className="w-1.5 h-1.5 rounded-full bg-red-500/50" />
                    <div className="w-1.5 h-1.5 rounded-full bg-yellow-500/50" />
-                   <div className="w-1.5 h-1.5 rounded-full bg-[#DEF767] shadow-[0_0_5px_#DEF767] animate-pulse" />
-                   <span className="text-[9px] uppercase tracking-[0.2em] text-[#A259FF] ml-auto font-bold opacity-80 flex items-center gap-2">
+                   <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: phaseColor, boxShadow: `0 0 5px ${phaseColor}` }} />
+                   <span 
+                     className="text-[9px] uppercase tracking-[0.2em] ml-auto font-bold opacity-80 flex items-center gap-2"
+                     style={{ color: phaseColor }}
+                   >
                       COM-LINK // {isRunning ? 'RUNNING' : 'TERMINATED'}
                    </span>
                    <button 
@@ -152,7 +178,7 @@ const ThinkingTerminal = ({ node, isRunning }: any) => {
                 {/* Terminal Output */}
                 <div 
                   ref={scrollSmallRef}
-                  className="p-3 font-mono text-[10px] text-[#A78BFA] leading-relaxed break-words whitespace-pre-wrap flex-1 max-h-32 overflow-y-auto custom-scrollbar-neon scroll-smooth flex flex-col"
+                  className="p-3 font-mono text-[10px] text-slate-300 leading-relaxed break-words whitespace-pre-wrap flex-1 max-h-32 overflow-y-auto custom-scrollbar-neon scroll-smooth flex flex-col"
                 >
                    <div>
                      {text}
@@ -181,15 +207,22 @@ const ThinkingTerminal = ({ node, isRunning }: any) => {
                initial={{ opacity: 0, scale: 0.95, y: 20 }}
                animate={{ opacity: 1, scale: 1, y: 0 }}
                exit={{ opacity: 0, scale: 0.95, y: 20 }}
-               className="bg-[#050505] border border-[#8B5CF6] rounded-2xl w-[800px] h-[600px] shadow-[0_0_80px_rgba(139,92,246,0.4)] flex flex-col overflow-hidden relative"
+               className="bg-[#050505] border rounded-2xl w-[800px] h-[600px] flex flex-col overflow-hidden relative"
+               style={{
+                 borderColor: phaseColor,
+                 boxShadow: `0 0 80px ${phaseColor}30`,
+               }}
                onClick={(e) => e.stopPropagation()}
             >
                {/* Header */}
                <div className="flex items-center gap-1.5 px-6 py-4 border-b border-white/10 bg-white/[0.02]">
                   <div className="w-3 h-3 rounded-full bg-red-500/50" />
                   <div className="w-3 h-3 rounded-full bg-yellow-500/50" />
-                  <div className="w-3 h-3 rounded-full bg-[#DEF767] shadow-[0_0_8px_#DEF767] animate-pulse" />
-                  <span className="text-xs uppercase tracking-[0.2em] text-[#A259FF] ml-auto font-bold opacity-80 flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full animate-pulse" style={{ backgroundColor: phaseColor, boxShadow: `0 0 8px ${phaseColor}` }} />
+                  <span 
+                    className="text-xs uppercase tracking-[0.2em] ml-auto font-bold opacity-80 flex items-center gap-2"
+                    style={{ color: phaseColor }}
+                  >
                      <span className="text-white">AGENT LOGS // </span>
                      {isRunning ? 'RUNNING' : 'TERMINATED'}
                   </span>
@@ -209,7 +242,7 @@ const ThinkingTerminal = ({ node, isRunning }: any) => {
                {/* Terminal Output */}
                <div 
                  ref={scrollLargeRef}
-                 className="p-6 font-mono text-sm text-[#A78BFA] leading-relaxed break-words whitespace-pre-wrap flex-1 overflow-y-auto custom-scrollbar-neon scroll-smooth flex flex-col"
+                 className="p-6 font-mono text-sm text-slate-300 leading-relaxed break-words whitespace-pre-wrap flex-1 overflow-y-auto custom-scrollbar-neon scroll-smooth flex flex-col"
                >
                   <div>
                     {text}

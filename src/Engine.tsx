@@ -370,13 +370,12 @@ const Engine = () => {
         if (!s || !t) return null;
         const p1 = {x: s.x + 140, y: s.y + 70}; 
         const p2 = {x: t.x, y: t.y + 70}; 
-        const offset = Math.abs(p2.x - p1.x) * 0.5;
         return {
            _coreId: c.id,
            id: c.id,
            from: c.sourceBlockId,
            to: c.targetBlockId,
-           d: `M ${p1.x} ${p1.y} C ${p1.x + offset} ${p1.y}, ${p2.x - offset} ${p2.y}, ${p2.x} ${p2.y}`
+           d: computeEdgePath(p1, p2, { sPort: 'right', tPort: 'left' })
         };
     }).filter(Boolean);
   }, [deployedTemplateId, viewMode, templates, layout]);
@@ -1005,21 +1004,59 @@ const Engine = () => {
 
   if (graphStatus === 'error') {
     return (
-      <div className="h-screen w-screen flex flex-col items-center justify-center bg-[#0a0a10] text-[#ff6b6b]">
-        <AlertTriangle size={64} className="mb-4" />
-        <h1 className="text-2xl font-bold tracking-widest mb-2 font-display">GRAPH VALIDATION FAILED</h1>
-        <p className="text-slate-400 font-mono text-sm">{initError}</p>
+      <div className="h-screen w-screen flex flex-col items-center justify-center bg-[#0a0a10] text-slate-200 relative p-6">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,106,106,0.03)_0%,transparent_70%)] pointer-events-none" />
+        
+        <div className="relative flex flex-col items-center bg-[#0d0d15] border border-[#ff6a6a]/20 p-10 rounded-[32px] shadow-[0_40px_100px_rgba(0,0,0,0.8)] overflow-hidden max-w-md w-full text-center">
+          {/* Glow decoration */}
+          <div className="absolute -top-24 -right-24 w-48 h-48 bg-[#ff6a6a]/10 blur-[60px] rounded-full pointer-events-none" />
+          
+          <div className="w-16 h-16 rounded-2xl bg-[#ff6a6a]/10 border border-[#ff6a6a]/20 flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(255,106,106,0.15)] pointer-events-none">
+            <AlertTriangle className="text-[#ff6a6a]" size={28} />
+          </div>
+          
+          <div className="text-[#ff6a6a] font-black tracking-[0.25em] text-[10px] uppercase mb-2">
+            CRITICAL SYSTEM HALT
+          </div>
+          
+          <h2 className="text-2xl font-black text-white uppercase tracking-wider font-display mb-4">
+            Graph Validation Failed
+          </h2>
+          
+          <div className="w-12 h-0.5 bg-white/10 my-4" />
+          
+          <p className="text-slate-400 text-xs font-mono bg-white/[0.02] border border-white/5 p-4 rounded-xl w-full break-all leading-relaxed">
+            {initError}
+          </p>
+        </div>
       </div>
     );
   }
 
   if (!layout) {
     return (
-      <div className="h-screen w-screen bg-[#0a0a10] flex flex-col items-center justify-center gap-6">
-        <div className="w-12 h-12 border-4 border-[#A259FF] border-t-transparent rounded-full animate-spin" />
-        <div className="text-center">
-          <p className="text-sm font-black uppercase tracking-[0.25em] text-[#A259FF] mb-1">Initializing Canvas</p>
-          <p className="text-[11px] text-slate-600 tracking-widest">Loading neural pipeline...</p>
+      <div className="h-screen w-screen bg-[#0a0a10] flex flex-col items-center justify-center relative p-6">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(162,89,255,0.03)_0%,transparent_70%)] pointer-events-none" />
+        
+        <div className="relative flex flex-col items-center bg-[#0d0d15] border border-white/10 p-10 rounded-[32px] shadow-[0_40px_100px_rgba(0,0,0,0.8)] overflow-hidden max-w-sm w-full text-center">
+          <div className="relative w-16 h-16 mb-6">
+            <div className="absolute inset-0 rounded-full border-4 border-white/5" />
+            <div className="absolute inset-0 rounded-full border-4 border-[#A259FF] border-t-transparent animate-spin" />
+          </div>
+          
+          <div className="text-[#A259FF] font-black tracking-[0.25em] text-[10px] uppercase mb-2">
+            INITIALIZING CANVAS
+          </div>
+          
+          <h2 className="text-xl font-black text-white uppercase tracking-wider font-display mb-4">
+            Loading Neural Pipeline
+          </h2>
+          
+          <div className="w-12 h-0.5 bg-white/10 my-2" />
+          
+          <p className="text-slate-500 text-xs mt-2">
+            Connecting node matrices and building visual canvas layers...
+          </p>
         </div>
       </div>
     );
@@ -1031,94 +1068,32 @@ const Engine = () => {
 
       {/* ── Phase Transition Overlay ── */}
       {phaseOverlay && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-[#0a0a10]/80 backdrop-blur-sm">
-          <div className="flex flex-col items-center bg-[#13131a] p-8 pb-10 rounded-2xl border border-white/10 shadow-2xl animate-fade-in-up">
-            <Sparkles className="text-[#DEF767] mb-4" size={32} />
-            <div className="text-[#DEF767] font-bold tracking-widest text-xs mb-2">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-md pointer-events-auto">
+          <div className="relative flex flex-col items-center bg-[#0a0a0f] border border-white/10 p-10 rounded-[32px] shadow-[0_40px_100px_rgba(0,0,0,0.8)] overflow-hidden max-w-md w-full animate-fade-in-up text-center">
+            {/* Glow decoration */}
+            <div className="absolute -top-24 -right-24 w-48 h-48 bg-[#DEF767]/10 blur-[60px] rounded-full pointer-events-none" />
+            
+            <div className="w-16 h-16 rounded-2xl bg-[#DEF767]/10 border border-[#DEF767]/20 flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(222,247,103,0.15)] pointer-events-none">
+              <Sparkles className="text-[#DEF767]" size={28} />
+            </div>
+            
+            <div className="text-[#DEF767] font-black tracking-[0.25em] text-[10px] uppercase mb-2">
               PHASE {phaseOverlay.phase} COMPLETE
             </div>
-            <h2 className="text-3xl font-black text-white px-8 uppercase tracking-[0.2em] font-display">
+            
+            <h2 className="text-2xl font-black text-white uppercase tracking-wider font-display mb-4">
               {phaseOverlay.phaseName}
             </h2>
-            <div className="w-16 h-px bg-white/20 my-6" />
-            <div className="text-slate-400 text-sm tracking-widest uppercase">
+            
+            <div className="w-12 h-0.5 bg-white/10 my-4" />
+            
+            <div className="text-slate-400 text-xs tracking-widest uppercase font-bold">
               Initializing {phaseOverlay.nextPhaseName}
             </div>
           </div>
         </div>
       )}
 
-      {/* ── Token Limit Exceeded Modal ── */}
-      <AnimatePresence>
-        {tokenLimitModal?.show && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="absolute inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-md"
-          >
-            <motion.div
-              initial={{ scale: 0.85, opacity: 0, y: 30 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              transition={{ type: 'spring', damping: 22, stiffness: 300 }}
-              className="relative w-[480px] max-w-[92vw] bg-[#0d0d15] border border-[#F6E27F]/25 rounded-3xl shadow-[0_40px_120px_rgba(246,226,127,0.15)] overflow-hidden"
-            >
-              {/* Glow bar */}
-              <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#F6E27F] to-transparent" />
-
-              <div className="p-8">
-                {/* Icon + Title */}
-                <div className="flex items-start gap-4 mb-6">
-                  <div className="w-12 h-12 rounded-2xl bg-[#F6E27F]/10 border border-[#F6E27F]/20 flex items-center justify-center flex-shrink-0 shadow-[0_0_24px_rgba(246,226,127,0.2)]">
-                    <span className="text-2xl">⚠️</span>
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#F6E27F] mb-1">Context Window Exceeded</p>
-                    <h2 className="text-2xl font-black text-white font-display leading-tight">Token Limit Reached</h2>
-                  </div>
-                </div>
-
-                {/* Info */}
-                <div className="bg-white/[0.03] border border-white/5 rounded-2xl p-4 mb-5 space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-[11px] text-slate-500 uppercase tracking-widest font-bold">Model</span>
-                    <span className="text-sm text-white font-mono bg-white/5 px-3 py-1 rounded-lg">{tokenLimitModal.model}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-[11px] text-slate-500 uppercase tracking-widest font-bold">Provider</span>
-                    <span className="text-sm text-[#46B1FF] font-bold">{tokenLimitModal.provider}</span>
-                  </div>
-                </div>
-
-                <p className="text-sm text-slate-400 leading-relaxed mb-6">
-                  The input sent to this model exceeded its maximum context window. The pipeline has been paused at this node. You can shorten your prompt, switch to a model with a larger context window, or dismiss and continue.
-                </p>
-
-                {/* Actions */}
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => setTokenLimitModal(null)}
-                    className="flex-1 py-3.5 rounded-2xl bg-white/5 border border-white/10 text-sm font-bold text-slate-300 hover:bg-white/10 hover:text-white transition-all uppercase tracking-widest"
-                  >
-                    Dismiss
-                  </button>
-                  <button
-                    onClick={() => {
-                      setTokenLimitModal(null);
-                      setShowKeyModal(true);
-                      setKeyModalType('NO_KEY');
-                    }}
-                    className="flex-[1.5] py-3.5 rounded-2xl bg-gradient-to-r from-[#F6E27F] to-[#DEF767] text-black text-sm font-black uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all shadow-[0_8px_30px_rgba(246,226,127,0.3)]"
-                  >
-                    Switch API Key
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
       
       {viewMode === 'templates' && <TemplatesView />}
 
@@ -1479,7 +1454,7 @@ const Engine = () => {
                 <polyline 
                   key={`stroke-${stroke.id}`} 
                   points={stroke.points.map((p: any) => `${p.x},${p.y}`).join(' ')} 
-                  stroke="#A259FF" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" 
+                  stroke="#DEF767" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" 
                   fill="none" 
                   opacity="0.6"
                 />
@@ -1487,7 +1462,7 @@ const Engine = () => {
               {currentStroke && (
                 <polyline 
                   points={currentStroke.map((p: any) => `${p.x},${p.y}`).join(' ')} 
-                  stroke="#A259FF" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" 
+                  stroke="#DEF767" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" 
                   fill="none" opacity="0.6"
                 />
               )}
@@ -1567,7 +1542,7 @@ const Engine = () => {
               return (
               <div key={`sticky-${note.id}`} 
                 className={`absolute sticky-note p-3 rounded-2xl z-30 transition-shadow font-secondary flex flex-col group shadow-2xl cursor-grab active:cursor-grabbing ${
-                  isEditing ? 'ring-2 ring-offset-2 ring-offset-transparent' : 'border border-transparent hover:border-white/10'
+                  isEditing ? 'border-[#DEF767]' : 'border-[#2e2e2e]'
                 }`}
                 onMouseDown={(e: any) => {
                   if (isEditing) return; // Don't drag while editing
@@ -1584,13 +1559,10 @@ const Engine = () => {
                 }}
                 style={{
                   left: note.x, top: note.y, width: noteW, height: noteH,
-                  background: 'rgba(26, 26, 46, 0.85)',
-                  borderColor: isEditing ? noteColor : `${noteColor}40`,
-                  backdropFilter: 'blur(16px)',
+                  background: '#181818',
                   pointerEvents: 'auto',
-                  boxShadow: isEditing ? `0 0 40px ${noteColor}50` : `0 10px 30px rgba(0,0,0,0.5)`,
                 }}>
-                <div className="w-full h-1.5 rounded-t-xl absolute top-0 left-0" style={{ background: `linear-gradient(to right, ${noteColor}, ${noteColor}80)` }} />
+                <div className="w-full h-1 rounded-t-xl absolute top-0 left-0" style={{ background: isEditing ? '#DEF767' : '#5b5b5b' }} />
                 
                 <button
                   title="Delete sticky note"
@@ -1600,13 +1572,13 @@ const Engine = () => {
                     setStickyNotes(prev => prev.filter(n => n.id !== note.id));
                     if (editingStickyId === note.id) setEditingStickyId(null);
                   }}
-                  className="absolute top-3 right-3 p-1.5 rounded-lg bg-black/60 text-slate-400 hover:text-white hover:bg-[#ff4b4b] transition-all opacity-0 group-hover:opacity-100 z-50 shadow-md"
+                  className="absolute top-3 right-3 p-1.5 rounded-lg bg-[#2e2e2e] text-slate-400 hover:text-white hover:bg-[#ff6a6a] transition-all opacity-0 group-hover:opacity-100 z-50 font-sans"
                 >
-                  <X size={16} />
+                  <X size={12} />
                 </button>
 
                 <textarea 
-                  className="flex-1 w-full mt-3 bg-transparent outline-none resize-none text-slate-200 text-sm placeholder-slate-500 custom-scrollbar-neon"
+                  className="flex-1 w-full mt-3 bg-transparent outline-none resize-none text-slate-200 text-sm placeholder-slate-500 custom-scrollbar-neon font-sans"
                   placeholder="Note insights here..."
                   value={note.text}
                   onMouseDown={e => e.stopPropagation()}
@@ -1644,7 +1616,7 @@ const Engine = () => {
                 <div
                   className="resize-handle absolute bottom-0 right-0 w-6 h-6 cursor-nwse-resize opacity-0 group-hover:opacity-100 transition-opacity z-30"
                   style={{
-                    background: `linear-gradient(135deg, transparent 50%, ${noteColor}80 50%)`,
+                    background: `linear-gradient(135deg, transparent 50%, ${isEditing ? '#DEF767' : '#5b5b5b'} 50%)`,
                     borderRadius: '0 0 16px 0',
                   }}
                 />
@@ -1669,8 +1641,8 @@ const Engine = () => {
                 }}
               >
                 <input
-                  className={`bg-transparent outline-none text-white font-bold w-[150px] placeholder-slate-500 border-b border-dashed pb-1 transition-all ${
-                    isEditing ? 'text-lg border-[#46B1FF]/80' : 'text-sm border-white/20 focus:border-[#46B1FF]/50'
+                  className={`bg-transparent outline-none text-white font-bold w-[150px] placeholder-slate-500 border-b border-dashed pb-1 transition-all font-sans ${
+                    isEditing ? 'text-lg border-[#DEF767]' : 'text-sm border-[#2e2e2e] focus:border-[#DEF767]'
                   }`}
                   placeholder="Type label..."
                   value={label.text}
@@ -1705,7 +1677,7 @@ const Engine = () => {
                 />
                 <button
                   onClick={() => setTextLabels(prev => prev.filter(l => l.id !== label.id))}
-                  className="absolute -top-2 -right-2 w-4 h-4 rounded-full bg-[#ff4b4b] text-white text-[8px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="absolute -top-2 -right-2 w-5 h-5 rounded-md bg-[#2e2e2e] hover:bg-[#ff6a6a] border border-[#2e2e2e] text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity font-sans"
                 >
                   ✕
                 </button>
@@ -1765,6 +1737,78 @@ const Engine = () => {
       <OutputScreen isOpen={showOutputScreen} onClose={() => setShowOutputScreen(false)} />
       {/* Toast System */}
       <ToastContainer />
+
+      {/* ── Token Limit Exceeded Modal ── */}
+      <AnimatePresence>
+        {tokenLimitModal?.show && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-md pointer-events-auto"
+          >
+            <motion.div
+              initial={{ scale: 0.85, opacity: 0, y: 30 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              transition={{ type: 'spring', damping: 22, stiffness: 300 }}
+              className="relative w-[480px] max-w-[92vw] bg-[#0d0d15] border border-[#F6E27F]/25 rounded-3xl shadow-[0_40px_120px_rgba(246,226,127,0.15)] overflow-hidden pointer-events-auto"
+            >
+              {/* Glow bar */}
+              <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#F6E27F] to-transparent pointer-events-none" />
+
+              <div className="p-8">
+                {/* Icon + Title */}
+                <div className="flex items-start gap-4 mb-6">
+                  <div className="w-12 h-12 rounded-2xl bg-[#F6E27F]/10 border border-[#F6E27F]/20 flex items-center justify-center flex-shrink-0 shadow-[0_0_24px_rgba(246,226,127,0.2)]">
+                    <span className="text-2xl">⚠️</span>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#F6E27F] mb-1">Context Window Exceeded</p>
+                    <h2 className="text-2xl font-black text-white font-display leading-tight">Token Limit Reached</h2>
+                  </div>
+                </div>
+
+                {/* Info */}
+                <div className="bg-white/[0.03] border border-white/5 rounded-2xl p-4 mb-5 space-y-2 pointer-events-none">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[11px] text-slate-500 uppercase tracking-widest font-bold">Model</span>
+                    <span className="text-sm text-white font-mono bg-white/5 px-3 py-1 rounded-lg">{tokenLimitModal.model}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-[11px] text-slate-500 uppercase tracking-widest font-bold">Provider</span>
+                    <span className="text-sm text-[#46B1FF] font-bold">{tokenLimitModal.provider}</span>
+                  </div>
+                </div>
+
+                <p className="text-sm text-slate-400 leading-relaxed mb-6">
+                  The input sent to this model exceeded its maximum context window. The pipeline has been paused at this node. You can shorten your prompt, switch to a model with a larger context window, or dismiss and continue.
+                </p>
+
+                {/* Actions */}
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setTokenLimitModal(null)}
+                    className="flex-1 py-3.5 rounded-2xl bg-white/5 border border-white/10 text-sm font-bold text-slate-300 hover:bg-white/10 hover:text-white transition-all uppercase tracking-widest pointer-events-auto"
+                  >
+                    Dismiss
+                  </button>
+                  <button
+                    onClick={() => {
+                      setTokenLimitModal(null);
+                      setShowKeyModal(true);
+                      setKeyModalType('NO_KEY');
+                    }}
+                    className="flex-[1.5] py-3.5 rounded-2xl bg-gradient-to-r from-[#F6E27F] to-[#DEF767] text-black text-sm font-black uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all shadow-[0_8px_30px_rgba(246,226,127,0.3)] pointer-events-auto"
+                  >
+                    Switch API Key
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* API Key Modal */}
       <AnimatePresence>
@@ -1837,20 +1881,20 @@ const ApiKeyModal = ({ type, onClose, onSaved }: { type: string, onClose: () => 
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-6 pointer-events-auto">
       <motion.div 
         initial={{ opacity: 0 }} 
         animate={{ opacity: 1 }} 
         exit={{ opacity: 0 }}
         onClick={onClose}
-        className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/80 backdrop-blur-sm pointer-events-auto"
       />
       
       <motion.div
         initial={{ opacity: 0, scale: 0.9, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.9, y: 20 }}
-        className="relative w-full max-w-md bg-[#0a0a0f] border border-white/10 rounded-[32px] p-8 shadow-[0_40px_100px_rgba(0,0,0,0.8)] overflow-hidden"
+        className="relative w-full max-w-md bg-[#0a0a0f] border border-white/10 rounded-[32px] p-8 shadow-[0_40px_100px_rgba(0,0,0,0.8)] overflow-hidden pointer-events-auto"
       >
         {/* Glow decoration */}
         <div className="absolute -top-24 -right-24 w-48 h-48 bg-[#A259FF]/20 blur-[60px] rounded-full" />

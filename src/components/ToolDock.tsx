@@ -31,11 +31,9 @@ const ToolDock = ({ activeTool, setActiveTool, canvasLocked, setCanvasLocked, on
     const startY = e.clientY;
     const startScale = dockScale;
     
-    // Lock the cursor globally so it doesn't flicker if you move the mouse fast
     document.body.style.cursor = 'ns-resize';
 
     const onPointerMove = (moveEvent: PointerEvent) => {
-      // Dragging up (negative delta clientY) increases scale since dock is at bottom
       const deltaY = startY - moveEvent.clientY;
       const sensitivity = 0.005;
       const newScale = Math.min(Math.max(0.5, startScale + deltaY * sensitivity), 2.5);
@@ -45,7 +43,7 @@ const ToolDock = ({ activeTool, setActiveTool, canvasLocked, setCanvasLocked, on
     };
 
     const onPointerUp = () => {
-      document.body.style.cursor = ''; // Release cursor lock
+      document.body.style.cursor = '';
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerup', onPointerUp);
     };
@@ -61,18 +59,17 @@ const ToolDock = ({ activeTool, setActiveTool, canvasLocked, setCanvasLocked, on
       onPointerDown={handleSeparatorDrag}
       title="Drag to resize dock"
     >
-      <div className="w-px h-8 bg-white/10 group-hover/sep:bg-white/40 transition-colors rounded-full" />
+      <div className="w-px h-8 bg-[#2e2e2e] group-hover/sep:bg-slate-500 transition-colors rounded-full" />
     </div>
   );
 
   return (
     <div 
       ref={dockRef}
-      className="absolute bottom-8 left-1/2 z-50 flex items-end gap-4 p-3 px-6 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] bg-[#0f0f14]/60 backdrop-blur-2xl border border-white/5 group/dock"
+      className="absolute bottom-8 left-1/2 z-50 flex items-end gap-4 p-3 px-6 rounded-2xl border border-[#2e2e2e] bg-[#181818] group/dock font-sans"
       style={{
         transform: `translateX(-50%) scale(${dockScale})`,
         transformOrigin: 'bottom center',
-        // We use transition only when not dragging to keep live-dragging completely smooth
         transition: 'transform 0.1s ease-out, background-color 0.3s, border 0.3s'
       }}
     >
@@ -127,21 +124,21 @@ interface ToolButtonProps {
 }
 
 const ToolButton = ({ active, onClick, icon, title, ...rest }: ToolButtonProps) => (
-  <div className="relative group/btn h-12 flex items-center" data-tour={rest['data-tour']}>
+  <div className="relative group/btn h-12 flex items-center font-sans" data-tour={rest['data-tour']}>
     <button
       onClick={onClick}
-      className={`p-3 rounded-2xl transition-all duration-300 origin-bottom group-hover/btn:scale-[1.2] group-hover/btn:-translate-y-2 active:scale-95 ${
+      className={`p-3 rounded-xl transition-all duration-300 origin-bottom group-hover/btn:scale-[1.2] group-hover/btn:-translate-y-2 active:scale-95 border ${
         active 
-          ? 'bg-[#A259FF] text-white shadow-[0_0_20px_rgba(162,89,255,0.4)]' 
-          : 'text-slate-400 group-hover/btn:text-white group-hover/btn:bg-white/10'
+          ? 'bg-[#DEF767] text-[#181818] border-[#DEF767]' 
+          : 'text-slate-400 border-transparent group-hover/btn:text-white group-hover/btn:bg-[#2e2e2e] group-hover/btn:border-[#2e2e2e]'
       }`}
     >
       {icon}
     </button>
-    <div className="absolute -top-12 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-lg bg-black/80 backdrop-blur-md border border-white/10 text-[10px] font-bold text-white opacity-0 group-hover/btn:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+    <div className="absolute -top-12 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-lg bg-[#181818] border border-[#2e2e2e] text-[10px] font-bold text-white opacity-0 group-hover/btn:opacity-100 transition-opacity whitespace-nowrap pointer-events-none font-sans">
       {title}
     </div>
-    {active && <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[#A259FF]" />}
+    {active && <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[#DEF767]" />}
   </div>
 );
 

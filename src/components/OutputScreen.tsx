@@ -210,28 +210,22 @@ ${rawOutputs}
 
   return (
     <div
-      className="fixed inset-0 z-[200] flex items-center justify-center modal-overlay"
-      style={{ background: 'rgba(0,0,0,0.92)', backdropFilter: 'blur(16px)' }}
+      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-md pointer-events-auto"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-5xl h-[90vh] rounded-3xl overflow-hidden flex flex-col modal-content"
-        style={{
-          background: 'linear-gradient(180deg, #0c0c14 0%, #050508 100%)',
-          border: '1px solid rgba(162, 89, 255, 0.2)',
-          boxShadow: '0 32px 100px rgba(0,0,0,0.9), 0 0 80px rgba(162,89,255,0.1)',
-        }}
+        className="w-full max-w-5xl h-[90vh] rounded-[32px] overflow-hidden flex flex-col border border-white/10 bg-[#0a0a0f] shadow-[0_40px_100px_rgba(0,0,0,0.8)] relative"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-8 py-5 border-b border-white/[0.06] bg-black/40 shrink-0">
+        <div className="flex items-center justify-between px-8 py-5 border-b border-white/5 bg-black/20 shrink-0">
           <div className="flex items-center gap-4">
             <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-[#DEF767]/10 border border-[#DEF767]/20">
               <FileText size={18} className="text-[#DEF767]" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-white font-display">{phaseTitle}</h2>
-              <p className="text-[10px] text-slate-500 font-secondary mt-0.5 tracking-wide uppercase">
+              <h2 className="text-lg font-bold text-white font-display uppercase tracking-wide">{phaseTitle}</h2>
+              <p className="text-[10px] text-slate-500 font-mono mt-0.5 tracking-widest uppercase font-bold">
                 {totalResults} agent{totalResults !== 1 ? 's' : ''} completed • {projectPrompt?.substring(0, 50)}{projectPrompt?.length > 50 ? '...' : ''}
               </p>
             </div>
@@ -239,14 +233,14 @@ ${rawOutputs}
           <div className="flex items-center gap-3">
             <button
               onClick={handleCopyAll}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-slate-300 text-xs font-bold uppercase tracking-wider hover:bg-white/10 transition-colors"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-slate-300 text-xs font-bold uppercase tracking-wider hover:bg-white/10 transition-colors font-sans"
             >
               {copied ? <><CheckCircle2 size={14} className="text-[#DEF767]" /> Copied</> : <><Copy size={14} /> Copy All</>}
             </button>
             <button
               onClick={handleDownloadPDF}
               disabled={isDownloading}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#A259FF] to-[#46B1FF] text-white text-xs font-bold uppercase tracking-wider transition-opacity shadow-lg shadow-[#A259FF]/20 ${isDownloading ? 'opacity-50 cursor-wait' : 'hover:opacity-80'}`}
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#DEF767] text-black text-xs font-black uppercase tracking-wider transition-opacity hover:opacity-90 font-sans ${isDownloading ? 'opacity-50 cursor-wait' : ''}`}
             >
               <Download size={14} className={isDownloading ? "animate-bounce" : ""} /> 
               {isDownloading ? 'Generating...' : 'Download PDF'}
@@ -263,12 +257,12 @@ ${rawOutputs}
 
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto custom-scrollbar">
-          <div ref={contentRef} className="p-8 space-y-10" style={{ background: '#0a0a10', color: '#e2e8f0' }}>
+          <div ref={contentRef} className="p-8 space-y-10" style={{ background: '#0a0a0f', color: '#e2e8f0' }}>
             {/* Title Section for PDF */}
-            <div className="text-center pb-6 border-b border-white/[0.04]">
-              <h1 className="text-3xl font-black text-white font-display tracking-tight mb-2">Agentic Flow — {phaseTitle}</h1>
-              <p className="text-sm text-slate-400 font-secondary">{projectPrompt}</p>
-              <p className="text-[10px] text-slate-600 mt-2 font-mono">{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+            <div className="text-center pb-6 border-b border-white/5">
+              <h1 className="text-3xl font-black text-white font-display uppercase tracking-wider mb-2">Agentic Flow — {phaseTitle}</h1>
+              <p className="text-sm text-slate-400 font-sans">{projectPrompt}</p>
+              <p className="text-[10px] text-slate-600 mt-2 font-mono uppercase tracking-widest font-bold">{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
             </div>
 
             {/* Phase by Phase Results — filtered if phaseFilter is set */}

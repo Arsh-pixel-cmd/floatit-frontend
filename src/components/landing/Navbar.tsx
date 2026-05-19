@@ -1,45 +1,129 @@
-import React from 'react';
-import { Network, User, ChevronRight } from 'lucide-react';
+import React, { useState } from 'react';
+import { User, Menu, X, Plus } from 'lucide-react';
 
 interface NavbarProps {
   user: any;
   onNavigate: (target: string) => void;
   onInit: () => void;
+  currentView?: string;
 }
 
-export const Navbar = ({ user, onNavigate, onInit }: NavbarProps) => (
-  <nav className="fixed w-full top-0 z-50 bg-[#030303]/70 backdrop-blur-xl border-b border-white/[0.05]">
-    <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-      <div className="flex items-center gap-4">
-        <div className="flex items-center justify-center">
-          <img src="/logo.png" alt="AgenticFlow Logo" className="w-10 h-10 object-contain" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-100 cursor-pointer" onClick={() => onNavigate('landing')}>Agentic<span className="text-zinc-500 font-medium">Flow</span></h1>
-        </div>
-      </div>
-      
-      <div className="hidden md:flex items-center gap-8 text-sm font-medium text-zinc-400">
-        <button onClick={() => onNavigate('#features')} className="hover:text-zinc-100 transition-colors">Platform</button>
-        <button onClick={() => onNavigate('#builder')} className="hover:text-zinc-100 transition-colors">Architecture</button>
-        <button onClick={() => onNavigate('#pricing')} className="hover:text-zinc-100 transition-colors">Pricing</button>
-      </div>
+export const Navbar = ({ user, onNavigate, onInit, currentView = 'landing' }: NavbarProps) => {
+  const [isAccordionOpen, setIsAccordionOpen] = useState(false);
 
-      <div className="flex items-center gap-6">
-        <button onClick={() => onNavigate('documentation')} className="hidden md:block text-sm font-medium text-zinc-400 hover:text-zinc-100 transition-colors">
-          Documentation
-        </button>
-        {user ? (
-          <button onClick={() => onNavigate('profile')} aria-label="User Profile" title="User Profile" className="w-10 h-10 rounded-full bg-zinc-800 border border-white/10 flex items-center justify-center hover:bg-zinc-700 transition-colors shadow-lg group">
-            <User className="w-5 h-5 text-zinc-300 group-hover:text-white transition-colors" />
+  const navItems = [
+    { label: 'Platform', onClick: onInit, isActive: false },
+    { label: 'Architecture', onClick: () => onNavigate('documentation'), isActive: currentView === 'documentation' },
+    { label: 'Docs', onClick: () => onNavigate('documentation'), isActive: currentView === 'documentation' },
+  ];
+
+  const handleItemClick = (target: string) => {
+    onNavigate(target);
+    setIsAccordionOpen(false);
+  };
+
+  return (
+    <>
+      <nav className="fixed top-0 left-0 w-full h-[90px] bg-[#181818] border-b border-[#2e2e2e] z-50 flex items-center justify-between font-onest px-8 select-none">
+
+        {/* Far Left: Brand Logo & Name */}
+        <div
+          onClick={() => handleItemClick('landing')}
+          className="flex items-center cursor-pointer py-2 px-4 border border-transparent hover:border-[#DEF767] transition-colors duration-100"
+        >
+          <span className="text-xl font-onest font-bold tracking-[0.04em] text-white uppercase">
+            Agentic<span className="text-[#929292]">Flow</span>
+          </span>
+        </div>
+
+        {/* Centered: Navigation Links (Desktop) */}
+        {/* <div className="hidden md:flex items-center gap-8">
+          {navItems.map((item) => {
+            return (
+              <button
+                key={item.label}
+                onClick={item.onClick}
+                className={`py-2 px-4 text-xs uppercase tracking-[0.04em] font-onest font-medium transition-colors duration-100 border border-transparent hover:border-[#DEF767]
+                  ${item.isActive
+                    ? 'text-[#ff6a6a]'
+                    : 'text-[#929292] hover:text-white'
+                  }
+                `}
+              >
+                {item.label}
+              </button>
+            );
+          })}
+        </div> */}
+
+        {/* Far Right: Auth / Action / Mobile Toggle */}
+        <div className="flex items-center gap-4">
+          {user ? (
+            <button
+              onClick={() => handleItemClick('profile')}
+              className="w-10 h-10 border border-[#2e2e2e] hover:border-[#ff6a6a] hover:text-[#ff6a6a] flex items-center justify-center text-[#929292] transition-colors duration-100"
+              aria-label="User Profile"
+            >
+              <User className="w-4 h-4" />
+            </button>
+          ) : (
+            <button
+              onClick={onInit}
+              className="hidden sm:flex items-center justify-center px-6 h-10 bg-[#181818] border border-[#DEF767] text-[#DEF767] hover:bg-[#DEF767] hover:text-[#171717] font-onest text-xs uppercase tracking-[0.04em] transition-colors duration-100"
+            >
+              Initialize
+            </button>
+          )}
+
+          {/* Hamburger Accordion Toggle (Mobile) */}
+          <button
+            onClick={() => setIsAccordionOpen(!isAccordionOpen)}
+            className="md:hidden w-10 h-10 border border-[#2e2e2e] hover:border-[#ff6a6a] hover:text-[#ff6a6a] flex items-center justify-center text-[#929292] transition-colors duration-100"
+            aria-label="Toggle Menu"
+          >
+            {isAccordionOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
           </button>
-        ) : (
-          <button onClick={onInit} className="group flex items-center gap-2 bg-zinc-100 hover:bg-white text-zinc-950 rounded-full px-6 py-2.5 transition-all duration-300 shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:shadow-[0_0_25px_rgba(255,255,255,0.2)]">
-            <span className="text-sm font-bold tracking-wide">Initialize Engine</span>
-            <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-zinc-900 transition-colors" />
-          </button>
-        )}
-      </div>
-    </div>
-  </nav>
-);
+        </div>
+      </nav>
+
+      {/* Accordion Menu (Mobile) */}
+      {isAccordionOpen && (
+        <div className="fixed top-[90px] left-0 w-full h-[calc(100vh-90px)] bg-[#181818] border-b border-[#2e2e2e] z-40 flex flex-col justify-start select-none font-onest overflow-y-auto">
+          <div className="flex flex-col w-full">
+            {navItems.map((item) => {
+              return (
+                <button
+                  key={item.label}
+                  onClick={() => {
+                    item.onClick();
+                    setIsAccordionOpen(false);
+                  }}
+                  className={`w-full h-[90px] px-8 text-left text-base uppercase tracking-[0.04em] border-b border-[#2e2e2e] font-onest font-medium transition-colors duration-100 flex items-center justify-between
+                    ${item.isActive
+                      ? 'bg-[#ff6a6a] text-[#171717]'
+                      : 'text-[#929292] hover:bg-[#ff6a6a] hover:text-[#171717]'
+                    }
+                  `}
+                >
+                  <span>{item.label}</span>
+                  <Plus className={`w-5 h-5 transition-transform duration-200 ${item.isActive ? 'rotate-45' : ''}`} />
+                </button>
+              );
+            })}
+            {!user && (
+              <button
+                onClick={() => {
+                  handleItemClick('register');
+                }}
+                className="w-full h-[90px] px-8 text-left text-base uppercase tracking-[0.04em] border-b border-[#2e2e2e] font-onest font-medium text-[#DEF767] hover:bg-[#DEF767] hover:text-[#171717] transition-colors duration-100 flex items-center justify-between"
+              >
+                <span>Initialize Engine</span>
+                <Plus className="w-5 h-5" />
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </>
+  );
+};

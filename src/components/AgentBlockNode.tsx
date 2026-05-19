@@ -1,15 +1,19 @@
-
 import { Settings, Play, Clock } from 'lucide-react';
-import { useBuilderStore } from '../lib/builderStore';
+import { useAgentBlockNode } from './useAgentBlockNode';
+
+interface BlockPosition {
+  x: number;
+  y: number;
+}
 
 interface BlockData {
   id: string;
   name?: string;
   description?: string;
-  position: { x: number; y: number };
+  position: BlockPosition;
   size?: { width?: number; height?: number };
-  triggerConfig: { type: string;[key: string]: any };
-  waitConfig: { type: string;[key: string]: any };
+  triggerConfig: { type: string; [key: string]: any };
+  waitConfig: { type: string; [key: string]: any };
   [key: string]: any;
 }
 
@@ -19,93 +23,79 @@ interface AgentBlockNodeProps {
 }
 
 const AgentBlockNode = ({ block, isSelected }: AgentBlockNodeProps) => {
-  const { setSelectedElementId, nodeStatus } = useBuilderStore();
-  const status = nodeStatus[block.id] || 'idle';
-  const blockW = block.size?.width || 260;
-  const blockH = block.size?.height || 150;
-
-  let borderClasses = 'border-white/[0.04] bg-[#111118] hover:border-white/20 shadow-xl z-10';
-  let pulseClass = '';
-
-  if (isSelected) {
-    borderClasses = 'border-[#A259FF] bg-[#181824] shadow-[0_0_30px_rgba(162,89,255,0.4)] z-50';
-  } else if (status === 'running') {
-    borderClasses = 'border-[#F6E27F] bg-[#181824] shadow-[0_0_30px_rgba(246,226,127,0.4)] z-40';
-    pulseClass = 'animate-pulse';
-  } else if (status === 'success') {
-    borderClasses = 'border-[#DEF767] bg-[#111118] shadow-[0_0_20px_rgba(222,247,103,0.2)] z-30';
-  } else if (status === 'error') {
-    borderClasses = 'border-[#ff4b4b] bg-[#111118] shadow-[0_0_20px_rgba(255,75,75,0.2)] z-30';
-  }
+  const {
+    blockW,
+    blockH,
+    borderClasses,
+    pulseClass,
+    handleNodeClick,
+  } = useAgentBlockNode({ block, isSelected });
 
   return (
     // eslint-disable-next-line
     <div
-      onClick={(e) => {
-        e.stopPropagation();
-        setSelectedElementId(block.id);
-      }}
-      className={`absolute border rounded-3xl p-5 transition-all n8n-node overflow-visible group cursor-pointer ${borderClasses} ${pulseClass}`}
+      onClick={handleNodeClick}
+      className={`absolute border rounded-3xl p-5 transition-all duration-300 ease-out n8n-node overflow-visible group cursor-pointer font-sans flex flex-col ${borderClasses} ${pulseClass}`}
       style={{
         left: Math.round(block.position.x),
         top: Math.round(block.position.y),
         width: Math.round(blockW),
-        minHeight: Math.round(blockH),
+        height: Math.round(blockH),
       }}
     >
       {/* Port - Input */}
       <div
-        className="absolute w-4 h-4 bg-[#111118] border-2 border-[#A259FF] rounded-full left-1/2 -translate-x-1/2 -top-2 z-20 hover:scale-[2] hover:bg-[#A259FF] transition-all cursor-crosshair connection-port"
+        className="absolute w-3.5 h-3.5 bg-[#181818] border border-[#5b5b5b] hover:border-[#DEF767] hover:bg-[#DEF767] rounded-full left-1/2 -translate-x-1/2 -top-1.5 z-20 transition-colors duration-150 cursor-crosshair connection-port"
         data-port-id={block.id}
         data-port-position="top"
       />
 
       {/* Header */}
-      <div className="flex items-start justify-between mb-4 pb-3">
+      <div className="flex items-start justify-between mb-3 pb-3 border-b border-[#3e3e3e] shrink-0 w-full">
         <div className="flex items-center gap-3">
-          <div className="p-1.5 rounded-lg bg-gradient-to-br from-[#A259FF] to-[#6c39b3] text-white shadow-lg">
+          <div className="p-1.5 rounded-lg bg-[#1a1a1a] border border-[#3e3e3e] text-[#DEF767]">
             <Settings size={14} />
           </div>
-          <h3 className="text-[14px] font-bold text-white tracking-wide truncate max-w-[150px]">
+          <h3 className="text-[14px] font-bold text-white tracking-wide truncate max-w-[150px] font-sans">
             {block.name || 'Agent Block'}
           </h3>
         </div>
       </div>
 
-      {/* Body */}
-      <p className="text-[11px] text-slate-400 line-clamp-3 min-h-[48px] font-secondary mb-4 leading-relaxed">
+      {/* Body Description */}
+      <p className="text-[11px] text-zinc-300 line-clamp-3 font-sans mb-3 leading-relaxed flex-grow overflow-y-auto custom-scrollbar-neon pr-1 shrink">
         {block.description || 'No description provided.'}
       </p>
 
       {/* Footer Details */}
-      <div className="flex items-center justify-between mt-auto pt-4 border-t border-white/[0.04] text-[10px] text-slate-300 font-bold uppercase tracking-widest gap-2">
-        <div className="flex items-center gap-1.5 bg-white/5 hover:bg-white/10 transition-colors px-3 py-1.5 rounded-md min-w-max whitespace-nowrap">
-          <Play size={10} className="text-[#46B1FF]" /> {String(block.triggerConfig.type || '').toUpperCase()}
+      <div className="flex items-center justify-between mt-auto pt-3 border-t border-[#3e3e3e] text-[10px] text-zinc-400 font-bold uppercase tracking-widest gap-2 font-sans shrink-0 w-full">
+        <div className="flex items-center gap-1.5 bg-[#1a1a1a] border border-[#3e3e3e] px-2.5 py-1 rounded-md min-w-max whitespace-nowrap">
+          <Play size={10} className="text-zinc-400" /> {String(block.triggerConfig.type || '').toUpperCase()}
         </div>
         {(block.waitConfig.type !== 'none') && (
-          <div className="flex items-center gap-1.5 bg-white/5 hover:bg-white/10 transition-colors px-3 py-1.5 rounded-md min-w-max whitespace-nowrap">
-            <Clock size={10} className="text-[#DEF767]" /> {String(block.waitConfig.type || '').toUpperCase()}
+          <div className="flex items-center gap-1.5 bg-[#1a1a1a] border border-[#3e3e3e] px-2.5 py-1 rounded-md min-w-max whitespace-nowrap">
+            <Clock size={10} className="text-zinc-400" /> {String(block.waitConfig.type || '').toUpperCase()}
           </div>
         )}
       </div>
 
       {/* Port - Output (Bottom) */}
       <div
-        className="absolute w-4 h-4 bg-[#111118] border-2 border-[#A259FF] rounded-full left-1/2 -translate-x-1/2 -bottom-2 z-20 hover:scale-150 hover:bg-[#A259FF] transition-all cursor-crosshair connection-port"
+        className="absolute w-3.5 h-3.5 bg-[#181818] border border-[#5b5b5b] hover:border-[#DEF767] hover:bg-[#DEF767] rounded-full left-1/2 -translate-x-1/2 -bottom-1.5 z-20 transition-colors duration-150 cursor-crosshair connection-port"
         data-port-id={block.id}
         data-port-position="bottom"
       />
 
       {/* Port - Left */}
       <div
-        className="absolute w-4 h-4 bg-[#111118] border-2 border-[#A259FF] rounded-full -left-2 top-1/2 -translate-y-1/2 z-20 hover:scale-150 hover:bg-[#A259FF] transition-all cursor-crosshair connection-port"
+        className="absolute w-3.5 h-3.5 bg-[#181818] border border-[#5b5b5b] hover:border-[#DEF767] hover:bg-[#DEF767] rounded-full -left-1.5 top-1/2 -translate-y-1/2 z-20 transition-colors duration-150 cursor-crosshair connection-port"
         data-port-id={block.id}
         data-port-position="left"
       />
 
       {/* Port - Right */}
       <div
-        className="absolute w-4 h-4 bg-[#111118] border-2 border-[#A259FF] rounded-full -right-2 top-1/2 -translate-y-1/2 z-20 hover:scale-150 hover:bg-[#A259FF] transition-all cursor-crosshair connection-port"
+        className="absolute w-3.5 h-3.5 bg-[#181818] border border-[#5b5b5b] hover:border-[#DEF767] hover:bg-[#DEF767] rounded-full -right-1.5 top-1/2 -translate-y-1/2 z-20 transition-colors duration-150 cursor-crosshair connection-port"
         data-port-id={block.id}
         data-port-position="right"
       />
@@ -113,12 +103,10 @@ const AgentBlockNode = ({ block, isSelected }: AgentBlockNodeProps) => {
       {/* Resize Handle */}
       {/* eslint-disable-next-line */}
       <div
-        className="resize-handle absolute bottom-0 right-0 w-5 h-5 cursor-nwse-resize opacity-0 group-hover:opacity-100 transition-opacity z-30"
-        style={{
-          background: 'linear-gradient(135deg, transparent 50%, rgba(162,89,255,0.5) 50%)',
-          borderRadius: '0 0 12px 0',
-        }}
-      />
+        className="resize-handle absolute bottom-0 right-0 w-6 h-6 cursor-nwse-resize opacity-0 group-hover:opacity-100 transition-opacity z-30 flex items-end justify-end p-1.5"
+      >
+        <div className="w-2.5 h-2.5 border-r-2 border-b-2 border-[#5b5b5b] group-hover:border-[#DEF767] transition-colors pointer-events-none" />
+      </div>
     </div>
   );
 };
