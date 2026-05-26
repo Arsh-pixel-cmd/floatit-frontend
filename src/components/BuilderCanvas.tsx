@@ -4,6 +4,7 @@ import AgentBlockNode from './AgentBlockNode';
 import WebhookBlockNode from './WebhookBlockNode';
 import { Trash2 } from 'lucide-react';
 import { computeEdgePath } from '../lib/edgeRouter';
+import type { ToolType } from '../types/engine';
 
 interface Coords { x: number; y: number; }
 
@@ -31,8 +32,8 @@ interface ResizingElement {
 }
 
 interface BuilderCanvasProps {
-  activeTool: string;
-  setActiveTool: (tool: string) => void;
+  activeTool: ToolType;
+  setActiveTool: (tool: ToolType) => void;
   getCanvasCoords: (clientX: number, clientY: number) => Coords;
 }
 

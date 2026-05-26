@@ -53,7 +53,14 @@ export async function getProjectKeyStatus(sequenceId: string) {
 /**
  * High-level pre-check for key availability.
  */
-export async function checkKeyAvailability(sequenceId: string) {
+interface KeyCheckResult {
+  any: boolean;
+  project: { hasKey: boolean; lastFour?: string };
+  global: { any: boolean; lastFour?: string };
+  activeSource: 'none' | 'project' | 'global';
+}
+
+export async function checkKeyAvailability(sequenceId: string): Promise<KeyCheckResult> {
   const [projectStatus, globalStatus] = await Promise.all([
     getProjectKeyStatus(sequenceId),
     getKeyStatus()

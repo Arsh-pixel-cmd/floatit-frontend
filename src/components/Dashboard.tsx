@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Plus, Star, LayoutGrid, Clock, Folder, Trash2, User, X, GripVertical } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { ROUTES } from '../lib/routes';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../lib/auth';
 
@@ -99,7 +100,7 @@ export default function Dashboard() {
       } catch {
         // ignore
       }
-      navigate('/canvas');
+      navigate(ROUTES.canvas);
     }
   };
 
@@ -211,7 +212,7 @@ export default function Dashboard() {
         <div className="p-8 mb-4 border-b border-[#2e2e2e]">
           <button
             type="button"
-            onClick={() => navigate('/')}
+            onClick={() => navigate(ROUTES.landing)}
             className="flex items-center gap-4 text-left focus:outline-none"
           >
             <div className="w-20 h-20  flex items-center justify-center shrink-0 rounded-2xl shadow-inner">
@@ -364,7 +365,7 @@ export default function Dashboard() {
 
           <div className="flex items-center gap-4 shrink-0 justify-end">
             <button
-              onClick={() => navigate('/profile')}
+              onClick={() => navigate(ROUTES.profile)}
               className="w-12 h-12 flex items-center justify-center rounded-2xl border border-[#2e2e2e] text-zinc-400 hover:text-[#EB9A21] hover:border-[#EB9A21] bg-[#1e1e1e] shadow-md hover:-translate-y-0.5 transition-all"
               aria-label="User Profile"
               title="User Profile"
@@ -400,7 +401,7 @@ export default function Dashboard() {
                     transition={{ duration: 0.2, delay: i * 0.02 }}
                     onClick={() => {
                       localStorage.setItem('active_sequence_id', seq.id);
-                      navigate('/canvas');
+                      navigate(ROUTES.canvas);
                     }}
                     className="flex items-center gap-4 px-6 py-4 bg-[#242424] border border-[#3e3e3e] hover:border-[#EB9A21] shadow-[0_4px_15px_rgba(0,0,0,0.3)] hover:shadow-[0_12px_30px_rgba(0,0,0,0.6)] hover:-translate-y-1 cursor-pointer transition-all duration-200 group rounded-2xl"
                   >
@@ -611,7 +612,7 @@ function SessionCard({ sequence, index, onDelete, onToggleStar, onDragStart, isD
       onClick={() => {
         if (!isLongPressed) {
           localStorage.setItem('active_sequence_id', sequence.id);
-          navigate('/canvas');
+          navigate(ROUTES.canvas);
         }
       }}
       initial={{ opacity: 0, y: 15 }}

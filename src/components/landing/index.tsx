@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Crosshair, Compass, Plus } from 'lucide-react';
+import { ROUTES } from '../../lib/routes';
 import { Navbar } from './Navbar';
 import { HeroPrompt } from './HeroPrompt';
 import { LivePipelinePreview } from './LivePipelinePreview';
@@ -42,14 +43,14 @@ export default function LandingPage() {
 
   const handleInit = () => {
     if (user) {
-      navigate('/dashboard');
+      navigate(ROUTES.dashboard);
     } else {
       setView('register');
     }
   };
 
   const handleRegister = () => {
-    navigate('/dashboard'); // Go to dashboard directly after register
+    navigate(ROUTES.dashboard); // Go to dashboard directly after register
   };
 
   const handleLogout = async () => {

@@ -1,94 +1,119 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { Sparkles, AlertTriangle, Play, RefreshCw, Trash2, Paperclip, X, FileText, Activity, Folder } from 'lucide-react';
+import { X } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { motion, AnimatePresence } from 'framer-motion';
+import { ToastContainer } from './components/ToastContainer';
+import html2canvas from 'html2canvas';
 
 // Core Schema & Logic
 import { WORKFLOW_PHASES, EDGES, TOOL_REGISTRY } from './data/schema';
 import { validateGraph } from './lib/graphValidator';
 import { computeLayout } from './lib/layoutEngine';
 import { computeEdgePath, bundleEdges } from './lib/edgeRouter';
-import { useWorkflowStore, selectActiveNodeId } from './lib/store';
-import { callLLM, checkKeyAvailability, getProjectKeyStatus, getKeyStatus } from './lib/llm';
+import { useWorkflowStore, selectActiveNodeId, type WorkflowStoreState } from './lib/store';
+import { callLLM, checkKeyAvailability } from './lib/llm';
 import { supabase } from './lib/supabaseClient';
 import { useToastStore } from './lib/toastStore';
-import { ToastContainer } from './components/ToastContainer';
-import { Key, ShieldCheck, Globe, Info as InfoIcon, Eye, EyeOff } from 'lucide-react';
-import html2canvas from 'html2canvas';
+
+// Hooks
+import { useModalState, usePhaseOverlay, usePromptInput, useCanvasControls } from './hooks/engineHooks';
 
 // Components
 import FlowHeader from './components/FlowHeader';
-
+import PhaseTransitionOverlay from './components/Engine/PhaseTransitionOverlay';
+import PromptBar from './components/Engine/PromptBar';
+import EngineStatusView from './components/Engine/EngineStatusView';
+import EngineModalStack from './components/Engine/EngineModalStack';
+import PipelineSidebar from './components/Engine/PipelineSidebar';
 import FlowControls from './components/FlowControls';
 import NodeContainer from './components/NodeContainer';
 import PhaseSummaryBox from './components/PhaseSummaryBox';
 import ToolDock from './components/ToolDock';
-import OutputScreen from './components/OutputScreen';
 import BuilderCanvas from './components/BuilderCanvas';
 import BuilderSidebar from './components/BuilderSidebar';
 import TemplatesView from './components/TemplatesView';
-import { useBuilderStore } from './lib/builderStore';
+import { useBuilderStore, type BuilderStore } from './lib/builderStore';
 
 const Engine = () => {
   const [initError, setInitError] = useState<string | null>(null);
 
   // Zustand State
-  const graphStatus = useWorkflowStore((state: any) => state.graphStatus);
-  const setGraphStatus = useWorkflowStore((state: any) => state.setGraphStatus);
+  const graphStatus = useWorkflowStore((state: WorkflowStoreState) => state.graphStatus);
+  const setGraphStatus = useWorkflowStore((state: WorkflowStoreState) => state.setGraphStatus);
   const selectedNodeId = useWorkflowStore(selectActiveNodeId);
-  const selectNode = useWorkflowStore((state: any) => state.selectNode);
-  const nodeStates = useWorkflowStore((state: any) => state.nodeStates);
+  const selectNode = useWorkflowStore((state: WorkflowStoreState) => state.selectNode);
+  const nodeStates = useWorkflowStore((state: WorkflowStoreState) => state.nodeStates);
+  const nodeResults = useWorkflowStore((state: WorkflowStoreState) => state.nodeResults);
+  const currentPhaseIndex = useWorkflowStore((state: WorkflowStoreState) => state.currentPhaseIndex);
 
-  const viewMode = useBuilderStore((state: any) => state.viewMode);
-  const nodeResults = useWorkflowStore((state: any) => state.nodeResults);
-  const projectPrompt = useWorkflowStore((state: any) => state.projectPrompt);
-  const setProjectPrompt = useWorkflowStore((state: any) => state.setProjectPrompt);
-  const currentPhaseIndex = useWorkflowStore((state: any) => state.currentPhaseIndex);
-  const projectAttachment = useWorkflowStore((state: any) => state.projectAttachment);
-  const setProjectAttachment = useWorkflowStore((state: any) => state.setProjectAttachment);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const viewMode = useBuilderStore((state: BuilderStore) => state.viewMode);
+  const deployedTemplateId = useBuilderStore((state: BuilderStore) => state.deployedTemplateId);
+  const templates = useBuilderStore((state: BuilderStore) => state.templates);
 
-  const [phaseOverlay, setPhaseOverlay] = useState<any>(null);
-  const [showOutputScreen, setShowOutputScreen] = useState(false);
+  const {
+    projectPrompt,
+    setProjectPrompt,
+    projectAttachment,
+    setProjectAttachment,
+    fileInputRef,
+  } = usePromptInput();
 
+  const {
+    showKeyModal,
+    setShowKeyModal,
+    keyModalType,
+    setKeyModalType,
+    keyInfo,
+    setKeyInfo,
+    tokenLimitModal,
+    setTokenLimitModal,
+    phaseOutputModal,
+    setPhaseOutputModal,
+    showOutputScreen,
+    setShowOutputScreen,
+  } = useModalState();
 
-  // Canvas Viewport logic
-  const [camera, setCamera] = useState({ x: 100, y: 60, zoom: 0.55 });
-  const [isPanning, setIsPanning] = useState(false);
-  const canvasRef = useRef<HTMLDivElement>(null);
-  const lastMousePos = useRef({ x: 0, y: 0 });
+  const {
+    phaseOverlay,
+    setPhaseOverlay,
+    completedPhases,
+    setCompletedPhases,
+    runningPhaseId,
+    setRunningPhaseId,
+  } = usePhaseOverlay();
 
-  // Toolkit State
-  const [activeTool, setActiveTool] = useState('cursor');
-  const [stickyNotes, setStickyNotes] = useState<any[]>([]);
-  const [strokes, setStrokes] = useState<any[]>([]);
-  const [currentStroke, setCurrentStroke] = useState<any>(null);
-  const currentStrokeRef = useRef<any[]>([]);
-  const [isDrawing, setIsDrawing] = useState(false);
-  const isDrawingRef = useRef(false);
-  const [canvasLocked, setCanvasLocked] = useState(false);
-  const [textLabels, setTextLabels] = useState<any[]>([]);
-  const [draggingAppElement, setDraggingAppElement] = useState<any>(null);
-  const [resizingAppElement, setResizingAppElement] = useState<any>(null);
+  const {
+    canvasRef,
+    camera,
+    setCamera,
+    isPanning,
+    activeTool,
+    setActiveTool,
+    stickyNotes,
+    setStickyNotes,
+    strokes,
+    setStrokes,
+    currentStroke,
+    setCurrentStroke,
+    textLabels,
+    setTextLabels,
+    canvasLocked,
+    setCanvasLocked,
+    draggingAppElement,
+    setDraggingAppElement,
+    resizingAppElement,
+    setResizingAppElement,
+    editingStickyId,
+    setEditingStickyId,
+    editingLabelId,
+    setEditingLabelId,
+    preFocusCamera,
+    getCanvasCoords,
+    handleMouseDown,
+    handleMouseMove,
+    handleMouseUp,
+  } = useCanvasControls();
 
-  // Zoom-edit state for sticky notes & text labels
-  const [editingStickyId, setEditingStickyId] = useState<number | null>(null);
-  const [editingLabelId, setEditingLabelId] = useState<number | null>(null);
-  const preFocusCamera = useRef<{ x: number; y: number; zoom: number } | null>(null);
-
-  // Key Management State
-  const [showKeyModal, setShowKeyModal] = useState(false);
-  const [keyModalType, setKeyModalType] = useState<'NO_KEY' | 'INVALID_KEY' | 'RATE_LIMIT'>('NO_KEY');
-  const [keyInfo, setKeyInfo] = useState<any>({ activeSource: 'none', project: { hasKey: false }, global: { any: false } });
   const addToast = useToastStore((state) => state.addToast);
-
-  // Token Limit Modal State
-  const [tokenLimitModal, setTokenLimitModal] = useState<{ show: boolean; model: string; provider: string; message: string } | null>(null);
-
-  // Phase-gated execution state
-  const [completedPhases, setCompletedPhases] = useState<string[]>([]);
-  const [runningPhaseId, setRunningPhaseId] = useState<string | null>(null);
-  const [phaseOutputModal, setPhaseOutputModal] = useState<string | null>(null); // phaseId to download
 
   // Boot validation
   useEffect(() => {
@@ -169,36 +194,7 @@ const Engine = () => {
     };
     loadCanvasData();
 
-    // Listen for key errors
-    const handleKeyError = (e: any) => {
-      const { type, message } = e.detail;
-      if (type === 'RATE_LIMIT') {
-        addToast('warning', 'Rate limited. Please wait or switch keys.');
-      } else {
-        setKeyModalType(type);
-        setShowKeyModal(true);
-      }
-    };
-
-    // Listen for token / context-limit errors
-    const handleTokenLimit = (e: any) => {
-      const { model, provider, message } = e.detail;
-      setTokenLimitModal({ show: true, model, provider, message });
-    };
-
-    window.addEventListener('agentic:key-error', handleKeyError);
-    window.addEventListener('agentic:token-limit', handleTokenLimit);
-
-    // Initial key check
-    const seqId = localStorage.getItem('active_sequence_id');
-    if (seqId) {
-      checkKeyAvailability(seqId).then(setKeyInfo);
-    }
-
-    return () => {
-      window.removeEventListener('agentic:key-error', handleKeyError);
-      window.removeEventListener('agentic:token-limit', handleTokenLimit);
-    };
+    return () => {};
   }, [setGraphStatus, addToast]);
 
   // --- AUTO-SAVE BACKGROUND ENGINE ---
@@ -259,9 +255,6 @@ const Engine = () => {
     return () => clearInterval(interval);
   }, []);
 
-
-  const deployedTemplateId = useBuilderStore((state: any) => state.deployedTemplateId);
-  const templates = useBuilderStore((state: any) => state.templates);
 
   // Compute Layout 
   const layout = useMemo(() => {
@@ -378,148 +371,6 @@ const Engine = () => {
       };
     }).filter(Boolean);
   }, [deployedTemplateId, viewMode, templates, layout]);
-
-  // Canvas Interactions
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const onWheel = (e: any) => {
-      if (canvasLocked) { e.preventDefault(); return; }
-      if (e.ctrlKey || e.metaKey) {
-        e.preventDefault();
-      }
-
-      requestAnimationFrame(() => {
-        if (e.ctrlKey || e.metaKey) {
-          setCamera((prev) => {
-            // Exponential zoom scaling for smooth, natural feeling zoom
-            const zoomMultiplier = Math.exp(-e.deltaY * 0.005);
-            // Expanded zoom bounds for more freedom
-            const newZoom = Math.min(Math.max(prev.zoom * zoomMultiplier, 0.05), 4);
-            const zoomRatio = newZoom / prev.zoom;
-
-            const rect = canvas.getBoundingClientRect();
-            const mouseX = e.clientX - rect.left;
-            const mouseY = e.clientY - rect.top;
-
-            return {
-              zoom: newZoom,
-              x: mouseX - (mouseX - prev.x) * zoomRatio,
-              y: mouseY - (mouseY - prev.y) * zoomRatio,
-            };
-          });
-        } else {
-          setCamera((prev: any) => ({
-            ...prev,
-            // Accelerated panning for smoother surfing
-            x: prev.x - e.deltaX * 1.5,
-            y: prev.y - e.deltaY * 1.5,
-          }));
-        }
-      });
-    };
-
-    canvas.addEventListener('wheel', onWheel, { passive: false });
-    return () => canvas.removeEventListener('wheel', onWheel);
-  }, [canvasLocked]);
-
-  const getCanvasCoords = useCallback((clientX: any, clientY: any) => {
-    return {
-      x: (clientX - camera.x) / camera.zoom,
-      y: (clientY - camera.y) / camera.zoom
-    };
-  }, [camera]);
-
-  const handleMouseDown = useCallback((e: any) => {
-    if (canvasLocked) return;
-    if (e.target.closest('.n8n-node') || e.target.closest('.sticky-note')) return;
-
-    if (activeTool === 'cursor') {
-      if (e.button === 1 || (e.button === 0 && e.altKey) || e.target.id === 'canvas-bg') {
-        setIsPanning(true);
-        lastMousePos.current = { x: e.clientX, y: e.clientY };
-      }
-    } else if (activeTool === 'sticky') {
-      const coords = getCanvasCoords(e.clientX, e.clientY);
-      const newId = Date.now();
-      setStickyNotes((prev: any) => [...prev, { id: newId, x: coords.x - 120, y: coords.y - 90, text: '', color: '#A259FF', width: 240, height: 180 }]);
-      setActiveTool('cursor');
-    } else if (activeTool === 'text') {
-      const coords = getCanvasCoords(e.clientX, e.clientY);
-      setTextLabels(prev => [...prev, { id: Date.now(), x: coords.x, y: coords.y, text: '' }]);
-      setActiveTool('cursor');
-    } else if (activeTool === 'highlighter') {
-      isDrawingRef.current = true;
-      setIsDrawing(true);
-      const coords = getCanvasCoords(e.clientX, e.clientY);
-      currentStrokeRef.current = [coords];
-      setCurrentStroke([coords]);
-    }
-  }, [activeTool, canvasLocked, getCanvasCoords]);
-
-  const handleMouseMove = useCallback(
-    (e: any) => {
-      if (canvasRef.current) {
-        const rect = canvasRef.current.getBoundingClientRect();
-        canvasRef.current.style.setProperty('--mouse-x', `${e.clientX - rect.left}px`);
-        canvasRef.current.style.setProperty('--mouse-y', `${e.clientY - rect.top}px`);
-      }
-
-      if (draggingAppElement) {
-        const coords = getCanvasCoords(e.clientX, e.clientY);
-        const dx = coords.x - draggingAppElement.startMouseX;
-        const dy = coords.y - draggingAppElement.startMouseY;
-        if (draggingAppElement.type === 'sticky') {
-          setStickyNotes((prev: any) => prev.map((n: any) => n.id === draggingAppElement.id ? { ...n, x: draggingAppElement.startX + dx, y: draggingAppElement.startY + dy } : n));
-        } else if (draggingAppElement.type === 'label') {
-          setTextLabels((prev: any) => prev.map((l: any) => l.id === draggingAppElement.id ? { ...l, x: draggingAppElement.startX + dx, y: draggingAppElement.startY + dy } : l));
-        }
-      }
-
-      if (resizingAppElement) {
-        const coords = getCanvasCoords(e.clientX, e.clientY);
-        const newWidth = Math.max(120, coords.x - resizingAppElement.elemX);
-        const newHeight = Math.max(120, coords.y - resizingAppElement.elemY);
-        if (resizingAppElement.type === 'sticky') {
-          setStickyNotes((prev: any) => prev.map((n: any) => n.id === resizingAppElement.id ? { ...n, width: newWidth, height: newHeight } : n));
-        }
-      }
-
-      if (isPanning) {
-        requestAnimationFrame(() => {
-          const dx = e.clientX - lastMousePos.current.x;
-          const dy = e.clientY - lastMousePos.current.y;
-          // Apply a smooth 1.5x speed boost to manual panning so it doesn't feel heavy
-          setCamera((prev: any) => ({ ...prev, x: prev.x + dx * 1.5, y: prev.y + dy * 1.5 }));
-          lastMousePos.current = { x: e.clientX, y: e.clientY };
-        });
-      } else if (isDrawingRef.current && activeTool === 'highlighter') {
-        const coords = getCanvasCoords(e.clientX, e.clientY);
-        currentStrokeRef.current.push(coords);
-        // Throttled state update for rendering
-        if (currentStrokeRef.current.length % 2 === 0) {
-          setCurrentStroke([...currentStrokeRef.current]);
-        }
-      }
-    },
-    [isPanning, activeTool, getCanvasCoords, draggingAppElement, resizingAppElement]
-  );
-
-  const handleMouseUp = useCallback(() => {
-    if (draggingAppElement) setDraggingAppElement(null);
-    if (resizingAppElement) setResizingAppElement(null);
-    if (isPanning) setIsPanning(false);
-    if (isDrawingRef.current) {
-      isDrawingRef.current = false;
-      setIsDrawing(false);
-      if (currentStrokeRef.current.length > 1) {
-        setStrokes((prev: any) => [...prev, { id: Date.now(), points: [...currentStrokeRef.current] }]);
-      }
-      currentStrokeRef.current = [];
-      setCurrentStroke(null);
-    }
-  }, [isPanning, draggingAppElement, resizingAppElement]);
 
   const runFullPipeline = useCallback(async () => {
     if (!layout || graphStatus === 'running') return;
@@ -936,373 +787,39 @@ const Engine = () => {
     setShowOutputScreen(false);
   };
 
-  const renderPipelineSidebarContent = () => {
-    if (!selectedNodeId) return null;
-
-    // Node with AI results
-    if (nodeResults && nodeResults[selectedNodeId]?.ui) {
-      const safeHtml = `
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <meta charset="utf-8">
-            <style>
-              body { margin: 0; padding: 0; background: transparent; color-scheme: dark; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-              ::-webkit-scrollbar { width: 6px; height: 6px; }
-              ::-webkit-scrollbar-track { background: transparent; }
-              ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
-              ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
-            </style>
-          </head>
-          <body>
-            ${nodeResults[selectedNodeId].ui}
-          </body>
-        </html>
-      `;
-      return (
-        <div className="flex-1 w-full relative h-[600px]">
-          <iframe
-            srcDoc={safeHtml}
-            className="w-full h-full border-0 bg-transparent rounded-2xl"
-            sandbox="allow-scripts"
-            title="Agent Output"
-          />
-        </div>
-      );
-    }
-
-    // Default: node details + tool list
-    return (
-      <div className="flex-1 mt-4">
-        <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.05] mb-8 shadow-inner">
-          <p className="text-sm text-slate-400 leading-relaxed font-light">{(layout as any)[selectedNodeId]?.category.description}</p>
-        </div>
-        <span className="text-[10px] text-[#A259FF] uppercase font-bold tracking-widest mb-4 block">Recommended External APIs</span>
-        <div className="flex flex-col gap-3">
-          {(layout as any)[selectedNodeId]?.category.tools.map((tid: any) => {
-            const toolInfo = (TOOL_REGISTRY as any)[tid];
-            return (
-              <div key={tid} className="bg-gradient-to-r from-white/[0.03] to-transparent border border-white/[0.05] p-4 rounded-xl cursor-default transition-all group">
-                <div className="flex justify-between items-start mb-1">
-                  <strong className="text-slate-200 text-sm tracking-wide group-hover:text-[#46B1FF] transition-colors">{toolInfo?.name || tid.toUpperCase()}</strong>
-                  {toolInfo?.pricing && (
-                    <span className="text-[9px] bg-black/40 border border-white/10 text-slate-400 px-2.5 py-0.5 rounded-md uppercase tracking-wider">{toolInfo.pricing}</span>
-                  )}
-                </div>
-                <p className="text-xs text-slate-500 line-clamp-2 mt-2 leading-relaxed">{toolInfo?.description}</p>
-              </div>
-            );
-          })}
-        </div>
-        <div className="mt-12 flex justify-center pb-8 border-b border-white/[0.02]">
-          <p className="text-[9px] text-slate-600 uppercase tracking-widest text-center px-4">Execute AI Pipeline Phase to generate dynamic output for this node.</p>
-        </div>
-      </div>
-    );
-  };
-
-  if (graphStatus === 'error') {
-    return (
-      <div className="h-screen w-screen flex flex-col items-center justify-center bg-[#0a0a10] text-slate-200 relative p-6">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,106,106,0.03)_0%,transparent_70%)] pointer-events-none" />
-
-        <div className="relative flex flex-col items-center bg-[#0d0d15] border border-[#ff6a6a]/20 p-10 rounded-[32px] shadow-[0_40px_100px_rgba(0,0,0,0.8)] overflow-hidden max-w-md w-full text-center">
-          {/* Glow decoration */}
-          <div className="absolute -top-24 -right-24 w-48 h-48 bg-[#ff6a6a]/10 blur-[60px] rounded-full pointer-events-none" />
-
-          <div className="w-16 h-16 rounded-2xl bg-[#ff6a6a]/10 border border-[#ff6a6a]/20 flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(255,106,106,0.15)] pointer-events-none">
-            <AlertTriangle className="text-[#ff6a6a]" size={28} />
-          </div>
-
-          <div className="text-[#ff6a6a] font-black tracking-[0.25em] text-[10px] uppercase mb-2">
-            CRITICAL SYSTEM HALT
-          </div>
-
-          <h2 className="text-2xl font-black text-white uppercase tracking-wider font-display mb-4">
-            Graph Validation Failed
-          </h2>
-
-          <div className="w-12 h-0.5 bg-white/10 my-4" />
-
-          <p className="text-slate-400 text-xs font-mono bg-white/[0.02] border border-white/5 p-4 rounded-xl w-full break-all leading-relaxed">
-            {initError}
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!layout) {
-    return (
-      <div className="h-screen w-screen bg-[#0a0a10] flex flex-col items-center justify-center relative p-6">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(162,89,255,0.03)_0%,transparent_70%)] pointer-events-none" />
-
-        <div className="relative flex flex-col items-center bg-[#0d0d15] border border-white/10 p-10 rounded-[32px] shadow-[0_40px_100px_rgba(0,0,0,0.8)] overflow-hidden max-w-sm w-full text-center">
-          <div className="relative w-16 h-16 mb-6">
-            <div className="absolute inset-0 rounded-full border-4 border-white/5" />
-            <div className="absolute inset-0 rounded-full border-4 border-[#A259FF] border-t-transparent animate-spin" />
-          </div>
-
-          <div className="text-[#A259FF] font-black tracking-[0.25em] text-[10px] uppercase mb-2">
-            INITIALIZING CANVAS
-          </div>
-
-          <h2 className="text-xl font-black text-white uppercase tracking-wider font-display mb-4">
-            Loading Neural Pipeline
-          </h2>
-
-          <div className="w-12 h-0.5 bg-white/10 my-2" />
-
-          <p className="text-slate-500 text-xs mt-2">
-            Connecting node matrices and building visual canvas layers...
-          </p>
-        </div>
-      </div>
-    );
+  if (graphStatus === 'error' || !layout) {
+    return <EngineStatusView graphStatus={graphStatus} initError={initError} layout={layout} />;
   }
 
   return (
     <div className="flex flex-col h-screen w-full overflow-hidden select-none bg-[#0a0a10] text-slate-200 relative">
       <FlowHeader />
 
-      {/* ── Phase Transition Overlay ── */}
-      {phaseOverlay && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-md pointer-events-auto">
-          <div className="relative flex flex-col items-center bg-[#0a0a0f] border border-white/10 p-10 rounded-[32px] shadow-[0_40px_100px_rgba(0,0,0,0.8)] overflow-hidden max-w-md w-full animate-fade-in-up text-center">
-            {/* Glow decoration */}
-            <div className="absolute -top-24 -right-24 w-48 h-48 bg-[#DEF767]/10 blur-[60px] rounded-full pointer-events-none" />
-
-            <div className="w-16 h-16 rounded-2xl bg-[#DEF767]/10 border border-[#DEF767]/20 flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(222,247,103,0.15)] pointer-events-none">
-              <Sparkles className="text-[#DEF767]" size={28} />
-            </div>
-
-            <div className="text-[#DEF767] font-black tracking-[0.25em] text-[10px] uppercase mb-2">
-              PHASE {phaseOverlay.phase} COMPLETE
-            </div>
-
-            <h2 className="text-2xl font-black text-white uppercase tracking-wider font-display mb-4">
-              {phaseOverlay.phaseName}
-            </h2>
-
-            <div className="w-12 h-0.5 bg-white/10 my-4" />
-
-            <div className="text-slate-400 text-xs tracking-widest uppercase font-bold">
-              Initializing {phaseOverlay.nextPhaseName}
-            </div>
-          </div>
-        </div>
-      )}
-
+      <PhaseTransitionOverlay phaseOverlay={phaseOverlay} />
 
       {viewMode === 'templates' && <TemplatesView />}
 
       {/* ── Permanent Neuro-Command (Project Prompt) ── */}
       {viewMode === 'pipeline' && (
-        <>
-          {/* Wide Horizontal Command Bar */}
-          <div
-            className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[60] w-full max-w-5xl px-8 pointer-events-none"
-          >
-            <div className="flex flex-col items-center gap-2 pointer-events-auto bg-[#0a0a0f]/80 backdrop-blur-3xl border border-white/10 rounded-[32px] p-5 shadow-[0_30px_60px_rgba(0,0,0,0.8)]">
-              <div className="flex items-center gap-4 w-full">
-                <div className="flex-1 relative group">
-                  <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-slate-500 group-focus-within:text-[#46B1FF] transition-colors">
-                    <Activity size={18} />
-                  </div>
-                  <input
-                    value={projectPrompt}
-                    onChange={(e) => setProjectPrompt(e.target.value)}
-                    placeholder="Orchestrate your objective... (e.g. Design a technical whitepaper for a DeFi protocol)"
-                    className="w-full bg-black/60 border border-white/5 rounded-[20px] py-4 pl-12 pr-6 outline-none focus:border-[#46B1FF]/40 transition-all text-white text-sm shadow-inner placeholder:text-slate-600 font-secondary"
-                    disabled={graphStatus === 'running'}
-                  />
-                </div>
-
-                {/* Action Buttons */}
-                <div className="flex items-center gap-2">
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept=".txt,.md,.json,.pdf"
-                    className="hidden"
-                    title="Upload attachment"
-                    aria-label="Upload attachment"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (!file) return;
-                      const reader = new FileReader();
-                      reader.onload = (ev: any) => {
-                        const content = ev.target.result as string;
-                        setProjectAttachment({ name: file.name, content, type: file.type });
-
-                        // Auto-fill the prompt bar from file content
-                        let extractedPrompt = '';
-                        if (file.type === 'application/json' || file.name.endsWith('.json')) {
-                          try {
-                            const json = JSON.parse(content);
-                            extractedPrompt = json.title || json.description || json.prompt || json.name || '';
-                            if (!extractedPrompt && typeof json === 'object') {
-                              extractedPrompt = JSON.stringify(json).substring(0, 200);
-                            }
-                          } catch {
-                            extractedPrompt = content.split('\n').find((l: string) => l.trim().length > 0) || '';
-                          }
-                        } else {
-                          // For .txt, .md — use the first non-empty line as prompt
-                          const lines = content.split('\n').map((l: string) => l.replace(/^#+\s*/, '').trim()).filter((l: string) => l.length > 0);
-                          extractedPrompt = lines[0] || '';
-                        }
-
-                        if (extractedPrompt) {
-                          setProjectPrompt(extractedPrompt.substring(0, 200));
-                        }
-
-                        addToast('success', `File "${file.name}" loaded — prompt auto-filled from content`);
-                      };
-                      reader.readAsText(file);
-                      e.target.value = '';
-                    }}
-                  />
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={graphStatus === 'running'}
-                    className="w-14 h-14 rounded-[20px] bg-white/[0.03] border border-white/5 text-slate-400 hover:text-[#46B1FF] hover:border-[#46B1FF]/30 transition-all flex items-center justify-center group"
-                    title="Attach context (.txt, .md, .pdf)"
-                    aria-label="Attach context file"
-                  >
-                    <Paperclip size={20} className="group-hover:rotate-12 transition-transform" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Key Source Indicator & Attachment */}
-              <div className="flex items-center gap-4 w-full mt-3 px-1 justify-between">
-                <div className="flex items-center gap-4">
-                  <div
-                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-[10px] font-bold uppercase tracking-wider cursor-pointer transition-all ${keyInfo.activeSource === 'project'
-                        ? 'bg-[#A259FF]/10 border-[#A259FF]/30 text-[#A259FF] shadow-[0_0_15px_rgba(162,89,255,0.1)]'
-                        : keyInfo.activeSource === 'global'
-                          ? 'bg-[#46B1FF]/10 border-[#46B1FF]/30 text-[#46B1FF]'
-                          : 'bg-white/5 border-white/10 text-slate-500'
-                      }`}
-                    onClick={() => {
-                      setKeyModalType('NO_KEY');
-                      setShowKeyModal(true);
-                    }}
-                  >
-                    <Key size={12} />
-                    {keyInfo.activeSource === 'project'
-                      ? `Project Key (••••${keyInfo.project.lastFour})`
-                      : keyInfo.activeSource === 'global'
-                        ? `Global Key (••••${keyInfo.global.lastFour})`
-                        : 'No API Key Configured'}
-                  </div>
-                  <div className="text-[10px] text-slate-600 font-medium">
-                    Priority: Project Key &gt; Global Key
-                  </div>
-                </div>
-
-                {/* Attachment Chip */}
-                {projectAttachment && (
-                  <div className="flex items-center gap-3 bg-[#46B1FF]/10 border-[#46B1FF]/20 text-[#46B1FF] px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider animate-fade-in">
-                    <Folder size={14} />
-                    {projectAttachment.name}
-                    <button
-                      onClick={() => setProjectAttachment(null)}
-                      className="ml-2 hover:text-white transition-colors"
-                      title="Remove attachment"
-                      aria-label="Remove attachment"
-                    >
-                      <X size={12} />
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* Phase Execution Panel — Auto-run button and gated phase cards */}
-              <div className="flex items-center justify-between mt-3 w-full px-1 mb-2">
-                <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Pipeline Execution</h3>
-                <button
-                  onClick={() => {
-                    runFullPipeline();
-                  }}
-                  disabled={graphStatus === 'running' || !projectPrompt}
-                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-white hover:bg-[#A259FF] hover:border-[#A259FF] transition-all text-[9px] font-black uppercase tracking-widest shadow-lg active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="Run all phases automatically"
-                >
-                  {graphStatus === 'running' ? (
-                    <><div className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" /> Orchestrating...</>
-                  ) : (
-                    <><Play size={12} fill="currentColor" /> Run</>
-                  )}
-                </button>
-              </div>
-              <div className="w-full grid grid-cols-4 gap-2">
-                {WORKFLOW_PHASES.map((phase, idx) => {
-                  const isCompleted = completedPhases.includes(phase.id);
-                  const isRunning = runningPhaseId === phase.id;
-                  const prevDone = idx === 0 || completedPhases.includes(WORKFLOW_PHASES[idx - 1]!.id);
-                  const isLocked = !prevDone && !isCompleted;
-                  const phaseColors = [
-                    { accent: '#FFFFFF', glow: 'rgba(70,177,255,0.15)' },
-                    { accent: '#FFFFFF', glow: 'rgba(206,163,255,0.15)' },
-                    { accent: '#FFFFFF', glow: 'rgba(162,89,255,0.15)' },
-                    { accent: '#FFFFFF', glow: 'rgba(222,247,103,0.15)' },
-                  ][idx]!;
-                  return (
-                    <div
-                      key={phase.id}
-                      className="flex flex-col gap-1.5 rounded-2xl border p-3 transition-all duration-300"
-                      style={{
-                        borderColor: isCompleted ? phaseColors.accent + '60' : isRunning ? phaseColors.accent + '40' : 'rgba(255,255,255,0.05)',
-                        background: isCompleted ? phaseColors.glow : isRunning ? phaseColors.glow : 'rgba(255,255,255,0.02)',
-                        boxShadow: isRunning ? `0 0 20px ${phaseColors.glow}` : 'none'
-                      }}
-                    >
-                      <div className="flex items-center justify-between mb-0.5">
-                        <span className="text-[9px] font-black uppercase tracking-widest" style={{ color: phaseColors.accent }}>
-                          {phase.label}
-                        </span>
-                        {isCompleted && <span className="text-[10px] text-green-400">✓</span>}
-                        {isRunning && <div className="w-2.5 h-2.5 rounded-full animate-pulse" style={{ background: phaseColors.accent }} />}
-                      </div>
-                      {isCompleted ? (
-                        <button
-                          onClick={() => setPhaseOutputModal(phase.id)}
-                          className="w-full py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1 hover:opacity-80"
-                          style={{
-                            background: `${phaseColors.accent}10`,
-                            color: phaseColors.accent,
-                            border: `1px solid ${phaseColors.accent}30`
-                          }}
-                        >
-                          <FileText size={9} /> View Report
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => runPhase(phase.id)}
-                          disabled={isLocked || isRunning || !!runningPhaseId || !projectPrompt}
-                          className="w-full py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1"
-                          style={{
-                            background: isLocked || !projectPrompt ? 'rgba(255,255,255,0.03)' : `${phaseColors.accent}20`,
-                            color: isLocked || !projectPrompt ? '#475569' : phaseColors.accent,
-                            border: `1px solid ${isLocked ? 'rgba(255,255,255,0.05)' : phaseColors.accent + '30'}`
-                          }}
-                        >
-                          {isRunning ? (
-                            <><div className="w-2.5 h-2.5 border border-current border-t-transparent rounded-full animate-spin" /> Running</>
-                          ) : (
-                            <><Play size={9} fill="currentColor" /> Run</>
-                          )}
-                        </button>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        </>
+        <PromptBar
+          projectPrompt={projectPrompt}
+          setProjectPrompt={setProjectPrompt}
+          projectAttachment={projectAttachment}
+          setProjectAttachment={setProjectAttachment}
+          graphStatus={graphStatus}
+          addToast={addToast}
+          runFullPipeline={runFullPipeline}
+          showKeyModal={showKeyModal}
+          setShowKeyModal={setShowKeyModal}
+          setKeyModalType={setKeyModalType}
+          keyInfo={keyInfo}
+          fileInputRef={fileInputRef}
+          completedPhases={completedPhases}
+          runningPhaseId={runningPhaseId}
+          setPhaseOutputModal={setPhaseOutputModal}
+          runPhase={runPhase}
+          tokenLimitModal={tokenLimitModal}
+        />
       )}
 
       {viewMode === 'pipeline' && <FlowControls setCamera={setCamera} camera={camera} />}
@@ -1645,305 +1162,42 @@ const Engine = () => {
         {viewMode === 'builder' ? (
           <BuilderSidebar />
         ) : (
-          <div
-            className={`absolute right-0 top-0 h-full w-[460px] bg-[#0c0c14]/60 backdrop-blur-2xl border-l border-white/5 p-0 shadow-2xl transition-transform duration-500 z-50 flex flex-col ${selectedNodeId ? 'translate-x-0' : 'translate-x-full'}`}
-          >
-            <div className="flex justify-between items-center p-6 border-b border-white/[0.04] bg-black/40">
-              <div>
-                <h2 className="font-bold text-[10px] uppercase tracking-widest text-[#46B1FF] mb-1">Delivered Asset Output</h2>
-                <span className="text-white font-black tracking-wide font-display text-lg">
-                  {selectedNodeId?.startsWith('sticky-') ? 'Sticky Note insight' : layout[selectedNodeId]?.category.name}
-                </span>
-              </div>
-              <button onClick={() => selectNode(null)} className="p-2 bg-white/5 rounded-full text-slate-500 hover:text-white hover:bg-white/10 transition-colors">✕</button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
-              {selectedNodeId ? (
-                <div className="animate-fade-in flex flex-col h-full">
-                  {renderPipelineSidebarContent()}
-                </div>
-              ) : null}
-            </div>
-          </div>
+          <PipelineSidebar
+            selectedNodeId={selectedNodeId}
+            layout={layout as Record<string, any>}
+            nodeResults={nodeResults}
+            onClose={() => selectNode(null)}
+          />
         )}
       </div>
 
-      {/* View Results Button - appears when any phase is completed */}
-      {(completedPhases.length > 0 || graphStatus === 'completed' || (graphStatus !== 'running' && nodeResults && Object.keys(nodeResults).length > 0)) && (
-        <button
-          onClick={() => setShowOutputScreen(true)}
-          className="fixed bottom-6 right-6 z-[60] flex items-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-[#DEF767] to-[#A3E636] text-black text-xs font-black uppercase tracking-widest shadow-xl shadow-[#DEF767]/20 hover:scale-105 transition-transform"
-        >
-          <FileText size={16} /> Full Report
-        </button>
-      )}
+      <EngineModalStack
+        showOutputButton={completedPhases.length > 0 || graphStatus === 'completed' || (graphStatus !== 'running' && nodeResults && Object.keys(nodeResults).length > 0)}
+        onOpenOutputScreen={() => setShowOutputScreen(true)}
+        showOutputScreen={showOutputScreen}
+        onCloseOutputScreen={() => setShowOutputScreen(false)}
+        phaseOutputModal={phaseOutputModal}
+        onClosePhaseOutput={() => setPhaseOutputModal(null)}
+        tokenLimitModal={tokenLimitModal}
+        onDismissTokenLimit={() => setTokenLimitModal(null)}
+        onSwitchApiKey={() => {
+          setTokenLimitModal(null);
+          setShowKeyModal(true);
+          setKeyModalType('NO_KEY');
+        }}
+        showKeyModal={showKeyModal}
+        keyModalType={keyModalType}
+        onCloseKeyModal={() => setShowKeyModal(false)}
+        onSavedKeyModal={() => {
+          const seqId = localStorage.getItem('active_sequence_id');
+          if (seqId) checkKeyAvailability(seqId).then(setKeyInfo);
+          setShowKeyModal(false);
+        }}
+      />
 
-      {/* Per-Phase Report Modal */}
-      {phaseOutputModal && (
-        <OutputScreen
-          isOpen={true}
-          onClose={() => setPhaseOutputModal(null)}
-          phaseFilter={phaseOutputModal}
-        />
-      )}
-
-      <OutputScreen isOpen={showOutputScreen} onClose={() => setShowOutputScreen(false)} />
       {/* Toast System */}
       <ToastContainer />
 
-      {/* ── Token Limit Exceeded Modal ── */}
-      <AnimatePresence>
-        {tokenLimitModal?.show && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-md pointer-events-auto"
-          >
-            <motion.div
-              initial={{ scale: 0.85, opacity: 0, y: 30 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              transition={{ type: 'spring', damping: 22, stiffness: 300 }}
-              className="relative w-[480px] max-w-[92vw] bg-[#0d0d15] border border-[#F6E27F]/25 rounded-3xl shadow-[0_40px_120px_rgba(246,226,127,0.15)] overflow-hidden pointer-events-auto"
-            >
-              {/* Glow bar */}
-              <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#F6E27F] to-transparent pointer-events-none" />
-
-              <div className="p-8">
-                {/* Icon + Title */}
-                <div className="flex items-start gap-4 mb-6">
-                  <div className="w-12 h-12 rounded-2xl bg-[#F6E27F]/10 border border-[#F6E27F]/20 flex items-center justify-center flex-shrink-0 shadow-[0_0_24px_rgba(246,226,127,0.2)]">
-                    <span className="text-2xl">⚠️</span>
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#F6E27F] mb-1">Context Window Exceeded</p>
-                    <h2 className="text-2xl font-black text-white font-display leading-tight">Token Limit Reached</h2>
-                  </div>
-                </div>
-
-                {/* Info */}
-                <div className="bg-white/[0.03] border border-white/5 rounded-2xl p-4 mb-5 space-y-2 pointer-events-none">
-                  <div className="flex justify-between items-center">
-                    <span className="text-[11px] text-slate-500 uppercase tracking-widest font-bold">Model</span>
-                    <span className="text-sm text-white font-mono bg-white/5 px-3 py-1 rounded-lg">{tokenLimitModal.model}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-[11px] text-slate-500 uppercase tracking-widest font-bold">Provider</span>
-                    <span className="text-sm text-[#46B1FF] font-bold">{tokenLimitModal.provider}</span>
-                  </div>
-                </div>
-
-                <p className="text-sm text-slate-400 leading-relaxed mb-6">
-                  The input sent to this model exceeded its maximum context window. The pipeline has been paused at this node. You can shorten your prompt, switch to a model with a larger context window, or dismiss and continue.
-                </p>
-
-                {/* Actions */}
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => setTokenLimitModal(null)}
-                    className="flex-1 py-3.5 rounded-2xl bg-white/5 border border-white/10 text-sm font-bold text-slate-300 hover:bg-white/10 hover:text-white transition-all uppercase tracking-widest pointer-events-auto"
-                  >
-                    Dismiss
-                  </button>
-                  <button
-                    onClick={() => {
-                      setTokenLimitModal(null);
-                      setShowKeyModal(true);
-                      setKeyModalType('NO_KEY');
-                    }}
-                    className="flex-[1.5] py-3.5 rounded-2xl bg-gradient-to-r from-[#F6E27F] to-[#DEF767] text-black text-sm font-black uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all shadow-[0_8px_30px_rgba(246,226,127,0.3)] pointer-events-auto"
-                  >
-                    Switch API Key
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* API Key Modal */}
-      <AnimatePresence>
-        {showKeyModal && (
-          <ApiKeyModal
-            type={keyModalType}
-            onClose={() => setShowKeyModal(false)}
-            onSaved={() => {
-              const seqId = localStorage.getItem('active_sequence_id');
-              if (seqId) checkKeyAvailability(seqId).then(setKeyInfo);
-              setShowKeyModal(false);
-            }}
-          />
-        )}
-      </AnimatePresence>
-    </div>
-  );
-};
-
-// ── API Key Modal Component ──────────────────────────────────────
-const ApiKeyModal = ({ type, onClose, onSaved }: { type: string, onClose: () => void, onSaved: () => void }) => {
-  const [key, setKey] = useState('');
-  const [scope, setScope] = useState<'project' | 'global'>('project');
-  const [showKey, setShowKey] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const addToast = useToastStore(s => s.addToast);
-
-  const handleSave = async () => {
-    if (!key.trim()) return;
-    setSaving(true);
-
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('Not authenticated');
-
-      const seqId = localStorage.getItem('active_sequence_id');
-      const endpoint = scope === 'project' ? '/api/keys/save-project' : '/api/keys/save';
-      const payload = scope === 'project'
-        ? { userId: session.user.id, sequenceId: seqId, apiKey: key.trim() }
-        : { userId: session.user.id, apiKey: key.trim() };
-
-      const API_BASE = import.meta.env.PROD ? '' : 'http://localhost:3001';
-      const res = await fetch(`${API_BASE}${endpoint}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      if (!res.ok) throw new Error('Failed to save key');
-
-      addToast('success', `API Key saved ${scope === 'project' ? 'for this project' : 'globally'}`);
-      onSaved();
-    } catch (err: any) {
-      addToast('error', err.message);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const titles: Record<string, string> = {
-    NO_KEY: 'API Key Required',
-    INVALID_KEY: 'Invalid API Key',
-    RATE_LIMIT: 'Rate Limit Reached'
-  };
-
-  const descriptions: Record<string, string> = {
-    NO_KEY: 'An API key is required to orchestrate this neural sequence. Choose how you want to store it.',
-    INVALID_KEY: 'The provided key was rejected by the provider. Please enter a valid OpenRouter or LLM API key.',
-    RATE_LIMIT: 'The current key is being rate limited. You can wait or provide a new key for this project.'
-  };
-
-  return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-6 pointer-events-auto">
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        onClick={onClose}
-        className="absolute inset-0 bg-black/80 backdrop-blur-sm pointer-events-auto"
-      />
-
-      <motion.div
-        initial={{ opacity: 0, scale: 0.9, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.9, y: 20 }}
-        className="relative w-full max-w-md bg-[#0a0a0f] border border-white/10 rounded-[32px] p-8 shadow-[0_40px_100px_rgba(0,0,0,0.8)] overflow-hidden pointer-events-auto"
-      >
-        {/* Glow decoration */}
-        <div className="absolute -top-24 -right-24 w-48 h-48 bg-[#A259FF]/20 blur-[60px] rounded-full" />
-
-        <div className="relative z-10">
-          <div className="flex items-center gap-4 mb-6">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#A259FF] to-[#46B1FF] flex items-center justify-center text-white shadow-lg">
-              <Key size={24} />
-            </div>
-            <div>
-              <h3 className="text-xl font-black text-white font-display tracking-tight">{titles[type]}</h3>
-              <p className="text-xs text-slate-500 font-medium">Neural Conductor Authentication</p>
-            </div>
-          </div>
-
-          <p className="text-sm text-slate-400 leading-relaxed mb-8">
-            {descriptions[type]}
-          </p>
-
-          <div className="space-y-6">
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">API Key</label>
-              <div className="relative group">
-                <input
-                  type={showKey ? 'text' : 'password'}
-                  value={key}
-                  onChange={(e) => setKey(e.target.value)}
-                  placeholder="sk-or-v1-..."
-                  className="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-4 pl-5 pr-12 text-sm text-white focus:border-[#A259FF]/50 outline-none transition-all placeholder:text-slate-700"
-                />
-                <button
-                  onClick={() => setShowKey(!showKey)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-600 hover:text-white transition-colors"
-                  title={showKey ? "Hide key" : "Show key"}
-                  aria-label={showKey ? "Hide key" : "Show key"}
-                >
-                  {showKey ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                onClick={() => setScope('project')}
-                className={`flex flex-col items-center gap-2 p-4 rounded-2xl border transition-all ${scope === 'project'
-                    ? 'bg-[#A259FF]/10 border-[#A259FF]/40 text-white'
-                    : 'bg-white/[0.02] border-white/5 text-slate-500 hover:border-white/10'
-                  }`}
-              >
-                <ShieldCheck size={20} className={scope === 'project' ? 'text-[#A259FF]' : ''} />
-                <span className="text-[10px] font-black uppercase tracking-wider">Project Only</span>
-              </button>
-              <button
-                onClick={() => setScope('global')}
-                className={`flex flex-col items-center gap-2 p-4 rounded-2xl border transition-all ${scope === 'global'
-                    ? 'bg-[#46B1FF]/10 border-[#46B1FF]/40 text-white'
-                    : 'bg-white/[0.02] border-white/5 text-slate-500 hover:border-white/10'
-                  }`}
-              >
-                <Globe size={20} className={scope === 'global' ? 'text-[#46B1FF]' : ''} />
-                <span className="text-[10px] font-black uppercase tracking-wider">Global Use</span>
-              </button>
-            </div>
-
-            <div className="flex items-center gap-3 bg-white/[0.02] p-4 rounded-2xl border border-white/5">
-              <InfoIcon size={16} className="text-slate-600 shrink-0" />
-              <p className="text-[10px] text-slate-500 leading-normal">
-                {scope === 'project'
-                  ? 'Project keys are encrypted and stored specifically for this neural sequence.'
-                  : 'Global keys are saved to your profile and used as a fallback for all your sequences.'}
-              </p>
-            </div>
-
-            <div className="flex gap-3 pt-2">
-              <button
-                onClick={onClose}
-                className="flex-1 py-4 rounded-2xl border border-white/10 text-xs font-black uppercase tracking-widest text-slate-400 hover:bg-white/5 transition-all"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={saving || !key.trim()}
-                className="flex-[2] py-4 rounded-2xl bg-white text-black text-xs font-black uppercase tracking-widest hover:bg-[#DEF767] transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-xl active:scale-95 flex items-center justify-center gap-2"
-              >
-                {saving ? (
-                  <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  'Authorize Access'
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      </motion.div>
     </div>
   );
 };

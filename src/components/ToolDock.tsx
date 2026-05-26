@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { MousePointer2, StickyNote, Highlighter, LayoutTemplate, Eraser, Camera, Lock, Unlock, Type, PlusSquare, Network, Webhook } from 'lucide-react';
 import { useBuilderStore } from '../lib/builderStore';
+import type { ToolType } from '../types/engine';
 
 interface ToolDockProps {
-  activeTool: string;
-  setActiveTool: (tool: string) => void;
+  activeTool: ToolType;
+  setActiveTool: (tool: ToolType) => void;
   canvasLocked: boolean;
   setCanvasLocked: (locked: boolean) => void;
   onScreenshot: () => void;

@@ -3,6 +3,7 @@ import { Routes, Route } from 'react-router-dom';
 import { ProtectedRoute } from './lib/auth';
 import { AnimatePresence } from 'framer-motion';
 import OnboardingTour, { useOnboardingStatus } from './components/OnboardingTour';
+import { ROUTES } from './lib/routes';
 
 // Route-level code splitting — each page loads on demand
 const LandingPage = lazy(() => import('./components/landing/index'));
@@ -27,12 +28,12 @@ export default function App() {
       <Suspense fallback={<PageLoader />}>
         <Routes>
           {/* Public route — Landing Page */}
-          <Route path="/" element={<LandingPage />} />
+          <Route path={ROUTES.landing} element={<LandingPage />} />
           
           {/* Protected routes — require authentication */}
-          <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-          <Route path="/canvas" element={<ProtectedRoute><Engine /></ProtectedRoute>} />
-          <Route path="/profile" element={<ProtectedRoute><ProfileView /></ProtectedRoute>} />
+          <Route path={ROUTES.dashboard} element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+          <Route path={ROUTES.canvas} element={<ProtectedRoute><Engine /></ProtectedRoute>} />
+          <Route path={ROUTES.profile} element={<ProtectedRoute><ProfileView /></ProtectedRoute>} />
         </Routes>
       </Suspense>
 

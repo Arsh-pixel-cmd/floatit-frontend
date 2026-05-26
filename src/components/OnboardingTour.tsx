@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { ROUTES } from '../lib/routes';
 import {
   Sparkles, LayoutDashboard, PlusSquare, FolderOpen,
   Layers, Play, Webhook, Save, ArrowRight, X, Rocket
@@ -55,7 +56,7 @@ const TOUR_STEPS = [
     subtitle: 'Your AI Workflow Command Center',
     description: 'Let\'s take a quick tour to get you up and running. We\'ll show you how to build, connect, and deploy AI agent workflows — all from one powerful interface.',
     accentColor: ACCENT_COLORS.purple,
-    route: '/dashboard',
+    route: ROUTES.dashboard,
     target: null,
   },
   {
@@ -65,7 +66,7 @@ const TOUR_STEPS = [
     subtitle: 'Your Mission Control',
     description: 'This is your home base. Every workflow you create appears here as a session card. You can search, star, organize into folders, and pick up right where you left off.',
     accentColor: ACCENT_COLORS.blue,
-    route: '/dashboard',
+    route: ROUTES.dashboard,
     target: null,
   },
   {
@@ -75,7 +76,7 @@ const TOUR_STEPS = [
     subtitle: 'Keep things tidy',
     description: 'Create Project Spaces in the sidebar to organize your workflows. Long-press any session card and drag it into a folder. Simple, clean, and scalable.',
     accentColor: ACCENT_COLORS.blue,
-    route: '/dashboard',
+    route: ROUTES.dashboard,
     target: '[data-tour="folders-sidebar"]',
     placement: 'right'
   },
@@ -86,13 +87,13 @@ const TOUR_STEPS = [
     subtitle: 'Start building in one click',
     description: 'Hit the "Create Flow" button to create a fresh canvas and enter the Builder — where the magic happens.',
     accentColor: ACCENT_COLORS.green,
-    route: '/dashboard',
+    route: ROUTES.dashboard,
     target: '[data-tour="create-flow-btn"]',
     placement: 'bottom-start',
-    onNext: () => {
+    onNext: ({ navigate }: { navigate: any }) => {
       const btn = document.querySelector('[data-tour="create-flow-btn"]') as HTMLButtonElement;
       if (btn) btn.click();
-      else window.location.href = '/canvas';
+      else navigate(ROUTES.canvas);
     }
   },
   {
@@ -102,7 +103,7 @@ const TOUR_STEPS = [
     subtitle: 'Drag, Drop, Connect',
     description: 'On the canvas, use the bottom toolbar to add Agent Blocks. Each block represents an AI worker. Drag them around, resize them, and wire them together.',
     accentColor: ACCENT_COLORS.purple,
-    route: '/canvas',
+    route: ROUTES.canvas,
     target: null,
   },
   {
@@ -112,7 +113,7 @@ const TOUR_STEPS = [
     subtitle: 'Deploy AI workers',
     description: 'Click here to spawn a new Agent block onto the canvas. You can configure its prompt, model, and triggers in the sidebar.',
     accentColor: ACCENT_COLORS.purple,
-    route: '/canvas',
+    route: ROUTES.canvas,
     target: '[data-tour="add-agent-btn"]',
     placement: 'top'
   },
@@ -123,7 +124,7 @@ const TOUR_STEPS = [
     subtitle: 'Connect different workflows',
     description: 'Use Webhook Bridge blocks to link separate workflows together. Select which workflow to connect to, and data flows seamlessly between them — just like n8n.',
     accentColor: ACCENT_COLORS.blue,
-    route: '/canvas',
+    route: ROUTES.canvas,
     target: '[data-tour="add-webhook-btn"]',
     placement: 'top'
   },
@@ -134,7 +135,7 @@ const TOUR_STEPS = [
     subtitle: 'Execute your flow',
     description: 'Switch to Pipeline view to type your project goal and hit Execute. Each agent processes your task in sequence.',
     accentColor: ACCENT_COLORS.green,
-    route: '/canvas',
+    route: ROUTES.canvas,
     target: '[data-tour="pipeline-toggle"]',
     placement: 'bottom'
   },
@@ -145,7 +146,7 @@ const TOUR_STEPS = [
     subtitle: 'Go build something extraordinary',
     description: 'That\'s everything you need to know. The future of automation is in your hands.',
     accentColor: ACCENT_COLORS.green,
-    route: '/canvas',
+    route: ROUTES.canvas,
     target: null,
   },
 ];
@@ -240,6 +241,7 @@ interface OnboardingTourProps {
 export default function OnboardingTour({ onComplete, user }: OnboardingTourProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const location = useLocation(); // Hook to force re-render on route change
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (!user) return;
@@ -259,7 +261,7 @@ export default function OnboardingTour({ onComplete, user }: OnboardingTourProps
 
   // Auto-advance or sync step if route changes unexpectedly
   useEffect(() => {
-    const currentRoute = window.location.pathname;
+    const currentRoute = location.pathname;
     if (step.route !== currentRoute) {
       // Find the first step that matches the new route
       const matchingStepIndex = TOUR_STEPS.findIndex(s => s.route === currentRoute);
@@ -275,7 +277,7 @@ export default function OnboardingTour({ onComplete, user }: OnboardingTourProps
 
   // If the step belongs to a different route, don't render the tour card right now.
   // The effect above will sync it shortly.
-  if (window.location.pathname !== step.route) {
+  if (location.pathname !== step.route) {
     return null;
   }
 
@@ -289,7 +291,7 @@ export default function OnboardingTour({ onComplete, user }: OnboardingTourProps
         const userStepKey = `${ONBOARDING_STEP_KEY}_${user.id}`;
         localStorage.setItem(userStepKey, nextStep.toString());
       }
-      if (step.onNext) step.onNext();
+      if (step.onNext) step.onNext({ navigate });
     }
   };
 

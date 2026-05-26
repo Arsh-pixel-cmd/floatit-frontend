@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { Navigate } from 'react-router-dom';
+import { ROUTES } from '../routes';
 
 // ─── Context ────────────────────────────────────────────────
 export interface AuthContextType {
@@ -137,7 +138,7 @@ export const ProtectedRoute = ({ children }: any) => {
   }
 
   if (!user) {
-    return <Navigate to="/" replace />;
+    return <Navigate to={ROUTES.landing} replace />;
   }
 
   return children;

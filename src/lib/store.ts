@@ -1,7 +1,51 @@
 import { create } from 'zustand';
+import type { GraphStatus } from '../types/engine';
 import { WORKFLOW_PHASES } from '../data/schema';
 
-export const useWorkflowStore = create<any>((set, get) => ({
+export interface WorkflowStoreState {
+  graphStatus: GraphStatus;
+  setGraphStatus: (status: GraphStatus) => void;
+  animationState: {
+    phase: string;
+    activeNodes: string[];
+    queuedTransitions: any[];
+  };
+  setAnimationState: (newState: any) => void;
+  projectPrompt: string;
+  setProjectPrompt: (prompt: string) => void;
+  flowTitle: string;
+  setFlowTitle: (title: string) => void;
+  projectAttachment: any;
+  setProjectAttachment: (attachment: any) => void;
+  currentPhaseIndex: number;
+  setCurrentPhaseIndex: (idx: any) => void;
+  nodeStates: Record<string, any>;
+  nodeResults: Record<string, any>;
+  setNodeState: (nodeId: any, state: any) => void;
+  setNodeResult: (nodeId: any, result: any) => void;
+  resetExecution: (nodes: any) => void;
+  layoutMode: string;
+  setLayoutMode: (mode: any) => void;
+  activeMode: string;
+  setActiveMode: (mode: any) => void;
+  selectedNodeId: string | null;
+  selectedToolId: string | null;
+  userContext: {
+    role: string;
+    budget: string;
+    weights: {
+      audience: number;
+      pricing: number;
+      tags: number;
+    };
+  };
+  selectNode: (nodeId: any, _source?: any) => void;
+  selectTool: (toolId: any) => void;
+  revealedPhases: string[];
+  revealNextPhase: () => void;
+}
+
+export const useWorkflowStore = create<WorkflowStoreState>((set, get) => ({
   // Core Graph State
   graphStatus: 'idle', // idle, loading, ready, error
   setGraphStatus: (status: any) => set({ graphStatus: status }),
@@ -37,7 +81,7 @@ export const useWorkflowStore = create<any>((set, get) => ({
   resetExecution: (nodes: any) => {
     const freshStates: Record<string, any> = {};
     nodes.forEach((n: any) => { freshStates[n] = 'idle'; });
-    set({ nodeStates: freshStates, nodeResults: {}, currentPhaseIndex: 0, revealedPhases: [], graphStatus: 'ready', flowStatus: 'idle', animationState: { phase: 'idle', activeNodes: [], queuedTransitions: [] } });
+    set({ nodeStates: freshStates, nodeResults: {}, currentPhaseIndex: 0, revealedPhases: [], graphStatus: 'ready', animationState: { phase: 'idle', activeNodes: [], queuedTransitions: [] } });
   },
 
   // Layout Constraints
@@ -81,13 +125,16 @@ export const useWorkflowStore = create<any>((set, get) => ({
     const current = get().revealedPhases;
     const all = WORKFLOW_PHASES.map(p => p.id);
     if (current.length < all.length) {
-      set({ revealedPhases: [...current, all[current.length]] });
+      const nextPhaseId = all[current.length];
+      if (nextPhaseId) {
+        set({ revealedPhases: [...current, nextPhaseId] });
+      }
     }
   }
 }));
 
 // Selectors for specific Memoized updates in React
-export const selectActiveNodeId = (state: any) => state.selectedNodeId;
-export const selectActiveToolId = (state: any) => state.selectedToolId;
-export const selectRevealedPhases = (state: any) => state.revealedPhases;
-export const selectLayoutMode = (state: any) => state.layoutMode;
+export const selectActiveNodeId = (state: WorkflowStoreState) => state.selectedNodeId;
+export const selectActiveToolId = (state: WorkflowStoreState) => state.selectedToolId;
+export const selectRevealedPhases = (state: WorkflowStoreState) => state.revealedPhases;
+export const selectLayoutMode = (state: WorkflowStoreState) => state.layoutMode;

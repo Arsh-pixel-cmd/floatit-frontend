@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, GitMerge, LayoutGrid, Play, Loader2, LayoutDashboard, AlertTriangle, X } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { GitMerge, LayoutGrid, Play, Loader2, LayoutDashboard } from 'lucide-react';
 import { useBuilderStore } from '../lib/builderStore';
 import { useWorkflowStore } from '../lib/store';
-import { supabase } from '../lib/supabaseClient';
+import { ROUTES } from '../lib/routes';
+import FlowHeaderViewToggle from './FlowHeader/FlowHeaderViewToggle';
+import FlowHeaderValidationModal from './FlowHeader/FlowHeaderValidationModal';
 
 const FlowHeader = () => {
   const { viewMode, setViewMode, blocks } = useBuilderStore();
@@ -80,20 +82,20 @@ const FlowHeader = () => {
         <div className="flex items-center gap-6 flex-1 min-w-0">
 
           {/* Return to Hub */}
-          <a
-            href="/dashboard"
+          <Link
+            to={ROUTES.dashboard}
             className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/[0.03] backdrop-blur-md border border-white/10 text-gray-400 transition-all duration-300 hover:border-[#A259FF]/50 hover:text-white hover:bg-white/10 shadow-lg text-[11px] font-black uppercase tracking-wider group"
             title="Return to Dashboard"
             aria-label="Return to Dashboard"
           >
             <LayoutDashboard size={16} className="group-hover:scale-110 transition-transform" />
             <span>Dashboard</span>
-          </a>
+          </Link>
 
           {/* Logo and Title */}
           <button
             type="button"
-            onClick={() => navigate('/')}
+            onClick={() => navigate(ROUTES.landing)}
             className="flex items-center gap-6 flex-1 min-w-0 text-left focus:outline-none"
           >
             <div className="flex items-center gap-4 border-r border-white/10 pr-6 flex-shrink-0">
@@ -120,27 +122,7 @@ const FlowHeader = () => {
         </div>
 
         {/* Center: View Toggles */}
-        <div className="flex items-center justify-center gap-[4rem] bg-white/[0.02] border border-white/[0.05] py-2 px-8 rounded-3xl shadow-xl backdrop-blur-xl flex-shrink-0 mx-4">
-          <button
-            data-tour="pipeline-toggle"
-            onClick={() => setViewMode('pipeline')}
-            className={`flex items-center gap-2.5 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-300 ${viewMode === 'pipeline'
-              ? 'bg-[#242424] text-white '
-              : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
-              }`}
-          >
-            <GitMerge size={14} className={viewMode === 'pipeline' ? 'animate-pulse' : ''} /> Pipeline
-          </button>
-          <button
-            onClick={() => setViewMode('builder')}
-            className={`flex items-center gap-2.5 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-300 ${viewMode === 'builder'
-              ? 'bg-[#A259FF] text-white shadow-[0_5px_20px_rgba(162,89,255,0.3)]'
-              : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
-              }`}
-          >
-            <LayoutGrid size={14} /> Builder
-          </button>
-        </div>
+        <FlowHeaderViewToggle viewMode={viewMode} onChange={setViewMode} />
 
         {/* Right: Action */}
         <div className="flex items-center justify-end gap-4 flex-1">
@@ -157,59 +139,11 @@ const FlowHeader = () => {
         </div>
       </header>
 
-      {/* ── VALIDATION POPUP ── */}
       {showValidationPopup && (
-        <div
-          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-md pointer-events-auto"
-          onClick={() => setShowValidationPopup(false)}
-        >
-          <div
-            className="w-full max-w-lg rounded-[32px] overflow-hidden flex flex-col border border-[#ff6a6a]/20 bg-[#0a0a0f] shadow-[0_40px_100px_rgba(0,0,0,0.8)] relative"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-white/5 bg-[#ff6a6a]/5">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-[#ff6a6a]/10 border border-[#ff6a6a]/20">
-                  <AlertTriangle size={18} className="text-[#ff6a6a]" />
-                </div>
-                <div>
-                  <h2 className="text-base font-bold text-white font-display uppercase tracking-wide">Pipeline Setup Incomplete</h2>
-                  <p className="text-[10px] text-slate-500 uppercase tracking-widest font-mono font-bold mt-0.5">Please resolve before compiling</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowValidationPopup(false)}
-                className="p-2 rounded-xl hover:bg-white/5 transition-all text-slate-500 hover:text-white"
-              >
-                <X size={16} />
-              </button>
-            </div>
-
-            {/* Error List */}
-            <div className="px-6 py-5 max-h-[50vh] overflow-y-auto custom-scrollbar space-y-2">
-              {validationErrors.map((err, i) => (
-                <div
-                  key={i}
-                  className="flex items-start gap-3 px-4 py-3 rounded-xl bg-white/[0.02] border border-white/5"
-                >
-                  <span className="text-[#ff6a6a] text-xs font-mono font-bold mt-0.5 shrink-0">{i + 1}.</span>
-                  <span className="text-sm text-slate-300 leading-relaxed font-sans">{err}</span>
-                </div>
-              ))}
-            </div>
-
-            {/* Footer */}
-            <div className="px-6 py-4 border-t border-white/5 bg-black/20">
-              <button
-                onClick={() => setShowValidationPopup(false)}
-                className="w-full py-3 rounded-xl bg-[#ff6a6a] text-black font-black uppercase tracking-widest hover:opacity-90 transition-opacity text-xs"
-              >
-                Got it — I'll fix it
-              </button>
-            </div>
-          </div>
-        </div>
+        <FlowHeaderValidationModal
+          validationErrors={validationErrors}
+          onClose={() => setShowValidationPopup(false)}
+        />
       )}
     </>
   );

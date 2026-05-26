@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { User, LogOut, Workflow, ArrowLeft, Key, Eye, EyeOff, Shield, Trash2, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../lib/auth';
+import { ROUTES } from '../../lib/routes';
 import { supabase } from '../../lib/supabaseClient';
 
 const API_BASE = import.meta.env.PROD ? '' : 'http://localhost:3001';
@@ -59,7 +60,7 @@ export const ProfileView = ({ user: propUser, onLogout }: ProfileViewProps) => {
         
         if (!error) setWorkflowCount(count || 0);
       } else {
-        navigate('/');
+        navigate(ROUTES.landing);
       }
     };
     fetchUserAndStats();
@@ -187,7 +188,7 @@ export const ProfileView = ({ user: propUser, onLogout }: ProfileViewProps) => {
     if (onLogout) {
       onLogout();
     } else {
-      navigate('/');
+      navigate(ROUTES.landing);
     }
   };
 
@@ -196,7 +197,7 @@ export const ProfileView = ({ user: propUser, onLogout }: ProfileViewProps) => {
   return (
     <div 
       className="min-h-screen pt-32 px-6 pb-24 relative overflow-hidden bg-[#030303] cursor-pointer"
-      onClick={() => navigate('/dashboard')}
+      onClick={() => navigate(ROUTES.dashboard)}
     >
       <div 
         className="max-w-4xl mx-auto relative z-10 cursor-default"
@@ -206,7 +207,7 @@ export const ProfileView = ({ user: propUser, onLogout }: ProfileViewProps) => {
         <div className="flex items-center justify-between mb-12">
           <div className="flex items-center gap-4">
             <button 
-              onClick={() => navigate('/dashboard')}
+              onClick={() => navigate(ROUTES.dashboard)}
               aria-label="Back to Dashboard"
               title="Back to Dashboard"
               className="w-10 h-10 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 text-zinc-400 hover:text-white transition-all hover:bg-white/10"
