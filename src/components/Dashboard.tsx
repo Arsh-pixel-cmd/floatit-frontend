@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Plus, Star, LayoutGrid, Clock, Folder, Trash2, User, X, GripVertical } from 'lucide-react';
+import { Search, Plus, Star, LayoutGrid, Folder, Trash2, User, X, GripVertical } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ROUTES } from '../lib/routes';
 import { supabase } from '../lib/supabaseClient';
@@ -9,7 +9,7 @@ import { useAuth } from '../lib/auth';
 // Brand color palette for auto-assigning folder colors
 const FOLDER_COLORS = ['#8e8e8e', '#5b5b5b', '#929292'];
 
-type ActiveView = 'all' | 'starred' | 'recent' | 'folder';
+type ActiveView = 'all' | 'starred' | 'folder';
 
 interface FolderType {
   id: string;
@@ -170,8 +170,6 @@ export default function Dashboard() {
 
     if (activeView === 'starred') {
       filtered = filtered.filter((s: any) => s.is_starred);
-    } else if (activeView === 'recent') {
-      filtered = filtered.slice(0, 10);
     } else if (activeView === 'folder' && activeFolderId) {
       filtered = filtered.filter((s: any) => s.space_id === activeFolderId);
     }
@@ -187,7 +185,6 @@ export default function Dashboard() {
 
   const getViewTitle = () => {
     if (activeView === 'starred') return 'Starred Assets';
-    if (activeView === 'recent') return 'Recent Activity';
     if (activeView === 'folder') {
       const folder = folders.find((f: FolderType) => f.id === activeFolderId);
       return folder?.name || 'Folder';
@@ -243,12 +240,6 @@ export default function Dashboard() {
                 title="Starred Assets"
                 active={activeView === 'starred'}
                 onClick={() => { setActiveView('starred'); setActiveFolderId(null); }}
-              />
-              <SidebarItem
-                icon={<Clock size={18} />}
-                title="Recent Activity"
-                active={activeView === 'recent'}
-                onClick={() => { setActiveView('recent'); setActiveFolderId(null); }}
               />
             </div>
           </div>
@@ -386,36 +377,6 @@ export default function Dashboard() {
           {loading ? (
             <div className="flex justify-center items-center h-40">
               <div className="w-8 h-8 border-2 border-[#EB9A21] border-t-transparent animate-spin"></div>
-            </div>
-          ) : activeView === 'recent' ? (
-            /* Recent Activity Timeline */
-            <div className="flex flex-col space-y-3">
-              {filteredSequences.length === 0 ? (
-                <p className="text-zinc-500 text-xs font-mono p-8 text-center uppercase">NO RECENT SYSTEM ACTIVITY RECORDED.</p>
-              ) : (
-                filteredSequences.map((seq: any, i: number) => (
-                  <motion.div
-                    key={seq.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.2, delay: i * 0.02 }}
-                    onClick={() => {
-                      localStorage.setItem('active_sequence_id', seq.id);
-                      navigate(ROUTES.canvas);
-                    }}
-                    className="flex items-center gap-4 px-6 py-4 bg-[#242424] border border-[#3e3e3e] hover:border-[#EB9A21] shadow-[0_4px_15px_rgba(0,0,0,0.3)] hover:shadow-[0_12px_30px_rgba(0,0,0,0.6)] hover:-translate-y-1 cursor-pointer transition-all duration-200 group rounded-2xl"
-                  >
-                    <div className="w-2.5 h-2.5 bg-[#EB9A21] rounded-full shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <h4 className="text-sm font-bold text-white uppercase tracking-tight truncate font-sans group-hover:text-[#EB9A21] transition-colors">{seq.title}</h4>
-                    </div>
-                    <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider shrink-0">
-                      {formatDate(seq.updated_at)}
-                    </span>
-                    {seq.is_starred && <Star size={12} className="text-[#EB9A21] shrink-0" fill="currentColor" />}
-                  </motion.div>
-                ))
-              )}
             </div>
           ) : (
             /* Card Grid */

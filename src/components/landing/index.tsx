@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { Crosshair, Compass, Plus } from 'lucide-react';
 import { ROUTES } from '../../lib/routes';
 import { Navbar } from './Navbar';
-import { HeroPrompt } from './HeroPrompt';
 import { LivePipelinePreview } from './LivePipelinePreview';
 import { RegisterView } from './RegisterView';
 import { ProfileView } from './ProfileView';
@@ -13,33 +12,9 @@ import { useAuth } from '../../lib/auth';
 export default function LandingPage() {
   const navigate = useNavigate();
   const [view, setView] = useState('landing');
-  const [landingPrompt, setLandingPrompt] = useState(() => {
-    try {
-      return window.localStorage.getItem('landing_prompt') || '';
-    } catch {
-      return '';
-    }
-  });
 
   // Get user state directly from Context
   const { user, signOut } = useAuth();
-
-  const persistLandingPrompt = (value: string) => {
-    setLandingPrompt(value);
-    try {
-      window.localStorage.setItem('landing_prompt', value);
-    } catch {
-      // ignore storage errors in private modes
-    }
-  };
-
-  const clearLandingPrompt = () => {
-    try {
-      window.localStorage.removeItem('landing_prompt');
-    } catch {
-      // ignore
-    }
-  };
 
   const handleInit = () => {
     if (user) {
@@ -133,9 +108,14 @@ export default function LandingPage() {
                   The premium neuro-orchestration platform. Connect, configure, and execute complex autonomous agent architectures with unprecedented control. Designed for technical drawing precision.
                 </p>
 
-                {/* Centered Large Prompt Input Area */}
-                <div className="w-full max-w-2xl z-20">
-                  <HeroPrompt prompt={landingPrompt} onPromptChange={persistLandingPrompt} onInit={handleInit} />
+                {/* CTA Button */}
+                <div className="w-full max-w-2xl z-20 flex justify-center">
+                  <button
+                    onClick={handleInit}
+                    className="px-8 py-3 bg-[#DEF767] text-[#171717] font-onest font-semibold text-[14px] uppercase tracking-[0.04em] border border-[#DEF767] hover:bg-transparent hover:text-[#DEF767] transition-all duration-150"
+                  >
+                    Start Building
+                  </button>
                 </div>
 
                 {/* Central Pipeline Preview */}
