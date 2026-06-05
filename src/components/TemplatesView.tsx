@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
 import { useBuilderStore } from '../lib/builderStore';
 import { Layers, Plus, Trash2, ArrowRight, Pencil, Check, X } from 'lucide-react';
+import { buildDoubleDiamondBlocks, buildDoubleDiamondConnections } from '../data/templates/doubleDiamond';
+import { Diamond } from 'lucide-react';
 
 const TemplatesView = () => {
   const { templates, saveAsTemplate, applyTemplate, deleteTemplate, updateTemplate, blocks } = useBuilderStore();
   const [newTemplateName, setNewTemplateName] = useState('');
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState('');
+  
 
   const handleSave = () => {
     if (!newTemplateName.trim()) return;
@@ -31,6 +34,21 @@ const TemplatesView = () => {
     setEditingId(null);
     setEditName('');
   };
+
+  const applyDoubleDiamond = () => {
+  const blocks = buildDoubleDiamondBlocks();
+  const connections = buildDoubleDiamondConnections();
+  useBuilderStore.setState({
+    blocks,
+    connections,
+    stickyNotes: [],
+    textLabels: [],
+    selectedElementId: null,
+    viewMode: 'builder',
+
+    isTopologyLocked: true, 
+  });
+};
 
   return (
     <div className="absolute inset-0 z-30 bg-[#07070a]/95 backdrop-blur-3xl flex flex-col p-8 overflow-y-auto custom-scrollbar pt-28 pb-32">
@@ -69,7 +87,47 @@ const TemplatesView = () => {
             </button>
           </div>
         </div>
+{/* Built-in Templates */}
+        <div className="mb-12">
+          <div className="flex items-center mb-8">
+            <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Built-in Frameworks</h2>
+            <div className="h-px flex-1 bg-white/[0.05] ml-6" />
+          </div>
 
+          <div
+            onClick={applyDoubleDiamond}
+            className="bg-[#111118] border border-white/5 rounded-[24px] p-6 flex flex-col hover:border-[#DEF767]/40 transition-all hover:-translate-y-1 hover:shadow-[0_20px_40px_rgba(0,0,0,0.5)] group cursor-pointer max-w-sm"
+          >
+            <div className="flex items-center gap-4 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-[#DEF767]/10 border border-[#DEF767]/20 flex items-center justify-center">
+                <Diamond size={18} className="text-[#DEF767]" />
+              </div>
+              <div>
+                <h3 className="text-[17px] font-bold text-white tracking-tight">Double Diamond</h3>
+                <p className="text-[10px] text-slate-500 uppercase tracking-wider">Design Framework</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-500 mb-6 leading-relaxed">
+              4-phase design thinking framework. Discover → Define → Develop → Deliver. 20 agents, fully editable.
+            </p>
+
+            <div className="grid grid-cols-2 gap-3 mb-6">
+              <div className="bg-white/[0.03] border border-white/[0.05] rounded-xl p-3">
+                <div className="text-[10px] text-slate-600 uppercase font-black mb-1">Nodes</div>
+                <div className="text-lg font-display text-[#DEF767]">20</div>
+              </div>
+              <div className="bg-white/[0.03] border border-white/[0.05] rounded-xl p-3">
+                <div className="text-[10px] text-slate-600 uppercase font-black mb-1">Phases</div>
+                <div className="text-lg font-display text-[#A259FF]">4</div>
+              </div>
+            </div>
+
+            <div className="w-full py-3 rounded-2xl bg-[#DEF767]/5 border border-[#DEF767]/20 text-[#DEF767] text-[11px] font-bold uppercase tracking-[0.15em] group-hover:bg-[#DEF767] group-hover:text-black transition-all flex items-center justify-center gap-2">
+              Load into Canvas <ArrowRight size={14} />
+            </div>
+          </div>
+        </div>
         {/* Grid of Templates */}
         <div>
           <div className="flex items-center justify-between mb-8">

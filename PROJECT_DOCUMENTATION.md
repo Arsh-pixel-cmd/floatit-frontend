@@ -6,11 +6,13 @@
 - ./
     - .env
     - .gitignore
+    - build-output.log
     - eslint.config.js
     - generate_md.py
     - index.html
     - package-lock.json
     - package.json
+    - PHASE_1_PROGRESS_REPORT.md
     - postcss.config.js
     - PROJECT_DOCUMENTATION.md
     - README.md
@@ -24,7 +26,11 @@
         - index.js
     - public/
         - favicon.svg
+        - Floatit.png
         - logo.png
+        - o.svg
+        - uxism.svg
+        - _redirects
     - src/
         - App.tsx
         - Engine.tsx
@@ -36,10 +42,12 @@
             - AuthGate.tsx
             - BuilderCanvas.tsx
             - BuilderSidebar.tsx
+            - CreateGroupModal.tsx
             - Dashboard.tsx
             - FlowControls.tsx
             - FlowFooter.tsx
             - FlowHeader.tsx
+            - MultiSelectActionBar.tsx
             - NodeContainer.tsx
             - OnboardingTour.tsx
             - OutputScreen.tsx
@@ -49,7 +57,18 @@
             - ThinkingTerminal.tsx
             - ToastContainer.tsx
             - ToolDock.tsx
+            - useAgentBlockNode.ts
             - WebhookBlockNode.tsx
+            - Engine/
+                - ApiKeyModal.tsx
+                - EngineModalStack.tsx
+                - EngineStatusView.tsx
+                - PhaseTransitionOverlay.tsx
+                - PipelineSidebar.tsx
+                - PromptBar.tsx
+            - FlowHeader/
+                - FlowHeaderValidationModal.tsx
+                - FlowHeaderViewToggle.tsx
             - landing/
                 - DocumentationView.tsx
                 - Features.tsx
@@ -62,12 +81,17 @@
                 - RegisterView.tsx
         - data/
             - schema.ts
+            - templates/
+                - doubleDiamond.ts
+        - hooks/
+            - engineHooks.ts
         - lib/
             - builderStore.ts
             - edgeRouter.ts
             - graphValidator.ts
             - layoutEngine.ts
             - llm.ts
+            - routes.ts
             - store.ts
             - supabaseClient.ts
             - toastStore.ts
@@ -77,6 +101,9 @@
                 - index.ts
                 - LocalServerAuthAdapter.ts
                 - SupabaseAuthAdapter.ts
+        - types/
+            - engine.ts
+            - groupTypes.ts
 ```
 
 ## Source Files
@@ -377,22 +404,25 @@ if __name__ == "__main__":
 ```html
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Mandelbrot — A cinematic, infinite-canvas agentic design workflow using the Double Diamond framework with 16 AI agents." />
-    <title> Agentic Design Workflow</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
-</html>
 
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="FloatIt - AI agents." />
+  <title> Agentic Design Workflow</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
+    rel="stylesheet" />
+</head>
+
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.jsx"></script>
+</body>
+
+</html>
 ```
 
 ---
@@ -5066,6 +5096,203 @@ if __name__ == "__main__":
 
 ---
 
+## `PHASE_1_PROGRESS_REPORT.md`
+
+```markdown
+# Phase 1 Progress Report
+
+## 1. Summary of completed work
+
+Phase 1 successfully extracted a substantial amount of presentation and UI state from `src/Engine.tsx` into dedicated components and hooks. The refactor created explicit boundaries for modal handling, prompt input, pipeline sidebar rendering, phase transition overlays, engine status views, and canvas controls. It also introduced centralized route constants and reusable engine types to reduce implicit coupling and improve compile-time safety.
+
+Key achievements:
+- Separated UI/presentation from orchestration logic in `Engine.tsx`
+- Centralized modal and overlay state management in `src/hooks/engineHooks.ts`
+- Extracted persistent prompt and pipeline command UI into `src/components/Engine/PromptBar.tsx`
+- Centralized route constants in `src/lib/routes.ts`
+- Added typed engine-specific interfaces in `src/types/engine.ts`
+- Reduced inline state and event handling inside `Engine.tsx`
+- Verified the refactor with a successful production build (`npm run build`)
+
+## 2. Exact files added
+
+- `src/hooks/engineHooks.ts`
+- `src/components/Engine/PromptBar.tsx`
+- `src/components/Engine/EngineModalStack.tsx`
+- `src/components/Engine/PipelineSidebar.tsx`
+- `src/components/Engine/EngineStatusView.tsx`
+- `src/components/Engine/PhaseTransitionOverlay.tsx`
+- `src/lib/routes.ts`
+- `src/types/engine.ts`
+
+## 3. Exact files modified
+
+- `src/Engine.tsx`
+- `src/lib/store.ts`
+
+## 4. Exact files cleaned up
+
+- `src/Engine.tsx` — removed inline modal boilerplate, prompt bar JSX, status view JSX, overlay JSX, and sidebar rendering details
+- `src/hooks/engineHooks.ts` — removed unused imports and consolidated canvas control state
+- `src/lib/store.ts` — tightened the workflow store interface and added selectors relevant to engine state
+- `src/components/Engine/PromptBar.tsx` — established a dedicated command bar component with explicit props
+- `src/components/Engine/EngineModalStack.tsx` — created a reusable modal/overlay stack component
+- `src/components/Engine/PipelineSidebar.tsx` — isolated sidebar rendering and iframe-safe output handling
+- `src/components/Engine/EngineStatusView.tsx` — isolated loading/error display logic
+- `src/components/Engine/PhaseTransitionOverlay.tsx` — isolated phase transition overlay logic
+- `src/lib/routes.ts` — removed hard-coded route strings from inline code
+- `src/types/engine.ts` — centralized reusable engine UI and workflow types
+
+## 5. Why each change was made
+
+- `src/hooks/engineHooks.ts`: to separate transient UI and canvas control state from the main orchestrator and avoid duplicating cursor/pan/highlighter logic inside `Engine.tsx`.
+- `src/components/Engine/PromptBar.tsx`: to isolate the project prompt input, file attachment logic, phase launch controls, and key modal trigger from the engine layout and let `Engine.tsx` focus on orchestration.
+- `src/components/Engine/EngineModalStack.tsx`: to consolidate all modal presentation logic and transitions in one place rather than scattering modal JSX across the engine container.
+- `src/components/Engine/PipelineSidebar.tsx`: to extract selected-node output rendering and iframe-safe UI presentation from the canvas container.
+- `src/components/Engine/EngineStatusView.tsx`: to make engine loading/error states reusable and extracted from the main render branch.
+- `src/components/Engine/PhaseTransitionOverlay.tsx`: to isolate the phase transition splash screen and reduce inline conditional rendering inside `Engine.tsx`.
+- `src/lib/routes.ts`: to eliminate ad hoc route strings and enforce shared route values.
+- `src/types/engine.ts`: to create explicit contracts for modal state, canvas controls, workflow store state, and UI props.
+- `src/lib/store.ts`: to align the workflow store interface with the newly extracted engine hooks and make state shape expectations explicit.
+
+## 6. What architectural problem each change solves
+
+- `Engine.tsx` coupling: reduces the single-file responsibility of `Engine.tsx` by moving UI and input concerns into smaller, self-contained modules.
+- Modal scatter: `EngineModalStack` consolidates modal and overlay rendering, avoiding duplicated animation/visibility logic.
+- Inline UI density: `PromptBar` removes tightly coupled prompt UI and file attachment state from the orchestrator.
+- Route inconsistency: `routes.ts` prevents hard-coded route patterns and decouples routing from component logic.
+- Type ambiguity: `engine.ts` provides explicit engine-type contracts that reduce runtime assumptions and improve editor/typechecker feedback.
+- Canvas control complexity: `useCanvasControls` centralizes pan/draw/select behavior so the canvas event model can evolve separately.
+- Sidebar rendering responsibility: `PipelineSidebar` removes output presentation from the canvas and keeps node selection details in a dedicated pane.
+
+## 7. What responsibilities were reduced from Engine.tsx
+
+- Prompt input rendering and attachment upload handling
+- Modal lifecycle and token/key modal state
+- Output report button and modal stack display
+- Phase transition overlay rendering
+- Engine status / loading / error presentation
+- Sidebar selected-node output rendering
+- Canvas event state declaration for sticky notes, text labels, drawing, and panning
+- Route constant references via `ROUTES` centralization
+- Reusable type definitions for engine UI state
+
+## 8. What routing inconsistencies were fixed
+
+- Introduced `src/lib/routes.ts` and exported a single `ROUTES` constant object.
+- This eliminates the previous risk of route string mismatches caused by multiple in-file hard-coded path literals.
+- `ROUTES` now formalizes route keys like `landing`, `dashboard`, `canvas`, and `profile`.
+
+## 9. What UI/presentation logic was extracted
+
+- Project prompt command bar and pipeline execution controls (`PromptBar`)
+- Modal overlay stack and token/key modal presentation (`EngineModalStack`)
+- Sidebar output details and iframe-safe agent output rendering (`PipelineSidebar`)
+- Engine startup/loading/error state display (`EngineStatusView`)
+- Phase transition splash screen (`PhaseTransitionOverlay`)
+
+## 10. What dead code or unused imports were removed
+
+- Removed `useBuilderStore` import from `src/hooks/engineHooks.ts` because the hook no longer directly mutates builder state.
+- Removed `supabase` import from `src/hooks/engineHooks.ts` after separating modal/key event handling from direct Supabase access.
+- Cleaned inline modal state variables inside `Engine.tsx` by moving them into `useModalState`.
+- Reduced unnecessary inline React event handler scaffolding in `Engine.tsx` by extracting it to hooks/components.
+
+## 11. Build verification results
+
+- Verified using `npm run build` in the repository root.
+- Result: successful production build.
+- No TypeScript or Vite compilation errors were reported.
+
+## 12. Remaining Phase 1 tasks
+
+- Complete the final `Engine.tsx` decomposition by moving remaining inline render sections to dedicated components if safe.
+- Add shared route usage in existing navigation components so `src/lib/routes.ts` is fully adopted.
+- Replace the remaining untyped `any` usage in extracted engine hooks and new components with stronger typed interfaces.
+- Verify that `src/lib/store.ts` changes fully align with the engine hook props and selectors.
+- Add regression tests or storybook previews for extracted UI components if available.
+
+## 13. Risks avoided intentionally
+
+- Avoided moving the core pipeline execution loops (`runFullPipeline`, `runPhase`) into new abstractions too early.
+- Avoided refactoring the underlying graph layout algorithm in the same phase as UI extraction.
+- Avoided changing the business logic in `Engine.tsx` during layout and runtime state extraction.
+- Avoided introducing new routing behavior until route constants and navigation were stabilized.
+- Avoided consolidating deeply coupled builder store state into the engine hooks before first verifying existing behavior.
+
+## 14. What was intentionally NOT refactored yet and why
+
+- The core engine execution and batching logic remains inside `Engine.tsx` because it is high-risk and behavior-sensitive.
+- Canvas node rendering and layout computation remain intact to preserve current flow and minimize regression.
+- `BuilderCanvas` and `BuilderSidebar` were left in place to keep the builder-mode surface stable while pipeline UI extraction proceeds.
+- Supabase persistence and auto-save still live in `Engine.tsx` for now, because those flows are foundational and should be isolated after the UI boundary stabilization.
+
+## 15. Current architecture improvements achieved
+
+- Reduced Engine.tsx from a monolithic view controller toward a coordinator component.
+- Enabled a cleaner separation between orchestration logic and presentation layout.
+- Introduced a dedicated hook layer for canvas and modal state, which improves reuse and testability.
+- Added explicit route constants to reduce string coupling across navigation surfaces.
+- Centralized engine types for stronger type-checking and developer intent.
+
+## 16. Technical debt still remaining
+
+- `Engine.tsx` still contains high-density execution logic and should be broken into smaller pipeline coordination modules.
+- There are still broad `any` and weakly typed state definitions in both `store.ts` and the new components.
+- The route constant file is added, but full adoption across the app is incomplete.
+- The `useWorkflowStore` API still allows free-form `any` for many state setters.
+- There is no explicit test coverage around the new component boundary contracts yet.
+
+## 17. Recommended next safe steps
+
+1. Stabilize `Engine.tsx` as a pure coordinator by extracting the remaining heavy render branches into dedicated engine UI or layout components.
+2. Replace the remaining `any` typed props and store signatures in `src/types/engine.ts` and `src/lib/store.ts` with stricter domain models.
+3. Wire `src/lib/routes.ts` into navigation components and remove route string literals from the app.
+4. Add focused component-level tests for `PromptBar`, `EngineModalStack`, `PipelineSidebar`, `EngineStatusView`, and `PhaseTransitionOverlay`.
+5. Validate behavior with a smoke regression test for pipeline execution after the next extract.
+
+## Architecture Notes
+
+### Before
+
+- `Engine.tsx` contained orchestration, routing assumptions, UI wiring, modal state, prompt input, sidebar presentation, and canvas controls in one file.
+- Route strings were implicit and scattered.
+- Modal display and phase-transition rendering were tightly coupled with the engine render tree.
+- Canvas event state and sticky note/label logic were mixed with engine lifecycle effects.
+
+### After
+
+- `Engine.tsx` now acts as the orchestration shell with reduced responsibility.
+- Presentation concerns are delegated to `PromptBar`, `EngineModalStack`, `PipelineSidebar`, `EngineStatusView`, and `PhaseTransitionOverlay`.
+- Modal/input hooks are centralized in `src/hooks/engineHooks.ts`.
+- Route values are centralized in `src/lib/routes.ts` and can be reused consistently.
+- Engine-specific UI types live in `src/types/engine.ts`.
+
+### Coupling reductions
+
+- Decoupled modal state from engine rendering by moving it into `useModalState`.
+- Decoupled canvas interaction state from render logic by moving it into `useCanvasControls`.
+- Decoupled prompt UI from orchestration with `PromptBar` props.
+- Decoupled selected-node output rendering from the main canvas container with `PipelineSidebar`.
+
+### Maintainability improvements
+
+- Smaller, focused components mean future changes to modal flow, prompt input, or sidebar output are localized.
+- Central route constants simplify cross-file navigation updates.
+- Shared engine types reduce the chance of mismatched prop shapes and modal state contracts.
+- The extracted hook layer enables future memoization or standalone hook testing.
+
+### Future refactor preparation benefits
+
+- The new component/hook boundaries create a safer foundation for moving execution workflows out of `Engine.tsx` next.
+- Centralized types and route constants make the next refactor less error-prone.
+- The reduced size of `Engine.tsx` makes it easier to identify the remaining orchestration surface.
+- The extracted UI modules are ready for potential isolation into a `components/EngineShell` or `engine` feature folder later.
+
+```
+
+---
+
 ## `postcss.config.js`
 
 ```javascript
@@ -5949,6 +6176,7 @@ import { Routes, Route } from 'react-router-dom';
 import { ProtectedRoute } from './lib/auth';
 import { AnimatePresence } from 'framer-motion';
 import OnboardingTour, { useOnboardingStatus } from './components/OnboardingTour';
+import { ROUTES } from './lib/routes';
 
 // Route-level code splitting — each page loads on demand
 const LandingPage = lazy(() => import('./components/landing/index'));
@@ -5973,12 +6201,12 @@ export default function App() {
       <Suspense fallback={<PageLoader />}>
         <Routes>
           {/* Public route — Landing Page */}
-          <Route path="/" element={<LandingPage />} />
+          <Route path={ROUTES.landing} element={<LandingPage />} />
           
           {/* Protected routes — require authentication */}
-          <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-          <Route path="/canvas" element={<ProtectedRoute><Engine /></ProtectedRoute>} />
-          <Route path="/profile" element={<ProtectedRoute><ProfileView /></ProtectedRoute>} />
+          <Route path={ROUTES.dashboard} element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+          <Route path={ROUTES.canvas} element={<ProtectedRoute><Engine /></ProtectedRoute>} />
+          <Route path={ROUTES.profile} element={<ProtectedRoute><ProfileView /></ProtectedRoute>} />
         </Routes>
       </Suspense>
 
@@ -5997,97 +6225,120 @@ export default function App() {
 
 ```tsx
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { Sparkles, AlertTriangle, Play, RefreshCw, Trash2, Paperclip, X, FileText, Activity, Folder } from 'lucide-react';
+import { X } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { motion, AnimatePresence } from 'framer-motion';
+import { ToastContainer } from './components/ToastContainer';
+import html2canvas from 'html2canvas';
 
 // Core Schema & Logic
-import { WORKFLOW_PHASES, EDGES, TOOL_REGISTRY } from './data/schema';
+import { WORKFLOW_PHASES } from './data/schema';
 import { validateGraph } from './lib/graphValidator';
 import { computeLayout } from './lib/layoutEngine';
-import { computeEdgePath, bundleEdges } from './lib/edgeRouter';
-import { useWorkflowStore, selectActiveNodeId } from './lib/store';
-import { callLLM, checkKeyAvailability, getProjectKeyStatus, getKeyStatus } from './lib/llm';
+
+import { useWorkflowStore, type WorkflowStoreState } from './lib/store';
+import { callLLM, checkKeyAvailability } from './lib/llm';
 import { supabase } from './lib/supabaseClient';
 import { useToastStore } from './lib/toastStore';
-import { ToastContainer } from './components/ToastContainer';
-import { Key, ShieldCheck, Globe, Info as InfoIcon, Eye, EyeOff } from 'lucide-react';
-import html2canvas from 'html2canvas';
+
+// Hooks
+import { useModalState, usePhaseOverlay, usePromptInput, useCanvasControls } from './hooks/engineHooks';
 
 // Components
 import FlowHeader from './components/FlowHeader';
+import PhaseTransitionOverlay from './components/Engine/PhaseTransitionOverlay';
 
-import FlowControls from './components/FlowControls';
-import NodeContainer from './components/NodeContainer';
-import PhaseSummaryBox from './components/PhaseSummaryBox';
+
+import PromptBar from './components/Engine/PromptBar';
+import EngineStatusView from './components/Engine/EngineStatusView';
+import EngineModalStack from './components/Engine/EngineModalStack';
+
+
+
 import ToolDock from './components/ToolDock';
-import OutputScreen from './components/OutputScreen';
 import BuilderCanvas from './components/BuilderCanvas';
 import BuilderSidebar from './components/BuilderSidebar';
 import TemplatesView from './components/TemplatesView';
-import { useBuilderStore } from './lib/builderStore';
+import { useBuilderStore, type BuilderStore } from './lib/builderStore';
 
 const Engine = () => {
   const [initError, setInitError] = useState<string | null>(null);
-  
+
   // Zustand State
-  const graphStatus = useWorkflowStore((state: any) => state.graphStatus);
-  const setGraphStatus = useWorkflowStore((state: any) => state.setGraphStatus);
-  const selectedNodeId = useWorkflowStore(selectActiveNodeId);
-  const selectNode = useWorkflowStore((state: any) => state.selectNode);
-  const nodeStates = useWorkflowStore((state: any) => state.nodeStates);
-  
-  const viewMode = useBuilderStore((state: any) => state.viewMode);
-  const nodeResults = useWorkflowStore((state: any) => state.nodeResults);
-  const projectPrompt = useWorkflowStore((state: any) => state.projectPrompt);
-  const setProjectPrompt = useWorkflowStore((state: any) => state.setProjectPrompt);
-  const currentPhaseIndex = useWorkflowStore((state: any) => state.currentPhaseIndex);
-  const projectAttachment = useWorkflowStore((state: any) => state.projectAttachment);
-  const setProjectAttachment = useWorkflowStore((state: any) => state.setProjectAttachment);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const graphStatus = useWorkflowStore((state: WorkflowStoreState) => state.graphStatus);
+  const setGraphStatus = useWorkflowStore((state: WorkflowStoreState) => state.setGraphStatus);
 
-  const [phaseOverlay, setPhaseOverlay] = useState<any>(null);
-  const [showOutputScreen, setShowOutputScreen] = useState(false);
-  const [isCommandExpanded, setIsCommandExpanded] = useState(false);
+  const nodeResults = useWorkflowStore((state: WorkflowStoreState) => state.nodeResults);
 
 
-  // Canvas Viewport logic
-  const [camera, setCamera] = useState({ x: 100, y: 60, zoom: 0.55 });
-  const [isPanning, setIsPanning] = useState(false);
-  const canvasRef = useRef<HTMLDivElement>(null);
-  const lastMousePos = useRef({ x: 0, y: 0 });
+  const viewMode = useBuilderStore((state: BuilderStore) => state.viewMode);
+  const deployedTemplateId = useBuilderStore((state: BuilderStore) => state.deployedTemplateId);
+  const templates = useBuilderStore((state: BuilderStore) => state.templates);
 
-  // Toolkit State
-  const [activeTool, setActiveTool] = useState('cursor');
-  const [stickyNotes, setStickyNotes] = useState<any[]>([]);
-  const [strokes, setStrokes] = useState<any[]>([]);
-  const [currentStroke, setCurrentStroke] = useState<any>(null);
-  const currentStrokeRef = useRef<any[]>([]);
-  const [isDrawing, setIsDrawing] = useState(false);
-  const isDrawingRef = useRef(false);
-  const [canvasLocked, setCanvasLocked] = useState(false);
-  const [textLabels, setTextLabels] = useState<any[]>([]);
-  const [draggingAppElement, setDraggingAppElement] = useState<any>(null);
-  const [resizingAppElement, setResizingAppElement] = useState<any>(null);
+  const {
+    projectPrompt,
+    setProjectPrompt,
+    projectAttachment,
+    setProjectAttachment,
+    fileInputRef,
+  } = usePromptInput();
 
-  // Zoom-edit state for sticky notes & text labels
-  const [editingStickyId, setEditingStickyId] = useState<number | null>(null);
-  const [editingLabelId, setEditingLabelId] = useState<number | null>(null);
-  const preFocusCamera = useRef<{ x: number; y: number; zoom: number } | null>(null);
+  const {
+    showKeyModal,
+    setShowKeyModal,
+    keyModalType,
+    setKeyModalType,
+    keyInfo,
+    setKeyInfo,
+    tokenLimitModal,
+    setTokenLimitModal,
+    phaseOutputModal,
+    setPhaseOutputModal,
+    showOutputScreen,
+    setShowOutputScreen,
+  } = useModalState();
 
-  // Key Management State
-  const [showKeyModal, setShowKeyModal] = useState(false);
-  const [keyModalType, setKeyModalType] = useState<'NO_KEY' | 'INVALID_KEY' | 'RATE_LIMIT'>('NO_KEY');
-  const [keyInfo, setKeyInfo] = useState<any>({ activeSource: 'none', project: { hasKey: false }, global: { any: false } });
+  const {
+    phaseOverlay,
+    setPhaseOverlay,
+    completedPhases,
+    setCompletedPhases,
+    runningPhaseId,
+    setRunningPhaseId,
+  } = usePhaseOverlay();
+
+  const {
+    canvasRef,
+    camera,
+    setCamera,
+    isPanning,
+    activeTool,
+    setActiveTool,
+    stickyNotes,
+    setStickyNotes,
+    strokes,
+    setStrokes,
+    currentStroke,
+    setCurrentStroke,
+    textLabels,
+    setTextLabels,
+    canvasLocked,
+    setCanvasLocked,
+    draggingAppElement,
+    setDraggingAppElement,
+    resizingAppElement,
+    setResizingAppElement,
+    editingStickyId,
+    setEditingStickyId,
+    editingLabelId,
+    setEditingLabelId,
+    preFocusCamera,
+    getCanvasCoords,
+    handleMouseDown,
+    handleMouseMove,
+    handleMouseUp,
+  } = useCanvasControls();
+
   const addToast = useToastStore((state) => state.addToast);
-
-  // Token Limit Modal State
-  const [tokenLimitModal, setTokenLimitModal] = useState<{ show: boolean; model: string; provider: string; message: string } | null>(null);
-
-  // Phase-gated execution state
-  const [completedPhases, setCompletedPhases] = useState<string[]>([]);
-  const [runningPhaseId, setRunningPhaseId] = useState<string | null>(null);
-  const [phaseOutputModal, setPhaseOutputModal] = useState<string | null>(null); // phaseId to download
 
   // Boot validation
   useEffect(() => {
@@ -6102,41 +6353,58 @@ const Engine = () => {
           stickyNotes: [],
           textLabels: [],
           selectedElementId: null,
+          groups: [],
+          selectedBlockIds: new Set(),
+          runningGroupId: null,
+          completedGroupIds: []
         });
 
         const seqId = localStorage.getItem('active_sequence_id');
         if (seqId) {
           const { data } = await supabase.from('sequences').select('canvas_state, title').eq('id', seqId).single();
           if (data?.canvas_state) {
-             const state = data.canvas_state;
-             useBuilderStore.setState({
-               blocks: state.blocks || [],
-               connections: state.connections || [],
-               stickyNotes: state.stickyNotes || [],
-               textLabels: state.textLabels || [],
-             });
-             
-             // Restore the agent outputs and progress!
-             if (state.execution) {
-               useWorkflowStore.setState({
-                 nodeStates: state.execution.nodeStates || {},
-                 nodeResults: state.execution.nodeResults || {},
-                 currentPhaseIndex: state.execution.currentPhaseIndex || 0,
-                 projectPrompt: state.execution.projectPrompt || (data.title !== 'New Neural Sequence' ? data.title : '')
-               });
-             } else if (!state.execution?.projectPrompt && data.title && data.title !== 'Untitled Flow') {
-               useWorkflowStore.setState({ projectPrompt: data.title });
-             }
-             
-             // Initialize flowTitle
-             useWorkflowStore.setState({ flowTitle: data.title || 'Untitled Flow' });
-             
-             // Restore the deployed template ID if it was saved in canvas_state
-             if (state.deployedTemplateId) {
-               useBuilderStore.setState({ deployedTemplateId: state.deployedTemplateId });
-             }
-          } // end if data?.canvas_state
-          
+            const state = data.canvas_state;
+            useBuilderStore.setState({
+              blocks: state.blocks || [],
+              connections: state.connections || [],
+              stickyNotes: state.stickyNotes || [],
+              textLabels: state.textLabels || [],
+              groups: state.groups || [],
+            });
+
+            // Restore the agent outputs and progress!
+            if (state.execution) {
+              useWorkflowStore.setState({
+                nodeStates: state.execution.nodeStates || {},
+                nodeResults: state.execution.nodeResults || {},
+                currentPhaseIndex: state.execution.currentPhaseIndex || 0,
+                projectPrompt: state.execution.projectPrompt || (data.title !== 'New Neural Sequence' ? data.title : '')
+              });
+            } else if (!state.execution?.projectPrompt && data.title && data.title !== 'Untitled Flow') {
+              useWorkflowStore.setState({ projectPrompt: data.title });
+            }
+
+            // Initialize flowTitle
+            useWorkflowStore.setState({ flowTitle: data.title || 'Untitled Flow' });
+
+            // Restore the deployed template ID if it was saved in canvas_state
+            if (state.deployedTemplateId) {
+              useBuilderStore.setState({ deployedTemplateId: state.deployedTemplateId });
+            }
+          } else if (data) {
+            // No canvas state yet: hydrate from landing prompt if present.
+            try {
+              const landingPrompt = window.localStorage.getItem('landing_prompt');
+              if (landingPrompt && landingPrompt.trim()) {
+                useWorkflowStore.setState({ projectPrompt: landingPrompt, flowTitle: landingPrompt });
+              } else {
+                useWorkflowStore.setState({ flowTitle: data.title || 'Untitled Flow' });
+              }
+            } catch {
+              useWorkflowStore.setState({ flowTitle: data.title || 'Untitled Flow' });
+            }
+          }
+
           // Fetch templates for the user (do this even if canvas_state is empty)
           const { data: { session } } = await supabase.auth.getSession();
           if (session) {
@@ -6156,36 +6424,7 @@ const Engine = () => {
     };
     loadCanvasData();
 
-    // Listen for key errors
-    const handleKeyError = (e: any) => {
-      const { type, message } = e.detail;
-      if (type === 'RATE_LIMIT') {
-        addToast('warning', 'Rate limited. Please wait or switch keys.');
-      } else {
-        setKeyModalType(type);
-        setShowKeyModal(true);
-      }
-    };
-
-    // Listen for token / context-limit errors
-    const handleTokenLimit = (e: any) => {
-      const { model, provider, message } = e.detail;
-      setTokenLimitModal({ show: true, model, provider, message });
-    };
-
-    window.addEventListener('agentic:key-error', handleKeyError);
-    window.addEventListener('agentic:token-limit', handleTokenLimit);
-
-    // Initial key check
-    const seqId = localStorage.getItem('active_sequence_id');
-    if (seqId) {
-      checkKeyAvailability(seqId).then(setKeyInfo);
-    }
-
-    return () => {
-      window.removeEventListener('agentic:key-error', handleKeyError);
-      window.removeEventListener('agentic:token-limit', handleTokenLimit);
-    };
+    return () => { };
   }, [setGraphStatus, addToast]);
 
   // --- AUTO-SAVE BACKGROUND ENGINE ---
@@ -6198,7 +6437,7 @@ const Engine = () => {
     const buildSavePayload = () => {
       const state = useBuilderStore.getState();
       const workflowState = useWorkflowStore.getState();
-      
+
       const getSessionName = (title: string, prompt: string) => {
         if (title && title !== 'Untitled Flow') return title;
         const trimmed = prompt?.trim().replace(/\s+/g, ' ') || '';
@@ -6212,6 +6451,7 @@ const Engine = () => {
         stickyNotes: state.stickyNotes,
         textLabels: state.textLabels,
         deployedTemplateId: state.deployedTemplateId || null,
+        groups: state.groups,
         execution: {
           nodeStates: workflowState.nodeStates,
           nodeResults: workflowState.nodeResults,
@@ -6232,7 +6472,7 @@ const Engine = () => {
       try {
         const payload = buildSavePayload();
         const currentHash = JSON.stringify({ canvas_state: payload.canvas_state, title: payload.title });
-        
+
         if (currentHash === lastSavedHashRef.current) return;
 
         await supabase.from('sequences').update(payload).eq('id', seqId);
@@ -6247,275 +6487,106 @@ const Engine = () => {
   }, []);
 
 
-  const deployedTemplateId = useBuilderStore((state: any) => state.deployedTemplateId);
-  const templates = useBuilderStore((state: any) => state.templates);
-
   // Compute Layout 
   const layout = useMemo(() => {
     if (graphStatus === 'error') return null;
-    if (deployedTemplateId && viewMode === 'pipeline') {
-       // First try to find in the loaded templates array
-       let activeTemplate = templates.find((t: any) => t.id === deployedTemplateId);
-       
-       // Fallback: If not in templates array yet (e.g. local deploy), build from builderStore blocks directly
-       if (!activeTemplate) {
-         const builderState = useBuilderStore.getState();
-         if (builderState.blocks.length > 0) {
-           activeTemplate = {
-             id: deployedTemplateId,
-             blocks: builderState.blocks,
-             connections: builderState.connections,
-           };
-         }
-       }
-       
-       if (activeTemplate) {
-           const depths: Record<string, number> = {};
-           const adj: Record<string, any[]> = {};
-           const inDegree: Record<string, number> = {};
-           
-           activeTemplate.blocks.forEach((b: any) => {
-             adj[b.id] = [];
-             inDegree[b.id] = 0;
-             depths[b.id] = 0;
-           });
-           
-           activeTemplate.connections.forEach((c: any) => {
-             if(adj[c.sourceBlockId] && inDegree[c.targetBlockId] !== undefined) {
-               adj[c.sourceBlockId]!.push(c.targetBlockId);
-               inDegree[c.targetBlockId]!++;
-             }
-           });
-           
-           let queue: any[] = [];
-           Object.keys(inDegree).forEach(id => {
-             if (inDegree[id] === 0) queue.push(id);
-           });
-           
-           while(queue.length > 0) {
-             const curr = queue.shift();
-             adj[curr]!.forEach(neighbor => {
-                depths[neighbor] = Math.max(depths[neighbor]!, depths[curr]! + 1);
-                inDegree[neighbor]!--;
-                if(inDegree[neighbor] === 0) queue.push(neighbor);
-             });
-           }
-           
-           const phaseIds = WORKFLOW_PHASES.map(p => p.id);
-           const depthGroups: Record<number, any[]> = {};
-           
-           activeTemplate.blocks.forEach((block: any) => {
-              const d = depths[block.id] || 0;
-              const phaseIndex = Math.min(d, phaseIds.length - 1);
-              block.dynamicPhase = phaseIds[phaseIndex];
-              if(!depthGroups[d]) depthGroups[d] = [];
-              depthGroups[d]!.push(block);
-           });
-           
-           const newLayout: Record<string, any> = {};
-           const maxDepth = Math.max(0, ...Object.keys(depthGroups).map(Number));
-           
-           for (let d = 0; d <= maxDepth; d++) {
-             const blocksInCol = depthGroups[d] || [];
-             const x = 350 + (d * 500);
-             const startY = 400 - ((blocksInCol.length - 1) * 200) / 2;
-             
-             blocksInCol.forEach((block: any, bIdx: any) => {
-                 const phaseIndex = Math.min(d, phaseIds.length - 1);
-                 newLayout[block.id] = {
-                     id: block.id,
-                     x: x + (bIdx % 2 !== 0 ? 60 : 0), 
-                     y: startY + (bIdx * 200),
-                     category: { name: block.name, description: block.description },
-                     phase: phaseIds[phaseIndex],
-                     tools: [],
-                     blockRef: block 
-                 };
-             });
-           }
-           return newLayout;
-       }
-    }
-    return computeLayout('desktop', 2000, 1000);
-  }, [graphStatus, deployedTemplateId, viewMode, templates]);
+    if (deployedTemplateId) {
+      // First try to find in the loaded templates array
+      let activeTemplate = templates.find((t: any) => t.id === deployedTemplateId);
 
-  // Bundle Edges 
-  const bundledEdges = useMemo(() => {
-    if (graphStatus === 'error' || graphStatus === 'idle') return [];
-    if (deployedTemplateId && viewMode === 'pipeline') return []; // Use custom logic below
-    return bundleEdges(EDGES);
-  }, [graphStatus, deployedTemplateId, viewMode]);
-
-  const customEdges = useMemo(() => {
-    if (!deployedTemplateId || viewMode !== 'pipeline') return [];
-    const activeTemplate = templates.find((t: any) => t.id === deployedTemplateId);
-    if (!activeTemplate || !layout) return [];
-    return activeTemplate.connections.map((c: any) => {
-        const s = layout[c.sourceBlockId];
-        const t = layout[c.targetBlockId];
-        if (!s || !t) return null;
-        const p1 = {x: s.x + 140, y: s.y + 70}; 
-        const p2 = {x: t.x, y: t.y + 70}; 
-        const offset = Math.abs(p2.x - p1.x) * 0.5;
-        return {
-           _coreId: c.id,
-           id: c.id,
-           from: c.sourceBlockId,
-           to: c.targetBlockId,
-           d: `M ${p1.x} ${p1.y} C ${p1.x + offset} ${p1.y}, ${p2.x - offset} ${p2.y}, ${p2.x} ${p2.y}`
-        };
-    }).filter(Boolean);
-  }, [deployedTemplateId, viewMode, templates, layout]);
-
-  // Canvas Interactions
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const onWheel = (e: any) => {
-      if (canvasLocked) { e.preventDefault(); return; }
-      if (e.ctrlKey || e.metaKey) {
-        e.preventDefault();
+      // Fallback: If not in templates array yet (e.g. local deploy), build from builderStore blocks directly
+      if (!activeTemplate) {
+        const builderState = useBuilderStore.getState();
+        if (builderState.blocks.length > 0) {
+          activeTemplate = {
+            id: deployedTemplateId,
+            blocks: builderState.blocks,
+            connections: builderState.connections,
+          };
+        }
       }
 
-      requestAnimationFrame(() => {
-        if (e.ctrlKey || e.metaKey) {
-          setCamera((prev) => {
-            // Exponential zoom scaling for smooth, natural feeling zoom
-            const zoomMultiplier = Math.exp(-e.deltaY * 0.005);
-            // Expanded zoom bounds for more freedom
-            const newZoom = Math.min(Math.max(prev.zoom * zoomMultiplier, 0.05), 4);
-            const zoomRatio = newZoom / prev.zoom;
+      if (activeTemplate) {
+        const depths: Record<string, number> = {};
+        const adj: Record<string, any[]> = {};
+        const inDegree: Record<string, number> = {};
 
-            const rect = canvas.getBoundingClientRect();
-            const mouseX = e.clientX - rect.left;
-            const mouseY = e.clientY - rect.top;
+        activeTemplate.blocks.forEach((b: any) => {
+          adj[b.id] = [];
+          inDegree[b.id] = 0;
+          depths[b.id] = 0;
+        });
 
-            return {
-              zoom: newZoom,
-              x: mouseX - (mouseX - prev.x) * zoomRatio,
-              y: mouseY - (mouseY - prev.y) * zoomRatio,
+        activeTemplate.connections.forEach((c: any) => {
+          if (adj[c.sourceBlockId] && inDegree[c.targetBlockId] !== undefined) {
+            adj[c.sourceBlockId]!.push(c.targetBlockId);
+            inDegree[c.targetBlockId]!++;
+          }
+        });
+
+        let queue: any[] = [];
+        Object.keys(inDegree).forEach(id => {
+          if (inDegree[id] === 0) queue.push(id);
+        });
+
+        while (queue.length > 0) {
+          const curr = queue.shift();
+          adj[curr]!.forEach(neighbor => {
+            depths[neighbor] = Math.max(depths[neighbor]!, depths[curr]! + 1);
+            inDegree[neighbor]!--;
+            if (inDegree[neighbor] === 0) queue.push(neighbor);
+          });
+        }
+
+        const phaseIds = WORKFLOW_PHASES.map(p => p.id);
+        const depthGroups: Record<number, any[]> = {};
+
+        activeTemplate.blocks.forEach((block: any) => {
+          const d = depths[block.id] || 0;
+          const phaseIndex = Math.min(d, phaseIds.length - 1);
+          block.dynamicPhase = phaseIds[phaseIndex];
+          if (!depthGroups[d]) depthGroups[d] = [];
+          depthGroups[d]!.push(block);
+        });
+
+        const newLayout: Record<string, any> = {};
+        const maxDepth = Math.max(0, ...Object.keys(depthGroups).map(Number));
+
+        for (let d = 0; d <= maxDepth; d++) {
+          const blocksInCol = depthGroups[d] || [];
+          const x = 350 + (d * 500);
+          const startY = 400 - ((blocksInCol.length - 1) * 200) / 2;
+
+          blocksInCol.forEach((block: any, bIdx: any) => {
+            const phaseIndex = Math.min(d, phaseIds.length - 1);
+            newLayout[block.id] = {
+              id: block.id,
+              x: x + (bIdx % 2 !== 0 ? 60 : 0),
+              y: startY + (bIdx * 200),
+              category: { name: block.name, description: block.description },
+              phase: phaseIds[phaseIndex],
+              tools: [],
+              blockRef: block
             };
           });
-        } else {
-          setCamera((prev: any) => ({
-            ...prev,
-            // Accelerated panning for smoother surfing
-            x: prev.x - e.deltaX * 1.5,
-            y: prev.y - e.deltaY * 1.5,
-          }));
         }
-      });
-    };
-
-    canvas.addEventListener('wheel', onWheel, { passive: false });
-    return () => canvas.removeEventListener('wheel', onWheel);
-  }, [canvasLocked]);
-
-  const getCanvasCoords = useCallback((clientX: any, clientY: any) => {
-    return {
-      x: (clientX - camera.x) / camera.zoom,
-      y: (clientY - camera.y) / camera.zoom
-    };
-  }, [camera]);
-
-  const handleMouseDown = useCallback((e: any) => {
-    if (canvasLocked) return;
-    if (e.target.closest('.n8n-node') || e.target.closest('.sticky-note')) return;
-
-    if (activeTool === 'cursor') {
-      if (e.button === 1 || (e.button === 0 && e.altKey) || e.target.id === 'canvas-bg') {
-        setIsPanning(true);
-        lastMousePos.current = { x: e.clientX, y: e.clientY };
+        return newLayout;
       }
-    } else if (activeTool === 'sticky') {
-      const coords = getCanvasCoords(e.clientX, e.clientY);
-      const newId = Date.now();
-      setStickyNotes((prev: any) => [...prev, { id: newId, x: coords.x - 120, y: coords.y - 90, text: '', color: '#A259FF', width: 240, height: 180 }]);
-      setActiveTool('cursor');
-    } else if (activeTool === 'text') {
-      const coords = getCanvasCoords(e.clientX, e.clientY);
-      setTextLabels(prev => [...prev, { id: Date.now(), x: coords.x, y: coords.y, text: '' }]);
-      setActiveTool('cursor');
-    } else if (activeTool === 'highlighter') {
-      isDrawingRef.current = true;
-      setIsDrawing(true);
-      const coords = getCanvasCoords(e.clientX, e.clientY);
-      currentStrokeRef.current = [coords];
-      setCurrentStroke([coords]);
     }
-  }, [activeTool, canvasLocked, getCanvasCoords]);
+    return computeLayout('desktop', 2000, 1000);
+  }, [graphStatus, deployedTemplateId, templates]);
 
-  const handleMouseMove = useCallback(
-    (e: any) => {
-      if (canvasRef.current) {
-        const rect = canvasRef.current.getBoundingClientRect();
-        canvasRef.current.style.setProperty('--mouse-x', `${e.clientX - rect.left}px`);
-        canvasRef.current.style.setProperty('--mouse-y', `${e.clientY - rect.top}px`);
-      }
-      
-      if (draggingAppElement) {
-        const coords = getCanvasCoords(e.clientX, e.clientY);
-        const dx = coords.x - draggingAppElement.startMouseX;
-        const dy = coords.y - draggingAppElement.startMouseY;
-        if (draggingAppElement.type === 'sticky') {
-          setStickyNotes((prev: any) => prev.map((n: any) => n.id === draggingAppElement.id ? { ...n, x: draggingAppElement.startX + dx, y: draggingAppElement.startY + dy } : n));
-        } else if (draggingAppElement.type === 'label') {
-          setTextLabels((prev: any) => prev.map((l: any) => l.id === draggingAppElement.id ? { ...l, x: draggingAppElement.startX + dx, y: draggingAppElement.startY + dy } : l));
-        }
-      }
 
-      if (resizingAppElement) {
-        const coords = getCanvasCoords(e.clientX, e.clientY);
-        const newWidth = Math.max(120, coords.x - resizingAppElement.elemX);
-        const newHeight = Math.max(120, coords.y - resizingAppElement.elemY);
-        if (resizingAppElement.type === 'sticky') {
-           setStickyNotes((prev: any) => prev.map((n: any) => n.id === resizingAppElement.id ? { ...n, width: newWidth, height: newHeight } : n));
-        }
-      }
 
-      if (isPanning) {
-        requestAnimationFrame(() => {
-          const dx = e.clientX - lastMousePos.current.x;
-          const dy = e.clientY - lastMousePos.current.y;
-          // Apply a smooth 1.5x speed boost to manual panning so it doesn't feel heavy
-          setCamera((prev: any) => ({ ...prev, x: prev.x + dx * 1.5, y: prev.y + dy * 1.5 }));
-          lastMousePos.current = { x: e.clientX, y: e.clientY };
-        });
-      } else if (isDrawingRef.current && activeTool === 'highlighter') {
-        const coords = getCanvasCoords(e.clientX, e.clientY);
-        currentStrokeRef.current.push(coords);
-        // Throttled state update for rendering
-        if (currentStrokeRef.current.length % 2 === 0) {
-          setCurrentStroke([...currentStrokeRef.current]);
-        }
-      }
-    },
-    [isPanning, activeTool, getCanvasCoords, draggingAppElement, resizingAppElement]
-  );
 
-  const handleMouseUp = useCallback(() => {
-    if (draggingAppElement) setDraggingAppElement(null);
-    if (resizingAppElement) setResizingAppElement(null);
-    if (isPanning) setIsPanning(false);
-    if (isDrawingRef.current) {
-      isDrawingRef.current = false;
-      setIsDrawing(false);
-      if (currentStrokeRef.current.length > 1) {
-        setStrokes((prev: any) => [...prev, { id: Date.now(), points: [...currentStrokeRef.current] }]);
-      }
-      currentStrokeRef.current = [];
-      setCurrentStroke(null);
-    }
-  }, [isPanning, draggingAppElement, resizingAppElement]);
 
-  const runFullPipeline = useCallback(async () => {
-    if (!layout || graphStatus === 'running') return;
+  const runSingleGroup = useCallback(async (groupId: string, prevGroupOutputContext = '') => {
     const store = useWorkflowStore.getState();
+    const builderStore = useBuilderStore.getState();
     
     if (!projectPrompt || projectPrompt.trim() === '') {
       addToast('info', 'Please enter a project directive in the top bar.');
-      return;
+      return null;
     }
 
     // --- PRE-CHECK API KEY ---
@@ -6526,348 +6597,55 @@ const Engine = () => {
       if (!status.any) {
         setKeyModalType('NO_KEY');
         setShowKeyModal(true);
-        return;
+        return null;
       }
     }
 
-    // Update sequence title in Supabase to match the prompt (handled by autosave)
-    // No explicit call needed here anymore to avoid redundant writes
-    
-    store.setGraphStatus('running');
-    store.resetExecution(Object.keys(layout)); 
+    const group = builderStore.groups.find(g => g.id === groupId);
+    if (!group) return null;
 
-    // Check if we're running a deployed template or default schema
-    const activeTemplate = deployedTemplateId ? templates.find((t: any) => t.id === deployedTemplateId) : null;
-
-    if (activeTemplate) {
-      // --- DEPLOYED TEMPLATE EXECUTION (topological order) ---
-      const depths: Record<string, number> = {};
-      const adj: Record<string, any[]> = {};
-      const inDegree: Record<string, number> = {};
-      
-      activeTemplate.blocks.forEach((b: any) => {
-        adj[b.id] = [];
-        inDegree[b.id] = 0;
-        depths[b.id] = 0;
-      });
-      
-      activeTemplate.connections.forEach((c: any) => {
-        if (adj[c.sourceBlockId] && inDegree[c.targetBlockId] !== undefined) {
-          adj[c.sourceBlockId]!.push(c.targetBlockId);
-          inDegree[c.targetBlockId]!++;
-        }
-      });
-      
-      let queue: any[] = [];
-      Object.keys(inDegree).forEach(id => {
-        if (inDegree[id] === 0) queue.push(id);
-      });
-      
-      while (queue.length > 0) {
-        const curr = queue.shift();
-        (adj[curr] || []).forEach((neighbor: any) => {
-          depths[neighbor] = Math.max(depths[neighbor]!, depths[curr]! + 1);
-          inDegree[neighbor]!--;
-          if (inDegree[neighbor] === 0) queue.push(neighbor);
-        });
-      }
-      
-      const maxDepth = Math.max(0, ...Object.values(depths));
-      const phaseLabels = WORKFLOW_PHASES.map(p => p.label);
-      
-      setCompletedPhases([]);
-      for (let d = 0; d <= maxDepth; d++) {
-        const phaseIndex = Math.min(d, WORKFLOW_PHASES.length - 1);
-        const currentPhaseObj = WORKFLOW_PHASES[phaseIndex];
-        if (currentPhaseObj) setRunningPhaseId(currentPhaseObj.id);
-        store.setCurrentPhaseIndex(phaseIndex);
-        
-        const nodesAtDepth = activeTemplate.blocks.filter((b: any) => (depths[b.id] || 0) === d).map((b: any) => b.id);
-        const currentActive = store.animationState.activeNodes;
-        store.setAnimationState({ activeNodes: [...currentActive, ...nodesAtDepth] });
-        
-        let neuralContext = '';
-        if (d > 0) {
-          const prevNodes = activeTemplate.blocks.filter((b: any) => (depths[b.id] || 0) === d - 1).map((b: any) => b.id);
-          const currentResults = store.nodeResults || {};
-          neuralContext = prevNodes
-            .map((id: any) => currentResults[id]?.content)
-            .filter(Boolean)
-            .join('\n\n---\n\n');
-        }
-        
-        const CONCURRENCY_LIMIT = 2;
-        for (let batchIdx = 0; batchIdx < nodesAtDepth.length; batchIdx += CONCURRENCY_LIMIT) {
-          const batch = nodesAtDepth.slice(batchIdx, batchIdx + CONCURRENCY_LIMIT);
-          await Promise.all(batch.map(async (nId: any, idx: number) => {
-          // Stagger requests to avoid burst rate limits (1.5 seconds per node in batch)
-          if (idx > 0) await new Promise(resolve => setTimeout(resolve, idx * 1500));
-          const nodeInfo = (layout as any)[nId];
-          const agentData = {
-            id: nId,
-            phaseLabel: phaseLabels[phaseIndex] || `Phase ${d + 1}`,
-            categoryName: nodeInfo?.category?.name || 'Agent',
-            name: nodeInfo?.category?.name || 'Agent'
-          };
-
-          let resolved = false;
-          while (!resolved) {
-            store.setNodeState(nId, 'running');
-            try {
-              const taskObj = `Project directive: ${store.projectPrompt}\n\nExecute agentic objective for ${agentData.name} within the ${agentData.phaseLabel} architecture phase. Provide deep expert analysis based on the project directive.`;
-              
-              const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT_STUCK')), 45000));
-              const result: any = await Promise.race([
-                callLLM(taskObj, agentData, neuralContext, store.projectAttachment),
-                timeoutPromise
-              ]);
-
-              if (result && result._errorType) {
-                 store.setNodeResult(nId, { ...result, agentName: agentData.name });
-                 store.setNodeState(nId, 'stuck_debugger');
-              } else {
-                 store.setNodeResult(nId, { ...result, agentName: agentData.name });
-                 store.setNodeState(nId, 'completed');
-                 resolved = true;
-                 break;
-              }
-            } catch (err: any) {
-              console.error(`[${nId}] Error:`, err);
-              store.setNodeState(nId, 'stuck_debugger');
-            }
-
-            if (!resolved) {
-              await new Promise<void>((resolve) => {
-                const checkInterval = setInterval(() => {
-                  const currentState = useWorkflowStore.getState().nodeStates[nId];
-                  if (currentState === 'completed') {
-                    clearInterval(checkInterval);
-                    resolved = true;
-                    resolve();
-                  } else if (currentState === 'running') {
-                    clearInterval(checkInterval);
-                    resolve();
-                  }
-                }, 500);
-              });
-            }
-          }
-          }));
-        }
-
-        if (currentPhaseObj) {
-          setCompletedPhases(prev => [...prev.filter(id => id !== currentPhaseObj.id), currentPhaseObj.id]);
-        }
-        setRunningPhaseId(null);
-
-        if (d < maxDepth) {
-          const nextPhaseIndex = Math.min(d + 1, WORKFLOW_PHASES.length - 1);
-          setPhaseOverlay({ 
-            phase: d + 1, 
-            phaseName: phaseLabels[phaseIndex] || `Phase ${d + 1}`, 
-            nextPhaseName: phaseLabels[nextPhaseIndex] || `Phase ${d + 2}` 
-          });
-          await new Promise(r => setTimeout(r, 2000));
-          setPhaseOverlay(null);
-        }
-      }
-    } else {
-      // --- DEFAULT SCHEMA EXECUTION (original logic) ---
-      setCompletedPhases([]);
-      for (let i = 0; i < WORKFLOW_PHASES.length; i++) {
-        const phase = WORKFLOW_PHASES[i]!;
-        setRunningPhaseId(phase.id);
-        store.setCurrentPhaseIndex(i);
-        
-        const phaseNodes = phase.categories.map((c: any) => `${phase.id}::${c}`);
-        const currentActive = store.animationState.activeNodes;
-        store.setAnimationState({ activeNodes: [...currentActive, ...phaseNodes] });
-
-        let neuralContext = '';
-        if (i > 0) {
-          const prevPhase = WORKFLOW_PHASES[i - 1]!;
-          const prevPhaseNodes = prevPhase.categories.map((c: any) => `${prevPhase.id}::${c}`);
-          const currentResults = store.nodeResults || {};
-          neuralContext = prevPhaseNodes
-            .map((id: any) => currentResults[id]?.content)
-            .filter(Boolean)
-            .join('\n\n---\n\n');
-        }
-
-        const CONCURRENCY_LIMIT = 2;
-        for (let batchIdx = 0; batchIdx < phaseNodes.length; batchIdx += CONCURRENCY_LIMIT) {
-          const batch = phaseNodes.slice(batchIdx, batchIdx + CONCURRENCY_LIMIT);
-          await Promise.all(batch.map(async (nId: any, idx: number) => {
-          // Stagger requests to avoid burst rate limits (1.5 seconds per node in batch)
-          if (idx > 0) await new Promise(resolve => setTimeout(resolve, idx * 1500));
-          const nodeCategory = nId.split('::')[1];
-          const agentData = {
-            id: nId,
-            phaseLabel: phase.label,
-            categoryName: nodeCategory,
-            name: (layout as any)[nId]?.category?.name || nodeCategory
-          };
-
-          let resolved = false;
-          while (!resolved) {
-            store.setNodeState(nId, 'running');
-            try {
-              const taskObj = `Project directive: ${store.projectPrompt}\n\nExecute agentic objective for ${agentData.name} within the ${agentData.phaseLabel} architecture phase. Provide deep expert analysis based on the project directive.`;
-              
-              const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT_STUCK')), 45000));
-              const result: any = await Promise.race([
-                callLLM(taskObj, agentData, neuralContext, store.projectAttachment),
-                timeoutPromise
-              ]);
-
-              if (result && result._errorType) {
-                 store.setNodeResult(nId, result);
-                 store.setNodeState(nId, 'stuck_debugger');
-              } else {
-                 store.setNodeResult(nId, result);
-                 store.setNodeState(nId, 'completed');
-                 resolved = true;
-                 break;
-              }
-            } catch (err: any) {
-              console.error(`[${nId}] Error:`, err);
-              store.setNodeState(nId, 'stuck_debugger');
-            }
-
-            if (!resolved) {
-              await new Promise<void>((resolve) => {
-                const checkInterval = setInterval(() => {
-                  const currentState = useWorkflowStore.getState().nodeStates[nId];
-                  if (currentState === 'completed') {
-                    clearInterval(checkInterval);
-                    resolved = true;
-                    resolve();
-                  } else if (currentState === 'running') {
-                    clearInterval(checkInterval);
-                    resolve();
-                  }
-                }, 500);
-              });
-            }
-          }
-          }));
-        }
-
-        setCompletedPhases(prev => [...prev.filter(id => id !== phase.id), phase.id]);
-        setRunningPhaseId(null);
-
-        if (i < WORKFLOW_PHASES.length - 1) {
-          setPhaseOverlay({ 
-            phase: i + 1, 
-            phaseName: phase.label, 
-            nextPhaseName: WORKFLOW_PHASES[i + 1]!.label 
-          });
-          await new Promise(r => setTimeout(r, 2000));
-          setPhaseOverlay(null);
-        }
-      }
-    }
-
-    store.setGraphStatus('completed');
-    const duration = 2000;
-    const end = Date.now() + duration;
-
-    (function frame() {
-      confetti({ particleCount: 8, angle: 60, spread: 70, origin: { x: 0 }, colors: ['#46B1FF', '#CEA3FF', '#DEF767'] });
-      confetti({ particleCount: 8, angle: 120, spread: 70, origin: { x: 1 }, colors: ['#A259FF', '#DEF767', '#ffffff'] });
-      if (Date.now() < end) requestAnimationFrame(frame);
-    }());
-    
-    setTimeout(() => setShowOutputScreen(true), 2500);
-  }, [layout, graphStatus, projectPrompt, deployedTemplateId, templates]);
-
-  // ── PHASE-GATED EXECUTION ─────────────────────────────────────
-  const runPhase = useCallback(async (phaseId: string) => {
-    if (!layout || runningPhaseId) return;
-    const store = useWorkflowStore.getState();
-
-    if (!projectPrompt || projectPrompt.trim() === '') {
-      addToast('info', 'Please enter a project directive first.');
-      return;
-    }
-
-    // Gate check — previous phase must be complete
-    const phaseIndex = WORKFLOW_PHASES.findIndex(p => p.id === phaseId);
-    if (phaseIndex > 0) {
-      const prevPhase = WORKFLOW_PHASES[phaseIndex - 1]!;
-      if (!completedPhases.includes(prevPhase.id)) {
-        addToast('warning', `Complete ${prevPhase.label} first before running ${WORKFLOW_PHASES[phaseIndex]!.label}.`);
-        return;
-      }
-    }
-
-    // API key check
-    const seqId = localStorage.getItem('active_sequence_id');
-    if (seqId) {
-      const status = await checkKeyAvailability(seqId);
-      setKeyInfo(status);
-      if (!status.any) {
-        setKeyModalType('NO_KEY');
-        setShowKeyModal(true);
-        return;
-      }
-    }
-
-    setRunningPhaseId(phaseId);
+    builderStore.setRunningGroupId(groupId);
     store.setGraphStatus('running');
 
-    const phase = WORKFLOW_PHASES[phaseIndex]!;
-    const phaseNodes = phase.categories.map((c: any) => `${phase.id}::${c}`);
+    const groupBlockIds = [...group.blockIds, group.outputBlockId];
+    store.resetExecution(groupBlockIds);
 
-    // Build neural context from the previous phase's completed results
-    let neuralContext = '';
-    if (phaseIndex > 0) {
-      const prevPhase = WORKFLOW_PHASES[phaseIndex - 1]!;
-      const prevNodes = prevPhase.categories.map((c: any) => `${prevPhase.id}::${c}`);
-      neuralContext = prevNodes
-        .map((id: any) => store.nodeResults[id]?.content)
-        .filter(Boolean)
-        .join('\n\n---\n\n');
-      if (neuralContext) {
-        neuralContext = `PHASE CONTEXT FROM [${prevPhase.label.toUpperCase()}]:\n${neuralContext.substring(0, 6000)}`;
-      }
-    }
+    const currentBlocks = builderStore.blocks;
+    const activeAgents = currentBlocks.filter(b => group.blockIds.includes(b.id));
 
-    // Mark all phase nodes as idle first
-    phaseNodes.forEach((nId: string) => store.setNodeState(nId, 'idle'));
-    store.setCurrentPhaseIndex(phaseIndex);
-    store.setAnimationState({ activeNodes: phaseNodes });
-
-    // Execute nodes in batches of 3
-    const CONCURRENCY_LIMIT = 3;
-    for (let batchIdx = 0; batchIdx < phaseNodes.length; batchIdx += CONCURRENCY_LIMIT) {
-      const batch = phaseNodes.slice(batchIdx, batchIdx + CONCURRENCY_LIMIT);
-      await Promise.all(batch.map(async (nId: string) => {
+    const CONCURRENCY_LIMIT = 2;
+    for (let batchIdx = 0; batchIdx < activeAgents.length; batchIdx += CONCURRENCY_LIMIT) {
+      const batch = activeAgents.slice(batchIdx, batchIdx + CONCURRENCY_LIMIT);
+      await Promise.all(batch.map(async (block: any, idx: number) => {
+        if (idx > 0) await new Promise(resolve => setTimeout(resolve, idx * 1500));
+        const nId = block.id;
         const agentData = {
           id: nId,
-          phaseLabel: phase.label,
-          categoryName: nId.split('::')[1],
-          name: (layout as any)[nId]?.category?.name || nId.split('::')[1]
+          phaseLabel: group.name,
+          categoryName: 'Agent',
+          name: block.name || 'Agent'
         };
 
         let resolved = false;
         while (!resolved) {
           store.setNodeState(nId, 'running');
           try {
-            const taskObj = `Project directive: ${store.projectPrompt}\n\nExecute agentic objective for ${agentData.name} within the ${agentData.phaseLabel} phase. Provide deep expert analysis.`;
+            const taskObj = `Project directive: ${store.projectPrompt}\n\nObjective: ${block.description}\n\nExecute agentic objective for ${agentData.name} within the ${agentData.phaseLabel} architecture phase. Provide deep expert analysis based on the project directive.`;
+
             const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT_STUCK')), 45000));
             const result: any = await Promise.race([
-              callLLM(taskObj, agentData, neuralContext, store.projectAttachment),
+              callLLM(taskObj, agentData, prevGroupOutputContext, store.projectAttachment),
               timeoutPromise
             ]);
 
-            if (result?._errorType) {
-              store.setNodeResult(nId, result);
+            if (result && result._errorType) {
+              store.setNodeResult(nId, { ...result, agentName: agentData.name });
               store.setNodeState(nId, 'stuck_debugger');
             } else {
-              store.setNodeResult(nId, result);
+              store.setNodeResult(nId, { ...result, agentName: agentData.name });
               store.setNodeState(nId, 'completed');
               resolved = true;
+              break;
             }
           } catch (err: any) {
             console.error(`[${nId}] Error:`, err);
@@ -6893,28 +6671,141 @@ const Engine = () => {
       }));
     }
 
-    // Phase complete
-    setCompletedPhases(prev => [...prev.filter(id => id !== phaseId), phaseId]);
-    setRunningPhaseId(null);
+    // Execute output synthesis node
+    const outputNodeId = group.outputBlockId;
+    const outputBlock = currentBlocks.find(b => b.id === outputNodeId);
+    const outputAgentData = {
+      id: outputNodeId,
+      phaseLabel: group.name,
+      categoryName: 'Synthesis Output',
+      name: outputBlock?.name || `${group.name} Output`
+    };
 
-    const allDone = WORKFLOW_PHASES.every((p, idx) =>
-      idx <= phaseIndex ? true : completedPhases.includes(p.id)
-    );
+    const currentResults = store.nodeResults || {};
+    const neuralContextForOutput = group.blockIds
+      .map((id: string) => currentResults[id]?.content)
+      .filter(Boolean)
+      .join('\n\n---\n\n');
 
-    if (phaseIndex === WORKFLOW_PHASES.length - 1 || allDone) {
-      store.setGraphStatus('completed');
-      const end = Date.now() + 2000;
-      (function frame() {
-        confetti({ particleCount: 8, angle: 60, spread: 70, origin: { x: 0 }, colors: ['#46B1FF', '#CEA3FF', '#DEF767'] });
-        confetti({ particleCount: 8, angle: 120, spread: 70, origin: { x: 1 }, colors: ['#A259FF', '#DEF767', '#ffffff'] });
-        if (Date.now() < end) requestAnimationFrame(frame);
-      }());
-    } else {
-      store.setGraphStatus('ready');
+    let resolvedOutput = false;
+    while (!resolvedOutput) {
+      store.setNodeState(outputNodeId, 'running');
+      try {
+        const synthesisPromptText = `Project directive: ${store.projectPrompt}\n\nYou are the synthesis node for the group phase "${group.name}". Synthesize, summarize, and integrate the output results from all agents in this phase. Identify key insights, conflicts, and next steps.`;
+        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT_STUCK')), 45000));
+        const result: any = await Promise.race([
+          callLLM(synthesisPromptText, outputAgentData, neuralContextForOutput, store.projectAttachment),
+          timeoutPromise
+        ]);
+
+        if (result && result._errorType) {
+          store.setNodeResult(outputNodeId, { ...result, agentName: outputAgentData.name });
+          store.setNodeState(outputNodeId, 'stuck_debugger');
+        } else {
+          store.setNodeResult(outputNodeId, { ...result, agentName: outputAgentData.name });
+          store.setNodeState(outputNodeId, 'completed');
+          resolvedOutput = true;
+          break;
+        }
+      } catch (err: any) {
+        console.error(`[${outputNodeId}] Output Error:`, err);
+        store.setNodeState(outputNodeId, 'stuck_debugger');
+      }
+
+      if (!resolvedOutput) {
+        await new Promise<void>((resolve) => {
+          const checkInterval = setInterval(() => {
+            const currentState = useWorkflowStore.getState().nodeStates[outputNodeId];
+            if (currentState === 'completed') {
+              clearInterval(checkInterval);
+              resolvedOutput = true;
+              resolve();
+            } else if (currentState === 'running') {
+              clearInterval(checkInterval);
+              resolve();
+            }
+          }, 500);
+        });
+      }
     }
 
-    addToast('success', `${phase.label} phase complete! Download the report or run the next phase.`);
-  }, [layout, projectPrompt, completedPhases, runningPhaseId, deployedTemplateId, templates]);
+    builderStore.addCompletedGroupId(groupId);
+    builderStore.setRunningGroupId(null);
+    store.setGraphStatus('ready');
+
+    return store.nodeResults[outputNodeId]?.content || '';
+  }, [projectPrompt, addToast, checkKeyAvailability]);
+
+  const runGroupWorkflow = useCallback(async () => {
+    const store = useWorkflowStore.getState();
+    const builderStore = useBuilderStore.getState();
+
+    if (!projectPrompt || projectPrompt.trim() === '') {
+      addToast('info', 'Please enter a project directive in the top bar.');
+      return;
+    }
+
+    if (builderStore.groups.length === 0) {
+      addToast('warning', 'Please create at least one phase group before running.');
+      return;
+    }
+
+    // Ungrouped agents warning
+    const agentBlocks = builderStore.blocks.filter(b => b.type === 'agent' && !b.isGroupOutput);
+    const assignedBlockIds = new Set<string>();
+    builderStore.groups.forEach(g => {
+      g.blockIds.forEach(id => assignedBlockIds.add(id));
+    });
+    const ungroupedAgents = agentBlocks.filter(b => !assignedBlockIds.has(b.id));
+
+    if (ungroupedAgents.length > 0) {
+      addToast('warning', 'All agents must be assigned to a phase group before running the workflow.');
+      return;
+    }
+
+    builderStore.resetGroupExecution();
+    store.setGraphStatus('running');
+
+    const sortedGroups = [...builderStore.groups].sort((a, b) => a.order - b.order);
+
+    let prevGroupOutputContext = '';
+    for (let i = 0; i < sortedGroups.length; i++) {
+      const group = sortedGroups[i]!;
+      
+      if (i > 0) {
+        const prevGroup = sortedGroups[i - 1]!;
+        setPhaseOverlay({
+          phase: i,
+          phaseName: prevGroup.name,
+          nextPhaseName: group.name
+        });
+        await new Promise(r => setTimeout(r, 2000));
+        setPhaseOverlay(null);
+      }
+
+      const outputContext = await runSingleGroup(group.id, prevGroupOutputContext);
+      if (outputContext === null) {
+        store.setGraphStatus('ready');
+        return;
+      }
+      prevGroupOutputContext = outputContext;
+    }
+
+    store.setGraphStatus('completed');
+
+    const duration = 2000;
+    const end = Date.now() + duration;
+
+    (function frame() {
+      confetti({ particleCount: 8, angle: 60, spread: 70, origin: { x: 0 }, colors: ['#46B1FF', '#CEA3FF', '#DEF767'] });
+      confetti({ particleCount: 8, angle: 120, spread: 70, origin: { x: 1 }, colors: ['#A259FF', '#DEF767', '#ffffff'] });
+      if (Date.now() < end) requestAnimationFrame(frame);
+    }());
+
+    setTimeout(() => setShowOutputScreen(true), 2500);
+  }, [projectPrompt, addToast, runSingleGroup]);
+
+
 
   const rebootSequence = () => {
     const store = useWorkflowStore.getState();
@@ -6924,443 +6815,38 @@ const Engine = () => {
     setShowOutputScreen(false);
   };
 
-  const renderPipelineSidebarContent = () => {
-    if (!selectedNodeId) return null;
-
-    // Node with AI results
-    if (nodeResults && nodeResults[selectedNodeId]?.ui) {
-      const safeHtml = `
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <meta charset="utf-8">
-            <style>
-              body { margin: 0; padding: 0; background: transparent; color-scheme: dark; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-              ::-webkit-scrollbar { width: 6px; height: 6px; }
-              ::-webkit-scrollbar-track { background: transparent; }
-              ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
-              ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
-            </style>
-          </head>
-          <body>
-            ${nodeResults[selectedNodeId].ui}
-          </body>
-        </html>
-      `;
-      return (
-        <div className="flex-1 w-full relative h-[600px]">
-          <iframe 
-            srcDoc={safeHtml} 
-            className="w-full h-full border-0 bg-transparent rounded-2xl" 
-            sandbox="allow-scripts" 
-            title="Agent Output"
-          />
-        </div>
-      );
-    }
-
-    // Default: node details + tool list
-    return (
-      <div className="flex-1 mt-4">
-        <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.05] mb-8 shadow-inner">
-          <p className="text-sm text-slate-400 leading-relaxed font-light">{(layout as any)[selectedNodeId]?.category.description}</p>
-        </div>
-        <span className="text-[10px] text-[#A259FF] uppercase font-bold tracking-widest mb-4 block">Recommended External APIs</span>
-        <div className="flex flex-col gap-3">
-          {(layout as any)[selectedNodeId]?.category.tools.map((tid: any) => {
-            const toolInfo = (TOOL_REGISTRY as any)[tid];
-            return (
-              <div key={tid} className="bg-gradient-to-r from-white/[0.03] to-transparent border border-white/[0.05] p-4 rounded-xl cursor-default transition-all group">
-                <div className="flex justify-between items-start mb-1">
-                  <strong className="text-slate-200 text-sm tracking-wide group-hover:text-[#46B1FF] transition-colors">{toolInfo?.name || tid.toUpperCase()}</strong>
-                  {toolInfo?.pricing && (
-                    <span className="text-[9px] bg-black/40 border border-white/10 text-slate-400 px-2.5 py-0.5 rounded-md uppercase tracking-wider">{toolInfo.pricing}</span>
-                  )}
-                </div>
-                <p className="text-xs text-slate-500 line-clamp-2 mt-2 leading-relaxed">{toolInfo?.description}</p>
-              </div>
-            );
-          })}
-        </div>
-        <div className="mt-12 flex justify-center pb-8 border-b border-white/[0.02]">
-          <p className="text-[9px] text-slate-600 uppercase tracking-widest text-center px-4">Execute AI Pipeline Phase to generate dynamic output for this node.</p>
-        </div>
-      </div>
-    );
-  };
-
-  if (graphStatus === 'error') {
-    return (
-      <div className="h-screen w-screen flex flex-col items-center justify-center bg-[#0a0a10] text-[#ff6b6b]">
-        <AlertTriangle size={64} className="mb-4" />
-        <h1 className="text-2xl font-bold tracking-widest mb-2 font-display">GRAPH VALIDATION FAILED</h1>
-        <p className="text-slate-400 font-mono text-sm">{initError}</p>
-      </div>
-    );
-  }
-
-  if (!layout) {
-    return (
-      <div className="h-screen w-screen bg-[#0a0a10] flex flex-col items-center justify-center gap-6">
-        <div className="w-12 h-12 border-4 border-[#A259FF] border-t-transparent rounded-full animate-spin" />
-        <div className="text-center">
-          <p className="text-sm font-black uppercase tracking-[0.25em] text-[#A259FF] mb-1">Initializing Canvas</p>
-          <p className="text-[11px] text-slate-600 tracking-widest">Loading neural pipeline...</p>
-        </div>
-      </div>
-    );
+  if (graphStatus === 'error' || !layout) {
+    return <EngineStatusView graphStatus={graphStatus} initError={initError} layout={layout} />;
   }
 
   return (
     <div className="flex flex-col h-screen w-full overflow-hidden select-none bg-[#0a0a10] text-slate-200 relative">
       <FlowHeader />
 
-      {/* ── Phase Transition Overlay ── */}
-      {phaseOverlay && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-[#0a0a10]/80 backdrop-blur-sm">
-          <div className="flex flex-col items-center bg-[#13131a] p-8 pb-10 rounded-2xl border border-white/10 shadow-2xl animate-fade-in-up">
-            <Sparkles className="text-[#DEF767] mb-4" size={32} />
-            <div className="text-[#DEF767] font-bold tracking-widest text-xs mb-2">
-              PHASE {phaseOverlay.phase} COMPLETE
-            </div>
-            <h2 className="text-3xl font-black text-white px-8 uppercase tracking-[0.2em] font-display">
-              {phaseOverlay.phaseName}
-            </h2>
-            <div className="w-16 h-px bg-white/20 my-6" />
-            <div className="text-slate-400 text-sm tracking-widest uppercase">
-              Initializing {phaseOverlay.nextPhaseName}
-            </div>
-          </div>
-        </div>
-      )}
+      <PhaseTransitionOverlay phaseOverlay={phaseOverlay} />
 
-      {/* ── Token Limit Exceeded Modal ── */}
-      <AnimatePresence>
-        {tokenLimitModal?.show && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="absolute inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-md"
-          >
-            <motion.div
-              initial={{ scale: 0.85, opacity: 0, y: 30 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              transition={{ type: 'spring', damping: 22, stiffness: 300 }}
-              className="relative w-[480px] max-w-[92vw] bg-[#0d0d15] border border-[#F6E27F]/25 rounded-3xl shadow-[0_40px_120px_rgba(246,226,127,0.15)] overflow-hidden"
-            >
-              {/* Glow bar */}
-              <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#F6E27F] to-transparent" />
-
-              <div className="p-8">
-                {/* Icon + Title */}
-                <div className="flex items-start gap-4 mb-6">
-                  <div className="w-12 h-12 rounded-2xl bg-[#F6E27F]/10 border border-[#F6E27F]/20 flex items-center justify-center flex-shrink-0 shadow-[0_0_24px_rgba(246,226,127,0.2)]">
-                    <span className="text-2xl">⚠️</span>
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#F6E27F] mb-1">Context Window Exceeded</p>
-                    <h2 className="text-2xl font-black text-white font-display leading-tight">Token Limit Reached</h2>
-                  </div>
-                </div>
-
-                {/* Info */}
-                <div className="bg-white/[0.03] border border-white/5 rounded-2xl p-4 mb-5 space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-[11px] text-slate-500 uppercase tracking-widest font-bold">Model</span>
-                    <span className="text-sm text-white font-mono bg-white/5 px-3 py-1 rounded-lg">{tokenLimitModal.model}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-[11px] text-slate-500 uppercase tracking-widest font-bold">Provider</span>
-                    <span className="text-sm text-[#46B1FF] font-bold">{tokenLimitModal.provider}</span>
-                  </div>
-                </div>
-
-                <p className="text-sm text-slate-400 leading-relaxed mb-6">
-                  The input sent to this model exceeded its maximum context window. The pipeline has been paused at this node. You can shorten your prompt, switch to a model with a larger context window, or dismiss and continue.
-                </p>
-
-                {/* Actions */}
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => setTokenLimitModal(null)}
-                    className="flex-1 py-3.5 rounded-2xl bg-white/5 border border-white/10 text-sm font-bold text-slate-300 hover:bg-white/10 hover:text-white transition-all uppercase tracking-widest"
-                  >
-                    Dismiss
-                  </button>
-                  <button
-                    onClick={() => {
-                      setTokenLimitModal(null);
-                      setShowKeyModal(true);
-                      setKeyModalType('NO_KEY');
-                    }}
-                    className="flex-[1.5] py-3.5 rounded-2xl bg-gradient-to-r from-[#F6E27F] to-[#DEF767] text-black text-sm font-black uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all shadow-[0_8px_30px_rgba(246,226,127,0.3)]"
-                  >
-                    Switch API Key
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-      
       {viewMode === 'templates' && <TemplatesView />}
-
-      {/* ── Expandable Neuro-Command (Project Prompt) ── */}
-      {viewMode === 'pipeline' && (
-      <>
-        {/* Toggle Button in Top Right */}
-        <AnimatePresence>
-          {!isCommandExpanded && (
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.8 }}
-              className="absolute top-24 right-8 z-50 cursor-grab active:cursor-grabbing"
-              drag
-              dragMomentum={false}
-              whileDrag={{ scale: 1.1 }}
-            >
-               <motion.button 
-                 onTap={() => setIsCommandExpanded(true)}
-                 className="w-14 h-14 rounded-full bg-[#0a0a0f]/90 backdrop-blur-3xl border border-white/10 shadow-[0_20px_50px_rgba(162,89,255,0.3)] flex items-center justify-center text-white hover:text-[#A259FF] hover:border-white/30 hover:shadow-[0_20px_50px_rgba(162,89,255,0.5)] transition-all group pointer-events-auto"
-                 title="Open Command Center"
-               >
-                 <Activity size={24} className="group-hover:scale-110 transition-transform pointer-events-none" />
-               </motion.button>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Wide Horizontal Command Bar */}
-        <AnimatePresence>
-          {isCommandExpanded && (
-            <motion.div 
-              initial={{ y: -20, opacity: 0, scale: 0.98 }} 
-              animate={{ y: 0, opacity: 1, scale: 1 }} 
-              exit={{ y: -20, opacity: 0, scale: 0.98 }}
-              transition={{ duration: 0.4, ease: 'circOut' }}
-              className="absolute top-[80px] left-1/2 -translate-x-1/2 z-50 w-full max-w-5xl px-8 pointer-events-none"
-            >
-              <div className="flex flex-col items-center gap-2 pointer-events-auto bg-[#0a0a0f]/80 backdrop-blur-3xl border border-white/10 rounded-3xl p-5 shadow-[0_30px_60px_rgba(0,0,0,0.8)]">
-                <div className="flex items-center gap-4 w-full">
-                   <div className="flex-1 relative group">
-                      <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-slate-500 group-focus-within:text-[#46B1FF] transition-colors">
-                        <Activity size={18} />
-                      </div>
-                      <input
-                        value={projectPrompt}
-                        onChange={(e) => setProjectPrompt(e.target.value)}
-                        placeholder="Orchestrate your objective... (e.g. Design a technical whitepaper for a DeFi protocol)"
-                        className="w-full bg-black/60 border border-white/5 rounded-[18px] py-4 pl-12 pr-6 outline-none focus:border-[#46B1FF]/40 transition-all text-white text-sm shadow-inner placeholder:text-slate-600 font-secondary"
-                        disabled={graphStatus === 'running'}
-                      />
-                   </div>
-                   
-                   {/* Action Buttons */}
-                   <div className="flex items-center gap-2">
-                     <input
-                       ref={fileInputRef}
-                       type="file"
-                       accept=".txt,.md,.json,.pdf"
-                       className="hidden"
-                       title="Upload attachment"
-                       aria-label="Upload attachment"
-                       onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (!file) return;
-                          const reader = new FileReader();
-                          reader.onload = (ev: any) => {
-                            const content = ev.target.result as string;
-                            setProjectAttachment({ name: file.name, content, type: file.type });
-
-                            // Auto-fill the prompt bar from file content
-                            let extractedPrompt = '';
-                            if (file.type === 'application/json' || file.name.endsWith('.json')) {
-                              try {
-                                const json = JSON.parse(content);
-                                extractedPrompt = json.title || json.description || json.prompt || json.name || '';
-                                if (!extractedPrompt && typeof json === 'object') {
-                                  extractedPrompt = JSON.stringify(json).substring(0, 200);
-                                }
-                              } catch {
-                                extractedPrompt = content.split('\n').find((l: string) => l.trim().length > 0) || '';
-                              }
-                            } else {
-                              // For .txt, .md — use the first non-empty line as prompt
-                              const lines = content.split('\n').map((l: string) => l.replace(/^#+\s*/, '').trim()).filter((l: string) => l.length > 0);
-                              extractedPrompt = lines[0] || '';
-                            }
-
-                            if (extractedPrompt) {
-                              setProjectPrompt(extractedPrompt.substring(0, 200));
-                            }
-
-                            addToast('success', `File "${file.name}" loaded — prompt auto-filled from content`);
-                          };
-                          reader.readAsText(file);
-                          e.target.value = '';
-                        }}
-                     />
-                     <button
-                       onClick={() => fileInputRef.current?.click()}
-                       disabled={graphStatus === 'running'}
-                       className="w-14 h-14 rounded-2xl bg-white/[0.03] border border-white/5 text-slate-400 hover:text-[#46B1FF] hover:border-[#46B1FF]/30 transition-all flex items-center justify-center group"
-                       title="Attach context (.txt, .md, .pdf)"
-                       aria-label="Attach context file"
-                     >
-                       <Paperclip size={20} className="group-hover:rotate-12 transition-transform" />
-                     </button>
+      <PromptBar
+        projectPrompt={projectPrompt}
+        setProjectPrompt={setProjectPrompt}
+        projectAttachment={projectAttachment}
+        setProjectAttachment={setProjectAttachment}
+        graphStatus={graphStatus}
+        addToast={addToast}
+        runFullPipeline={runGroupWorkflow}
+        showKeyModal={showKeyModal}
+        setShowKeyModal={setShowKeyModal}
+        setKeyModalType={setKeyModalType}
+        keyInfo={keyInfo}
+        fileInputRef={fileInputRef}
+        completedPhases={completedPhases}
+        runningPhaseId={runningPhaseId}
+        setPhaseOutputModal={setPhaseOutputModal}
+        runPhase={runSingleGroup}
+        tokenLimitModal={tokenLimitModal}
+      />
 
 
-                     {/* Close Button */}
-                     <button 
-                       onClick={() => setIsCommandExpanded(false)}
-                       className="w-14 h-14 rounded-2xl bg-white/[0.03] border border-white/5 text-slate-400 hover:text-red-400 hover:bg-red-400/10 transition-all flex items-center justify-center ml-1"
-                       title="Close Command Center"
-                     >
-                       <X size={20} />
-                     </button>
-                   </div>
-                </div>
-
-                {/* Key Source Indicator & Attachment */}
-                 <div className="flex items-center gap-4 w-full mt-3 px-1 justify-between">
-                   <div className="flex items-center gap-4">
-                     <div 
-                       className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-[10px] font-bold uppercase tracking-wider cursor-pointer transition-all ${
-                         keyInfo.activeSource === 'project' 
-                           ? 'bg-[#A259FF]/10 border-[#A259FF]/30 text-[#A259FF] shadow-[0_0_15px_rgba(162,89,255,0.1)]' 
-                           : keyInfo.activeSource === 'global'
-                             ? 'bg-[#46B1FF]/10 border-[#46B1FF]/30 text-[#46B1FF]'
-                             : 'bg-white/5 border-white/10 text-slate-500'
-                       }`}
-                       onClick={() => {
-                         setKeyModalType('NO_KEY');
-                         setShowKeyModal(true);
-                       }}
-                     >
-                       <Key size={12} />
-                       {keyInfo.activeSource === 'project' 
-                         ? `Project Key (••••${keyInfo.project.lastFour})` 
-                         : keyInfo.activeSource === 'global'
-                           ? `Global Key (••••${keyInfo.global.lastFour})`
-                           : 'No API Key Configured'}
-                     </div>
-                     <div className="text-[10px] text-slate-600 font-medium">
-                       Priority: Project Key &gt; Global Key
-                     </div>
-                   </div>
-
-                   {/* Attachment Chip */}
-                  {projectAttachment && (
-                    <div className="flex items-center gap-3 bg-[#46B1FF]/10 border-[#46B1FF]/20 text-[#46B1FF] px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider animate-fade-in">
-                      <Folder size={14} />
-                      {projectAttachment.name}
-                      <button 
-                        onClick={() => setProjectAttachment(null)}
-                        className="ml-2 hover:text-white transition-colors"
-                        title="Remove attachment"
-                        aria-label="Remove attachment"
-                      >
-                        <X size={12} />
-                      </button>
-                    </div>
-                  )}
-                 </div>
-                 
-                 {/* Phase Execution Panel — Auto-run button and gated phase cards */}
-                 <div className="flex items-center justify-between mt-3 w-full px-1 mb-2">
-                   <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Pipeline Execution</h3>
-                   <button 
-                     onClick={() => {
-                       runFullPipeline();
-                       setIsCommandExpanded(false);
-                     }}
-                     disabled={graphStatus === 'running' || !projectPrompt}
-                     className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-white hover:bg-[#A259FF] hover:border-[#A259FF] transition-all text-[9px] font-black uppercase tracking-widest shadow-lg active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-                     title="Run all phases automatically"
-                   >
-                     {graphStatus === 'running' ? (
-                       <><div className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" /> Orchestrating...</>
-                     ) : (
-                       <><Play size={12} fill="currentColor" /> Run</>
-                     )}
-                   </button>
-                 </div>
-                 <div className="w-full grid grid-cols-4 gap-2">
-                   {WORKFLOW_PHASES.map((phase, idx) => {
-                     const isCompleted = completedPhases.includes(phase.id);
-                     const isRunning = runningPhaseId === phase.id;
-                     const prevDone = idx === 0 || completedPhases.includes(WORKFLOW_PHASES[idx - 1]!.id);
-                     const isLocked = !prevDone && !isCompleted;
-                     const phaseColors = [
-                       { accent: '#46B1FF', glow: 'rgba(70,177,255,0.15)' },
-                       { accent: '#CEA3FF', glow: 'rgba(206,163,255,0.15)' },
-                       { accent: '#A259FF', glow: 'rgba(162,89,255,0.15)' },
-                       { accent: '#DEF767', glow: 'rgba(222,247,103,0.15)' },
-                     ][idx]!;
-                     return (
-                       <div
-                         key={phase.id}
-                         className="flex flex-col gap-1.5 rounded-2xl border p-3 transition-all duration-300"
-                         style={{
-                           borderColor: isCompleted ? phaseColors.accent + '60' : isRunning ? phaseColors.accent + '40' : 'rgba(255,255,255,0.05)',
-                           background: isCompleted ? phaseColors.glow : isRunning ? phaseColors.glow : 'rgba(255,255,255,0.02)',
-                           boxShadow: isRunning ? `0 0 20px ${phaseColors.glow}` : 'none'
-                         }}
-                       >
-                         <div className="flex items-center justify-between mb-0.5">
-                           <span className="text-[9px] font-black uppercase tracking-widest" style={{ color: phaseColors.accent }}>
-                             {phase.label}
-                           </span>
-                           {isCompleted && <span className="text-[10px] text-green-400">✓</span>}
-                           {isRunning && <div className="w-2.5 h-2.5 rounded-full animate-pulse" style={{ background: phaseColors.accent }} />}
-                         </div>
-                         {isCompleted ? (
-                           <button
-                             onClick={() => setPhaseOutputModal(phase.id)}
-                             className="w-full py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1 hover:opacity-80"
-                             style={{
-                               background: `${phaseColors.accent}10`,
-                               color: phaseColors.accent,
-                               border: `1px solid ${phaseColors.accent}30`
-                             }}
-                           >
-                             <FileText size={9} /> View Report
-                           </button>
-                         ) : (
-                           <button
-                             onClick={() => runPhase(phase.id)}
-                             disabled={isLocked || isRunning || !!runningPhaseId || !projectPrompt}
-                             className="w-full py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1"
-                             style={{
-                               background: isLocked || !projectPrompt ? 'rgba(255,255,255,0.03)' : `${phaseColors.accent}20`,
-                               color: isLocked || !projectPrompt ? '#475569' : phaseColors.accent,
-                               border: `1px solid ${isLocked ? 'rgba(255,255,255,0.05)' : phaseColors.accent + '30'}`
-                             }}
-                           >
-                             {isRunning ? (
-                               <><div className="w-2.5 h-2.5 border border-current border-t-transparent rounded-full animate-spin" /> Running</>
-                             ) : (
-                               <><Play size={9} fill="currentColor" /> Run</>
-                             )}
-                           </button>
-                         )}
-                       </div>
-                     );
-                   })}
-                 </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </>
-      )}
-      
-      {viewMode === 'pipeline' && <FlowControls setCamera={setCamera} camera={camera} />}
       <ToolDock
         activeTool={activeTool}
         setActiveTool={setActiveTool}
@@ -7379,8 +6865,8 @@ const Engine = () => {
         onScreenshot={async () => {
           try {
             // Use html2canvas on the entire document body for reliable capture
-            const shot = await html2canvas(document.body, { 
-              backgroundColor: '#0a0a10', 
+            const shot = await html2canvas(document.body, {
+              backgroundColor: '#0a0a10',
               useCORS: true,
               scale: window.devicePixelRatio || 1,
               logging: false,
@@ -7421,37 +6907,44 @@ const Engine = () => {
               '--canvas-zoom': camera.zoom,
             } as React.CSSProperties}
           >
-            {/* Background Phase Labels */}
-            {viewMode === 'pipeline' && WORKFLOW_PHASES.map((p, idx) => {
-              const phaseNodes = Object.values(layout).filter(n => n.phase === p.id);
-              if (phaseNodes.length === 0) return null;
-              
-              const minX = Math.min(...phaseNodes.map(n => n.x));
-              const maxX = Math.max(...phaseNodes.map(n => n.x));
-              const centerX = minX + (maxX - minX) / 2;
+            {/* Phase Column Headers — shown when blocks have phase fields */}
+            {(() => {
+              const builderBlocks = useBuilderStore.getState().blocks;
+              const phases = ['discover', 'define', 'develop', 'deliver'];
+              const phaseLabels: Record<string, { label: string; subtitle: string }> = {
+                discover: { label: 'DISCOVER', subtitle: 'DIVERGE' },
+                define: { label: 'DEFINE', subtitle: 'CONVERGE' },
+                develop: { label: 'DEVELOP', subtitle: 'DIVERGE' },
+                deliver: { label: 'DELIVER', subtitle: 'CONVERGE' },
+              };
 
-              return (
-                <React.Fragment key={idx}>
+              const hasPhases = builderBlocks.some((b: any) => b.phase);
+              if (!hasPhases) return null;
+
+              return phases.map(phaseId => {
+                const phaseBlocks = builderBlocks.filter((b: any) => b.phase === phaseId);
+                if (phaseBlocks.length === 0) return null;
+
+                const xs = phaseBlocks.map((b: any) => b.position.x);
+                const centerX = (Math.min(...xs) + Math.max(...xs)) / 2 + 110;
+                const info = phaseLabels[phaseId]!;
+
+                return (
                   <div
-                    className="absolute pointer-events-none phase-label"
-                    style={{
-                      left: centerX,
-                      top: 100, // Top of canvas
-                      transform: 'translate(-50%, -50%)',
-                    }}
+                    key={phaseId}
+                    className="absolute pointer-events-none"
+                    style={{ left: centerX, top: 20, transform: 'translateX(-50%)' }}
                   >
-                    <div className="text-2xl font-black tracking-[0.4em] mb-1 text-center" style={{ opacity: 0.6 }}>
-                      {p.label}
+                    <div className="text-2xl font-black tracking-[0.4em] mb-1 text-center text-white" style={{ opacity: 0.5 }}>
+                      {info.label}
                     </div>
-                    <div className="text-[9px] font-bold tracking-[0.6em] uppercase text-center mx-auto" style={{ opacity: 0.4, paddingLeft: '0.6em' }}>
-                      {p.subtitle}
+                    <div className="text-[9px] font-bold tracking-[0.6em] uppercase text-center text-white" style={{ opacity: 0.3, paddingLeft: '0.6em' }}>
+                      {info.subtitle}
                     </div>
                   </div>
-                  
-                  <PhaseSummaryBox phase={p} x={centerX} y={800} />
-                </React.Fragment>
-              );
-            })}
+                );
+              });
+            })()}
 
             {/* Annotations & Edges */}
             <svg className="absolute inset-0 pointer-events-none w-full h-full overflow-visible z-10">
@@ -7462,87 +6955,30 @@ const Engine = () => {
               </defs>
 
               {strokes.map((stroke: any) => (
-                <polyline 
-                  key={`stroke-${stroke.id}`} 
-                  points={stroke.points.map((p: any) => `${p.x},${p.y}`).join(' ')} 
-                  stroke="#A259FF" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" 
-                  fill="none" 
+                <polyline
+                  key={`stroke-${stroke.id}`}
+                  points={stroke.points.map((p: any) => `${p.x},${p.y}`).join(' ')}
+                  stroke="#DEF767" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"
+                  fill="none"
                   opacity="0.6"
                 />
               ))}
               {currentStroke && (
-                <polyline 
-                  points={currentStroke.map((p: any) => `${p.x},${p.y}`).join(' ')} 
-                  stroke="#A259FF" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" 
+                <polyline
+                  points={currentStroke.map((p: any) => `${p.x},${p.y}`).join(' ')}
+                  stroke="#DEF767" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"
                   fill="none" opacity="0.6"
                 />
               )}
 
-              {viewMode === 'pipeline' && bundledEdges.map((edge: any, idx: any) => {
-                const fromLayout = (layout as any)[edge.from];
-                const toLayout = (layout as any)[edge.to];
-                if (!fromLayout || !toLayout) return null;
 
-                const fromAnchor = { x: fromLayout.x + 140, y: fromLayout.y + 70 };
-                const toAnchor = { x: toLayout.x, y: toLayout.y + 70 };
 
-                const pathString = computeEdgePath(fromAnchor, toAnchor, edge.routeConfig);
-                const isActive = nodeStates[edge.from] === 'running' || nodeStates[edge.from] === 'completed';
-
-                return (
-                  <path
-                    key={idx}
-                    d={pathString}
-                    strokeWidth="2"
-                    fill="none"
-                    className={`thread-wire ${isActive ? 'thread-active' : 'thread-idle'}`}
-                  />
-                );
-              })}
-              {viewMode === 'pipeline' && customEdges.map((edge: any, idx: any) => {
-                const isActive = nodeStates[edge.from] === 'running' || nodeStates[edge.from] === 'completed';
-                return (
-                  <path
-                    key={`custom-${idx}`}
-                    d={edge.d}
-                    strokeWidth="2"
-                    fill="none"
-                    className={`thread-wire ${isActive ? 'thread-active' : 'thread-idle'}`}
-                  />
-                );
-              })}
             </svg>
 
             {/* Builder Canvas */}
-            {viewMode === 'builder' && (
-               <BuilderCanvas activeTool={activeTool} setActiveTool={setActiveTool} getCanvasCoords={getCanvasCoords} />
-            )}
+            <BuilderCanvas activeTool={activeTool} setActiveTool={setActiveTool} getCanvasCoords={getCanvasCoords} />
 
-            {/* Agent Nodes */}
-            {viewMode === 'pipeline' && Object.values(layout as any).map((node: any) => {
-              const animState = useWorkflowStore.getState().animationState;
-              const isVisible = animState.activeNodes.includes(node.id) || graphStatus === 'ready' || graphStatus === 'completed' || graphStatus === 'running'; 
-              
-              // Determine phase index for opacity - works for both schema and builder nodes
-              let parsePhaseIdx = -1;
-              if (node.phase) {
-                parsePhaseIdx = WORKFLOW_PHASES.findIndex(p => p.id === node.phase);
-              } else if (node.id.includes('::')) {
-                parsePhaseIdx = WORKFLOW_PHASES.findIndex(p => p.id === node.id.split('::')[0]);
-              }
-              const isPendingPhase = parsePhaseIdx >= 0 && parsePhaseIdx > currentPhaseIndex;
-              
-              return (
-                <div key={node.id} style={{ opacity: isPendingPhase ? 0.5 : 1 }} className="transition-opacity duration-700">
-                  <NodeContainer
-                    node={node}
-                    state={nodeStates[node.id] || 'idle'}
-                    onClick={() => selectNode(node.id)}
-                    isVisible={isVisible}
-                  />
-                </div>
-              )
-            })}
+
             {/* Sticky Notes */}
             {stickyNotes.map((note: any) => {
               const noteColor = note.color || '#A259FF';
@@ -7551,90 +6987,86 @@ const Engine = () => {
               const isEditing = editingStickyId === note.id;
 
               return (
-              <div key={`sticky-${note.id}`} 
-                className={`absolute sticky-note p-3 rounded-2xl z-30 transition-shadow font-secondary flex flex-col group shadow-2xl cursor-grab active:cursor-grabbing ${
-                  isEditing ? 'ring-2 ring-offset-2 ring-offset-transparent' : 'border border-transparent hover:border-white/10'
-                }`}
-                onMouseDown={(e: any) => {
-                  if (isEditing) return; // Don't drag while editing
-                  if ((e.target as any).classList.contains('resize-handle')) {
-                    e.stopPropagation();
-                    setResizingAppElement({ type: 'sticky', id: note.id, elemX: note.x, elemY: note.y });
-                    return;
-                  }
-                  if (activeTool === 'cursor') {
-                    e.stopPropagation();
-                    const coords = getCanvasCoords(e.clientX, e.clientY);
-                    setDraggingAppElement({ type: 'sticky', id: note.id, startX: note.x, startY: note.y, startMouseX: coords.x, startMouseY: coords.y });
-                  }
-                }}
-                style={{
-                  left: note.x, top: note.y, width: noteW, height: noteH,
-                  background: 'rgba(26, 26, 46, 0.85)',
-                  borderColor: isEditing ? noteColor : `${noteColor}40`,
-                  backdropFilter: 'blur(16px)',
-                  pointerEvents: 'auto',
-                  boxShadow: isEditing ? `0 0 40px ${noteColor}50` : `0 10px 30px rgba(0,0,0,0.5)`,
-                }}>
-                <div className="w-full h-1.5 rounded-t-xl absolute top-0 left-0" style={{ background: `linear-gradient(to right, ${noteColor}, ${noteColor}80)` }} />
-                
-                <button
-                  title="Delete sticky note"
-                  aria-label="Delete sticky note"
-                  onClick={(e: React.MouseEvent) => {
-                    e.stopPropagation();
-                    setStickyNotes(prev => prev.filter(n => n.id !== note.id));
-                    if (editingStickyId === note.id) setEditingStickyId(null);
-                  }}
-                  className="absolute top-3 right-3 p-1.5 rounded-lg bg-black/60 text-slate-400 hover:text-white hover:bg-[#ff4b4b] transition-all opacity-0 group-hover:opacity-100 z-50 shadow-md"
-                >
-                  <X size={16} />
-                </button>
-
-                <textarea 
-                  className="flex-1 w-full mt-3 bg-transparent outline-none resize-none text-slate-200 text-sm placeholder-slate-500 custom-scrollbar-neon"
-                  placeholder="Note insights here..."
-                  value={note.text}
-                  onMouseDown={e => e.stopPropagation()}
-                  onFocus={() => {
-                    // Auto-zoom to this sticky note
-                    preFocusCamera.current = { ...camera };
-                    setEditingStickyId(note.id);
-                    const canvasEl = canvasRef.current;
-                    if (canvasEl) {
-                      const rect = canvasEl.getBoundingClientRect();
-                      const targetZoom = 1.0;
-                      const centerX = rect.width / 2 - (note.x + noteW / 2) * targetZoom;
-                      const centerY = rect.height / 2 - (note.y + noteH / 2) * targetZoom;
-                      setCamera({ x: centerX, y: centerY, zoom: targetZoom });
+                <div key={`sticky-${note.id}`}
+                  className={`absolute sticky-note p-3 rounded-2xl z-30 transition-shadow font-secondary flex flex-col group shadow-2xl cursor-grab active:cursor-grabbing ${isEditing ? 'border-[#DEF767]' : 'border-[#2e2e2e]'
+                    }`}
+                  onMouseDown={(e: any) => {
+                    if (isEditing) return; // Don't drag while editing
+                    if ((e.target as any).classList.contains('resize-handle')) {
+                      e.stopPropagation();
+                      setResizingAppElement({ type: 'sticky', id: note.id, elemX: note.x, elemY: note.y });
+                      return;
+                    }
+                    if (activeTool === 'cursor') {
+                      e.stopPropagation();
+                      const coords = getCanvasCoords(e.clientX, e.clientY);
+                      setDraggingAppElement({ type: 'sticky', id: note.id, startX: note.x, startY: note.y, startMouseX: coords.x, startMouseY: coords.y });
                     }
                   }}
-                  onBlur={() => {
-                    if (preFocusCamera.current) {
-                      setCamera(preFocusCamera.current);
-                      preFocusCamera.current = null;
-                    }
-                    setEditingStickyId(null);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Escape') {
-                      (e.target as HTMLTextAreaElement).blur();
-                    }
-                  }}
-                  onChange={(e) => {
-                    setStickyNotes(prev => prev.map(n => n.id === note.id ? { ...n, text: e.target.value } : n));
-                  }}
-                />
-
-                {/* Resize Handle */}
-                <div
-                  className="resize-handle absolute bottom-0 right-0 w-6 h-6 cursor-nwse-resize opacity-0 group-hover:opacity-100 transition-opacity z-30"
                   style={{
-                    background: `linear-gradient(135deg, transparent 50%, ${noteColor}80 50%)`,
-                    borderRadius: '0 0 16px 0',
-                  }}
-                />
-              </div>
+                    left: note.x, top: note.y, width: noteW, height: noteH,
+                    background: '#181818',
+                    pointerEvents: 'auto',
+                  }}>
+                  <div className="w-full h-1 rounded-t-xl absolute top-0 left-0" style={{ background: isEditing ? '#DEF767' : '#5b5b5b' }} />
+
+                  <button
+                    title="Delete sticky note"
+                    aria-label="Delete sticky note"
+                    onClick={(e: React.MouseEvent) => {
+                      e.stopPropagation();
+                      setStickyNotes(prev => prev.filter(n => n.id !== note.id));
+                      if (editingStickyId === note.id) setEditingStickyId(null);
+                    }}
+                    className="absolute top-3 right-3 p-1.5 rounded-lg bg-[#2e2e2e] text-slate-400 hover:text-white hover:bg-[#ff6a6a] transition-all opacity-0 group-hover:opacity-100 z-50 font-sans"
+                  >
+                    <X size={12} />
+                  </button>
+
+                  <textarea
+                    className="flex-1 w-full mt-3 bg-transparent outline-none resize-none text-slate-200 text-sm placeholder-slate-500 custom-scrollbar-neon font-sans"
+                    placeholder="Note insights here..."
+                    value={note.text}
+                    onMouseDown={e => e.stopPropagation()}
+                    onFocus={() => {
+                      // Auto-zoom to this sticky note
+                      preFocusCamera.current = { ...camera };
+                      setEditingStickyId(note.id);
+                      const canvasEl = canvasRef.current;
+                      if (canvasEl) {
+                        const rect = canvasEl.getBoundingClientRect();
+                        const targetZoom = 1.0;
+                        const centerX = rect.width / 2 - (note.x + noteW / 2) * targetZoom;
+                        const centerY = rect.height / 2 - (note.y + noteH / 2) * targetZoom;
+                        setCamera({ x: centerX, y: centerY, zoom: targetZoom });
+                      }
+                    }}
+                    onBlur={() => {
+                      if (preFocusCamera.current) {
+                        setCamera(preFocusCamera.current);
+                        preFocusCamera.current = null;
+                      }
+                      setEditingStickyId(null);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Escape') {
+                        (e.target as HTMLTextAreaElement).blur();
+                      }
+                    }}
+                    onChange={(e) => {
+                      setStickyNotes(prev => prev.map(n => n.id === note.id ? { ...n, text: e.target.value } : n));
+                    }}
+                  />
+
+                  {/* Resize Handle */}
+                  <div
+                    className="resize-handle absolute bottom-0 right-0 w-6 h-6 cursor-nwse-resize opacity-0 group-hover:opacity-100 transition-opacity z-30"
+                    style={{
+                      background: `linear-gradient(135deg, transparent 50%, ${isEditing ? '#DEF767' : '#5b5b5b'} 50%)`,
+                      borderRadius: '0 0 16px 0',
+                    }}
+                  />
+                </div>
               );
             })}
 
@@ -7642,298 +7074,96 @@ const Engine = () => {
             {textLabels.map(label => {
               const isEditing = editingLabelId === label.id;
               return (
-              <div
-                key={`label-${label.id}`}
-                className="absolute z-20 pointer-events-auto group cursor-grab active:cursor-grabbing"
-                style={{ left: label.x - 75, top: label.y - 15 }}
-                onMouseDown={(e: any) => {
-                  if (isEditing) return;
-                  if (e.target.tagName === 'INPUT') return;
-                  e.stopPropagation();
-                  const coords = getCanvasCoords(e.clientX, e.clientY);
-                  setDraggingAppElement({ type: 'label', id: label.id, startX: label.x, startY: label.y, startMouseX: coords.x, startMouseY: coords.y });
-                }}
-              >
-                <input
-                  className={`bg-transparent outline-none text-white font-bold w-[150px] placeholder-slate-500 border-b border-dashed pb-1 transition-all ${
-                    isEditing ? 'text-lg border-[#46B1FF]/80' : 'text-sm border-white/20 focus:border-[#46B1FF]/50'
-                  }`}
-                  placeholder="Type label..."
-                  value={label.text}
-                  onMouseDown={e => e.stopPropagation()}
-                  onFocus={() => {
-                    preFocusCamera.current = { ...camera };
-                    setEditingLabelId(label.id);
-                    const canvasEl = canvasRef.current;
-                    if (canvasEl) {
-                      const rect = canvasEl.getBoundingClientRect();
-                      const targetZoom = 1.0;
-                      const centerX = rect.width / 2 - label.x * targetZoom;
-                      const centerY = rect.height / 2 - label.y * targetZoom;
-                      setCamera({ x: centerX, y: centerY, zoom: targetZoom });
-                    }
+                <div
+                  key={`label-${label.id}`}
+                  className="absolute z-20 pointer-events-auto group cursor-grab active:cursor-grabbing"
+                  style={{ left: label.x - 75, top: label.y - 15 }}
+                  onMouseDown={(e: any) => {
+                    if (isEditing) return;
+                    if (e.target.tagName === 'INPUT') return;
+                    e.stopPropagation();
+                    const coords = getCanvasCoords(e.clientX, e.clientY);
+                    setDraggingAppElement({ type: 'label', id: label.id, startX: label.x, startY: label.y, startMouseX: coords.x, startMouseY: coords.y });
                   }}
-                  onBlur={() => {
-                    if (preFocusCamera.current) {
-                      setCamera(preFocusCamera.current);
-                      preFocusCamera.current = null;
-                    }
-                    setEditingLabelId(null);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === 'Escape') {
-                      (e.target as HTMLInputElement).blur();
-                    }
-                  }}
-                  onChange={(e) => {
-                    setTextLabels(prev => prev.map(l => l.id === label.id ? { ...l, text: e.target.value } : l));
-                  }}
-                />
-                <button
-                  onClick={() => setTextLabels(prev => prev.filter(l => l.id !== label.id))}
-                  className="absolute -top-2 -right-2 w-4 h-4 rounded-full bg-[#ff4b4b] text-white text-[8px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                 >
-                  ✕
-                </button>
-              </div>
+                  <input
+                    className={`bg-transparent outline-none text-white font-bold w-[150px] placeholder-slate-500 border-b border-dashed pb-1 transition-all font-sans ${isEditing ? 'text-lg border-[#DEF767]' : 'text-sm border-[#2e2e2e] focus:border-[#DEF767]'
+                      }`}
+                    placeholder="Type label..."
+                    value={label.text}
+                    onMouseDown={e => e.stopPropagation()}
+                    onFocus={() => {
+                      preFocusCamera.current = { ...camera };
+                      setEditingLabelId(label.id);
+                      const canvasEl = canvasRef.current;
+                      if (canvasEl) {
+                        const rect = canvasEl.getBoundingClientRect();
+                        const targetZoom = 1.0;
+                        const centerX = rect.width / 2 - label.x * targetZoom;
+                        const centerY = rect.height / 2 - label.y * targetZoom;
+                        setCamera({ x: centerX, y: centerY, zoom: targetZoom });
+                      }
+                    }}
+                    onBlur={() => {
+                      if (preFocusCamera.current) {
+                        setCamera(preFocusCamera.current);
+                        preFocusCamera.current = null;
+                      }
+                      setEditingLabelId(null);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === 'Escape') {
+                        (e.target as HTMLInputElement).blur();
+                      }
+                    }}
+                    onChange={(e) => {
+                      setTextLabels(prev => prev.map(l => l.id === label.id ? { ...l, text: e.target.value } : l));
+                    }}
+                  />
+                  <button
+                    onClick={() => setTextLabels(prev => prev.filter(l => l.id !== label.id))}
+                    className="absolute -top-2 -right-2 w-5 h-5 rounded-md bg-[#2e2e2e] hover:bg-[#ff6a6a] border border-[#2e2e2e] text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity font-sans"
+                  >
+                    ✕
+                  </button>
+                </div>
               );
             })}
+
           </div>
         </div>
 
         {/* ── Intelligence Layer Output Sidebar ── */}
-        {viewMode === 'builder' ? (
-           <BuilderSidebar />
-        ) : (
-        <div 
-          className={`absolute right-0 top-0 h-full w-[460px] bg-[#0c0c14]/60 backdrop-blur-2xl border-l border-white/5 p-0 shadow-2xl transition-transform duration-500 z-50 flex flex-col ${selectedNodeId ? 'translate-x-0' : 'translate-x-full'}`}
-        >
-           <div className="flex justify-between items-center p-6 border-b border-white/[0.04] bg-black/40">
-             <div>
-               <h2 className="font-bold text-[10px] uppercase tracking-widest text-[#46B1FF] mb-1">Delivered Asset Output</h2>
-               <span className="text-white font-black tracking-wide font-display text-lg">
-                 {selectedNodeId?.startsWith('sticky-') ? 'Sticky Note insight' : layout[selectedNodeId]?.category.name}
-               </span>
-             </div>
-             <button onClick={() => selectNode(null)} className="p-2 bg-white/5 rounded-full text-slate-500 hover:text-white hover:bg-white/10 transition-colors">✕</button>
-           </div>
-           
-           <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
-           {selectedNodeId ? (
-                <div className="animate-fade-in flex flex-col h-full">
-                  {renderPipelineSidebarContent()}
-              </div>
-           ) : null}
-           </div>
-        </div>
-        )}
+        <BuilderSidebar />
       </div>
 
-      {/* View Results Button - appears when any phase is completed */}
-      {(completedPhases.length > 0 || graphStatus === 'completed' || (graphStatus !== 'running' && nodeResults && Object.keys(nodeResults).length > 0)) && (
-        <button
-          onClick={() => setShowOutputScreen(true)}
-          className="fixed bottom-6 right-6 z-[60] flex items-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-[#DEF767] to-[#A3E636] text-black text-xs font-black uppercase tracking-widest shadow-xl shadow-[#DEF767]/20 hover:scale-105 transition-transform"
-        >
-          <FileText size={16} /> Full Report
-        </button>
-      )}
+      <EngineModalStack
+        showOutputButton={completedPhases.length > 0 || graphStatus === 'completed' || (graphStatus !== 'running' && nodeResults && Object.keys(nodeResults).length > 0)}
+        onOpenOutputScreen={() => setShowOutputScreen(true)}
+        showOutputScreen={showOutputScreen}
+        onCloseOutputScreen={() => setShowOutputScreen(false)}
+        phaseOutputModal={phaseOutputModal}
+        onClosePhaseOutput={() => setPhaseOutputModal(null)}
+        tokenLimitModal={tokenLimitModal}
+        onDismissTokenLimit={() => setTokenLimitModal(null)}
+        onSwitchApiKey={() => {
+          setTokenLimitModal(null);
+          setShowKeyModal(true);
+          setKeyModalType('NO_KEY');
+        }}
+        showKeyModal={showKeyModal}
+        keyModalType={keyModalType}
+        onCloseKeyModal={() => setShowKeyModal(false)}
+        onSavedKeyModal={() => {
+          const seqId = localStorage.getItem('active_sequence_id');
+          if (seqId) checkKeyAvailability(seqId).then(setKeyInfo);
+          setShowKeyModal(false);
+        }}
+      />
 
-      {/* Per-Phase Report Modal */}
-      {phaseOutputModal && (
-        <OutputScreen
-          isOpen={true}
-          onClose={() => setPhaseOutputModal(null)}
-          phaseFilter={phaseOutputModal}
-        />
-      )}
-
-      <OutputScreen isOpen={showOutputScreen} onClose={() => setShowOutputScreen(false)} />
       {/* Toast System */}
       <ToastContainer />
 
-      {/* API Key Modal */}
-      <AnimatePresence>
-        {showKeyModal && (
-          <ApiKeyModal 
-            type={keyModalType} 
-            onClose={() => setShowKeyModal(false)} 
-            onSaved={() => {
-              const seqId = localStorage.getItem('active_sequence_id');
-              if (seqId) checkKeyAvailability(seqId).then(setKeyInfo);
-              setShowKeyModal(false);
-            }}
-          />
-        )}
-      </AnimatePresence>
-    </div>
-  );
-};
-
-// ── API Key Modal Component ──────────────────────────────────────
-const ApiKeyModal = ({ type, onClose, onSaved }: { type: string, onClose: () => void, onSaved: () => void }) => {
-  const [key, setKey] = useState('');
-  const [scope, setScope] = useState<'project' | 'global'>('project');
-  const [showKey, setShowKey] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const addToast = useToastStore(s => s.addToast);
-
-  const handleSave = async () => {
-    if (!key.trim()) return;
-    setSaving(true);
-
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('Not authenticated');
-
-      const seqId = localStorage.getItem('active_sequence_id');
-      const endpoint = scope === 'project' ? '/api/keys/save-project' : '/api/keys/save';
-      const payload = scope === 'project' 
-        ? { userId: session.user.id, sequenceId: seqId, apiKey: key.trim() }
-        : { userId: session.user.id, apiKey: key.trim() };
-
-      const API_BASE = import.meta.env.PROD ? '' : 'http://localhost:3001';
-      const res = await fetch(`${API_BASE}${endpoint}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      if (!res.ok) throw new Error('Failed to save key');
-
-      addToast('success', `API Key saved ${scope === 'project' ? 'for this project' : 'globally'}`);
-      onSaved();
-    } catch (err: any) {
-      addToast('error', err.message);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const titles: Record<string, string> = {
-    NO_KEY: 'API Key Required',
-    INVALID_KEY: 'Invalid API Key',
-    RATE_LIMIT: 'Rate Limit Reached'
-  };
-
-  const descriptions: Record<string, string> = {
-    NO_KEY: 'An API key is required to orchestrate this neural sequence. Choose how you want to store it.',
-    INVALID_KEY: 'The provided key was rejected by the provider. Please enter a valid OpenRouter or LLM API key.',
-    RATE_LIMIT: 'The current key is being rate limited. You can wait or provide a new key for this project.'
-  };
-
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
-      <motion.div 
-        initial={{ opacity: 0 }} 
-        animate={{ opacity: 1 }} 
-        exit={{ opacity: 0 }}
-        onClick={onClose}
-        className="absolute inset-0 bg-black/80 backdrop-blur-sm"
-      />
-      
-      <motion.div
-        initial={{ opacity: 0, scale: 0.9, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.9, y: 20 }}
-        className="relative w-full max-w-md bg-[#0a0a0f] border border-white/10 rounded-[32px] p-8 shadow-[0_40px_100px_rgba(0,0,0,0.8)] overflow-hidden"
-      >
-        {/* Glow decoration */}
-        <div className="absolute -top-24 -right-24 w-48 h-48 bg-[#A259FF]/20 blur-[60px] rounded-full" />
-        
-        <div className="relative z-10">
-          <div className="flex items-center gap-4 mb-6">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#A259FF] to-[#46B1FF] flex items-center justify-center text-white shadow-lg">
-              <Key size={24} />
-            </div>
-            <div>
-              <h3 className="text-xl font-black text-white font-display tracking-tight">{titles[type]}</h3>
-              <p className="text-xs text-slate-500 font-medium">Neural Conductor Authentication</p>
-            </div>
-          </div>
-
-          <p className="text-sm text-slate-400 leading-relaxed mb-8">
-            {descriptions[type]}
-          </p>
-
-          <div className="space-y-6">
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">API Key</label>
-              <div className="relative group">
-                <input
-                  type={showKey ? 'text' : 'password'}
-                  value={key}
-                  onChange={(e) => setKey(e.target.value)}
-                  placeholder="sk-or-v1-..."
-                  className="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-4 pl-5 pr-12 text-sm text-white focus:border-[#A259FF]/50 outline-none transition-all placeholder:text-slate-700"
-                />
-                <button
-                  onClick={() => setShowKey(!showKey)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-600 hover:text-white transition-colors"
-                  title={showKey ? "Hide key" : "Show key"}
-                  aria-label={showKey ? "Hide key" : "Show key"}
-                >
-                  {showKey ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                onClick={() => setScope('project')}
-                className={`flex flex-col items-center gap-2 p-4 rounded-2xl border transition-all ${
-                  scope === 'project' 
-                    ? 'bg-[#A259FF]/10 border-[#A259FF]/40 text-white' 
-                    : 'bg-white/[0.02] border-white/5 text-slate-500 hover:border-white/10'
-                }`}
-              >
-                <ShieldCheck size={20} className={scope === 'project' ? 'text-[#A259FF]' : ''} />
-                <span className="text-[10px] font-black uppercase tracking-wider">Project Only</span>
-              </button>
-              <button
-                onClick={() => setScope('global')}
-                className={`flex flex-col items-center gap-2 p-4 rounded-2xl border transition-all ${
-                  scope === 'global' 
-                    ? 'bg-[#46B1FF]/10 border-[#46B1FF]/40 text-white' 
-                    : 'bg-white/[0.02] border-white/5 text-slate-500 hover:border-white/10'
-                }`}
-              >
-                <Globe size={20} className={scope === 'global' ? 'text-[#46B1FF]' : ''} />
-                <span className="text-[10px] font-black uppercase tracking-wider">Global Use</span>
-              </button>
-            </div>
-
-            <div className="flex items-center gap-3 bg-white/[0.02] p-4 rounded-2xl border border-white/5">
-              <InfoIcon size={16} className="text-slate-600 shrink-0" />
-              <p className="text-[10px] text-slate-500 leading-normal">
-                {scope === 'project' 
-                  ? 'Project keys are encrypted and stored specifically for this neural sequence.' 
-                  : 'Global keys are saved to your profile and used as a fallback for all your sequences.'}
-              </p>
-            </div>
-
-            <div className="flex gap-3 pt-2">
-              <button
-                onClick={onClose}
-                className="flex-1 py-4 rounded-2xl border border-white/10 text-xs font-black uppercase tracking-widest text-slate-400 hover:bg-white/5 transition-all"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={saving || !key.trim()}
-                className="flex-[2] py-4 rounded-2xl bg-white text-black text-xs font-black uppercase tracking-widest hover:bg-[#DEF767] transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-xl active:scale-95 flex items-center justify-center gap-2"
-              >
-                {saving ? (
-                  <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  'Authorize Access'
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      </motion.div>
     </div>
   );
 };
@@ -7948,23 +7178,20 @@ export default Engine;
 
 ```css
 @import "tailwindcss";
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Outfit:wght@300;400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
 
 /* ── Design Tokens ───────────────────────────────────────────────── */
 :root {
-  --accent-purple: #A259FF;
-  --accent-lavender: #CEA3FF;
-  --accent-blue: #46B1FF;
   --accent-lime: #DEF767;
   --accent-coral: #FF6A6A;
-  
-  --bg-base: #000000;
-  --bg-card: #0a0a0f;
-  --bg-card-hover: #111118;
-  
-  --font-primary: 'Syne', sans-serif;
+
+  --bg-base: #181818;
+  --bg-card: #181818;
+  --bg-card-hover: #1e1e1e;
+
+  --font-primary: 'Outfit', sans-serif;
   --font-secondary: 'Outfit', sans-serif;
-  
+
   font-family: var(--font-secondary);
   line-height: 1.5;
   font-weight: 400;
@@ -7973,17 +7200,19 @@ export default Engine;
 }
 
 /* ── Base Reset ──────────────────────────────────────────────────── */
-/* Removed overly aggressive global reset that was overriding Tailwind v4 layered utilities */
-
 body {
   background: var(--bg-base);
   color: #e2e8f0;
   overflow: hidden;
+  font-family: var(--font-secondary);
 }
 
-h1, h2, h3, .font-display {
+h1,
+h2,
+h3,
+.font-display {
   font-family: var(--font-primary);
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
 }
 
 #root {
@@ -7996,38 +7225,36 @@ h1, h2, h3, .font-display {
   width: 4px;
   height: 4px;
 }
+
 ::-webkit-scrollbar-track {
   background: transparent;
 }
+
 ::-webkit-scrollbar-thumb {
-  background: rgba(162, 89, 255, 0.2);
+  background: #2e2e2e;
   border-radius: 4px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(162, 89, 255, 0.4);
+  background: #DEF767;
 }
 
-/* ── Glassmorphism ───────────────────────────────────────────────── */
+/* ── Flat Glassmorphism (UXISM Flat Style) ───────────────────────── */
 .glass {
-  background: rgba(10, 10, 15, 0.85);
-  backdrop-filter: blur(24px) saturate(1.2);
-  -webkit-backdrop-filter: blur(24px) saturate(1.2);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: #181818;
+  border: 1px solid #2e2e2e;
 }
 
 .logo-gradient-box {
-  background: linear-gradient(135deg, #A259FF 0%, #46B1FF 100%);
-  box-shadow: 0 8px 24px rgba(162, 89, 255, 0.3);
+  background: #DEF767;
+  color: #181818;
 }
 
-/* ── n8n Inspired Nodes ─────────────────────────────────────────── */
+/* ── n8n Inspired Nodes (UXISM Flat Style) ────────────────────────── */
 .n8n-node {
-  background: rgba(12, 12, 18, 0.95);
-  border: 1.5px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 
-    0 12px 36px rgba(0, 0, 0, 0.5),
-    0 0 0 1px rgba(255, 255, 255, 0.02);
-  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  background: #181818;
+  border: 1.5px solid #2e2e2e;
+  transition: border-color 0.25s ease-out;
   overflow: visible !important;
 }
 
@@ -8046,61 +7273,45 @@ h1, h2, h3, .font-display {
     opacity: 0;
     transform: scale(0.8) translateY(20px);
   }
+
   100% {
     opacity: 1;
     transform: scale(1) translateY(0);
   }
 }
 
-/* ── Node Glow States ────────────────────────────────────────────── */
+/* ── Node Border States (Flat, No Shadows) ────────────────────────── */
 .node-idle {
-  box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.04),
-    0 8px 32px rgba(0, 0, 0, 0.8);
-  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  border-color: #2e2e2e;
+  transition: border-color 0.2s ease-out;
 }
 
 .node-idle:hover {
-  box-shadow:
-    0 0 0 1px var(--accent-blue),
-    0 8px 40px rgba(70, 177, 255, 0.15);
-  border-color: rgba(70, 177, 255, 0.3);
-  transform: translateY(-2px);
+  border-color: #DEF767;
 }
 
 .node-running {
-  box-shadow:
-    0 0 0 1px var(--accent-purple),
-    0 8px 48px rgba(162, 89, 255, 0.3),
-    0 0 80px rgba(162, 89, 255, 0.1);
-  border-color: rgba(162, 89, 255, 0.5);
+  border-color: #FF6A6A;
   animation: node-breathe 2s ease-in-out infinite;
 }
 
 .node-completed {
-  box-shadow:
-    0 0 0 1px rgba(222, 247, 103, 0.3),
-    0 8px 32px rgba(222, 247, 103, 0.05);
-  border-color: rgba(222, 247, 103, 0.2);
-  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  border-color: #DEF767;
 }
 
 @keyframes node-breathe {
-  0%, 100% {
-    box-shadow:
-      0 0 0 1px rgba(162, 89, 255, 0.4),
-      0 8px 40px rgba(162, 89, 255, 0.2),
-      0 0 60px rgba(162, 89, 255, 0.08);
+
+  0%,
+  100% {
+    border-color: #FF6A6A;
   }
+
   50% {
-    box-shadow:
-      0 0 0 1.5px var(--accent-purple),
-      0 8px 56px rgba(162, 89, 255, 0.4),
-      0 0 100px rgba(162, 89, 255, 0.15);
+    border-color: #DEF767;
   }
 }
 
-/* ── Wire Animations ─────────────────────────────────────────────── */
+/* ── Wire Animations (Flat Wires, No Shadows) ────────────────────── */
 @keyframes dash-flow {
   to {
     stroke-dashoffset: -24;
@@ -8113,20 +7324,26 @@ h1, h2, h3, .font-display {
 }
 
 @keyframes wire-glow-pulse {
-  0%, 100% { opacity: 0.3; }
-  50% { opacity: 0.9; }
+
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+
+  50% {
+    opacity: 1.0;
+  }
 }
 
 .wire-pulse {
   animation: wire-glow-pulse 1.5s ease-in-out infinite;
 }
 
-/* ── Single Thread Glowing Wire ──────────────────────────────────── */
+/* ── Single Thread Flat Wire ─────────────────────────────────────── */
 .thread-wire {
   stroke-dasharray: 1000;
   stroke-dashoffset: 1000;
   animation: thread-draw 1.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-  filter: drop-shadow(0 0 8px currentColor);
 }
 
 @keyframes thread-draw {
@@ -8137,7 +7354,6 @@ h1, h2, h3, .font-display {
 
 .thread-active {
   stroke-width: 2.5;
-  filter: drop-shadow(0 0 12px currentColor);
   opacity: 1 !important;
 }
 
@@ -8147,6 +7363,7 @@ h1, h2, h3, .font-display {
     transform: translateX(100%);
     opacity: 0;
   }
+
   to {
     transform: translateX(0);
     opacity: 1;
@@ -8159,8 +7376,13 @@ h1, h2, h3, .font-display {
 
 /* ── Modal Animations ────────────────────────────────────────────── */
 @keyframes fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes scale-in {
@@ -8168,6 +7390,7 @@ h1, h2, h3, .font-display {
     transform: scale(0.95);
     opacity: 0;
   }
+
   to {
     transform: scale(1);
     opacity: 1;
@@ -8184,29 +7407,32 @@ h1, h2, h3, .font-display {
 
 /* ── Status Dot Pulse ────────────────────────────────────────────── */
 @keyframes status-pulse {
-  0%, 100% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.6); opacity: 0.4; }
+
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+
+  50% {
+    transform: scale(1.4);
+    opacity: 0.5;
+  }
 }
 
 .status-running {
   animation: status-pulse 1.2s ease-in-out infinite;
 }
 
-/* ── Phase Overlay ───────────────────────────────────────────────── */
+/* ── Phase Overlay (UXISM Flat Style) ────────────────────────────── */
 .phase-overlay-backdrop {
-  background: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(10, 10, 10, 0.8);
   z-index: 1000;
 }
 
 .phase-card {
-  background: rgba(15, 15, 22, 0.95);
-  border: 1px solid rgba(162, 89, 255, 0.2);
-  box-shadow: 
-    0 0 0 1px rgba(162, 89, 255, 0.1),
-    0 32px 64px rgba(0, 0, 0, 0.8),
-    0 0 80px rgba(162, 89, 255, 0.1);
+  background: #181818;
+  border: 1px solid #2e2e2e;
   animation: scale-up-center 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
@@ -8215,6 +7441,7 @@ h1, h2, h3, .font-display {
     transform: scale(0.8);
     opacity: 0;
   }
+
   to {
     transform: scale(1);
     opacity: 1;
@@ -8224,78 +7451,93 @@ h1, h2, h3, .font-display {
 /* ── Phase Labels ────────────────────────────────────────────────── */
 .phase-label {
   font-family: var(--font-primary);
-  text-shadow: 0 0 40px rgba(162, 89, 255, 0.3);
   letter-spacing: 0.4em !important;
 }
 
-/* ── Canvas Grid ─────────────────────────────────────────────────── */
+/* ── Infinite Canvas ────────────────────────────────────────────── */
 .canvas-grid {
   width: 100%;
   height: 100%;
+  background-color: #181818;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.15) 1px, transparent 1px);
+  background-size: 24px 24px;
+  cursor: grab;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  transform-style: preserve-3d;
 }
 
-/* Tracking Glow Removed for cleaner professional look */
-/* .canvas-grid::after { ... } */
+.canvas-grid.is-panning {
+  cursor: grabbing;
+}
+
+.canvas-content {
+  transform: translate3d(var(--canvas-x), var(--canvas-y), 0) scale(var(--canvas-zoom));
+  width: 3000px;
+  height: 2000px;
+  will-change: transform;
+  backface-visibility: hidden;
+  transform-style: preserve-3d;
+  text-rendering: geometricPrecision;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
 
 /* ── Button Interactions ─────────────────────────────────────────── */
 .btn-glass {
   font-family: var(--font-secondary);
   font-weight: 500;
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.2s ease-out;
+  border: 1.5px solid #2e2e2e;
+  background: #181818;
+  color: #e2e8f0;
 }
 
 .btn-glass:hover {
-  background: rgba(162, 89, 255, 0.1);
-  border-color: rgba(162, 89, 255, 0.3);
-  box-shadow: 0 0 24px rgba(162, 89, 255, 0.1);
-  transform: translateY(-1px);
+  border-color: #DEF767;
+  color: #fff;
 }
 
 /* ── Input Focus ─────────────────────────────────────────────────── */
 input:focus,
 textarea:focus {
   outline: none;
-  border-color: var(--accent-purple) !important;
-  box-shadow: 0 0 0 4px rgba(162, 89, 255, 0.08);
+  border-color: #DEF767 !important;
 }
 
 /* ── No Scrollbar Utility ────────────────────────────────────────── */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
 
-/* ── Run Button Gradient ─────────────────────────────────────────── */
+/* ── Run Button Gradient (UXISM Flat Style) ──────────────────────── */
 .btn-run {
   font-family: var(--font-primary);
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  background: linear-gradient(135deg, var(--accent-purple) 0%, #8b5cf6 100%);
-  box-shadow:
-    0 4px 20px rgba(162, 89, 255, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2);
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  background: #DEF767;
+  color: #181818;
+  border: 1.5px solid #DEF767;
+  transition: all 0.2s ease-out;
 }
 
 .btn-run:hover {
-  box-shadow:
-    0 8px 32px rgba(162, 89, 255, 0.5),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3);
-  transform: translateY(-2px);
-  filter: brightness(1.1);
+  background: #181818;
+  color: #DEF767;
 }
 
 .btn-run:active {
-  transform: translateY(0) scale(0.96);
+  transform: scale(0.97);
 }
 
 .btn-run:disabled {
   opacity: 0.4;
   pointer-events: none;
-  filter: grayscale(0.5);
 }
 
 /* ── Log Entry Animation ─────────────────────────────────────────── */
@@ -8304,6 +7546,7 @@ textarea:focus {
     opacity: 0;
     transform: translateY(8px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -8316,10 +7559,8 @@ textarea:focus {
 
 /* ── Preview Frame ───────────────────────────────────────────────── */
 .preview-frame {
-  background: linear-gradient(180deg, rgba(10, 10, 15, 0.98) 0%, rgba(5, 5, 8, 1) 100%);
+  background: #181818;
 }
-
-
 
 /* SVG Wires Drawing Animation */
 .thread-wire {
@@ -8328,15 +7569,17 @@ textarea:focus {
   transition: stroke-dashoffset 1.5s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.5s ease;
   pointer-events: none;
 }
+
 .thread-active {
   stroke-dashoffset: 0 !important;
-  stroke: #A259FF !important;
-  opacity: 0.9 !important;
+  stroke: #b5b5b5 !important;
+  opacity: 1.0 !important;
 }
+
 .thread-idle {
-  stroke-dasharray: 0; /* Fallback flat line if no animation */
-  stroke: #46B1FF;
-  opacity: 0.15;
+  stroke-dasharray: 0;
+  stroke: #5b5b5b;
+  opacity: 0.4;
 }
 
 /* ── Color Picker ────────────────────────────────────────────────── */
@@ -8359,39 +7602,46 @@ textarea:focus {
   border-color: #fff;
 }
 
-/* ── Infinite Canvas ────────────────────────────────────────────── */
-.canvas-grid {
-  cursor: grab;
-}
-
-.canvas-grid.is-panning {
-  cursor: grabbing;
-}
-
-.canvas-content {
-  transform: translate(var(--canvas-x), var(--canvas-y)) scale(var(--canvas-zoom));
-  width: 3000px;
-  height: 2000px;
-  will-change: transform;
-}
-
 /* Specific Color Classes */
-.color-A259FF { background-color: #A259FF; }
-.color-A259FF.is-active { box-shadow: 0 0 12px #A259FF; }
+.color-A259FF {
+  background-color: #DEF767;
+}
 
-.color-46B1FF { background-color: #46B1FF; }
-.color-46B1FF.is-active { box-shadow: 0 0 12px #46B1FF; }
+.color-A259FF.is-active {
+  border-color: #fff;
+}
 
-.color-DEF767 { background-color: #DEF767; }
-.color-DEF767.is-active { box-shadow: 0 0 12px #DEF767; }
+.color-46B1FF {
+  background-color: #FF6A6A;
+}
 
-.color-FF6A6A { background-color: #FF6A6A; }
-.color-FF6A6A.is-active { box-shadow: 0 0 12px #FF6A6A; }
+.color-46B1FF.is-active {
+  border-color: #fff;
+}
 
-.color-FACC15 { background-color: #FACC15; }
-.color-FACC15.is-active { box-shadow: 0 0 12px #FACC15; }
+.color-DEF767 {
+  background-color: #DEF767;
+}
 
+.color-DEF767.is-active {
+  border-color: #fff;
+}
 
+.color-FF6A6A {
+  background-color: #FF6A6A;
+}
+
+.color-FF6A6A.is-active {
+  border-color: #fff;
+}
+
+.color-FACC15 {
+  background-color: #DEF767;
+}
+
+.color-FACC15.is-active {
+  border-color: #fff;
+}
 ```
 
 ---
@@ -8443,114 +7693,115 @@ createRoot(rootElement).render(
 ## `src\components\AgentBlockNode.tsx`
 
 ```tsx
+import { Settings, Play, Clock, Layers } from 'lucide-react';
+import { useAgentBlockNode } from './useAgentBlockNode';
 
-import { Settings, Play, Clock } from 'lucide-react';
-import { useBuilderStore } from '../lib/builderStore';
+interface BlockPosition {
+  x: number;
+  y: number;
+}
 
 interface BlockData {
   id: string;
   name?: string;
   description?: string;
-  position: { x: number; y: number };
+  position: BlockPosition;
   size?: { width?: number; height?: number };
-  triggerConfig: { type: string;[key: string]: any };
-  waitConfig: { type: string;[key: string]: any };
+  triggerConfig: { type: string; [key: string]: any };
+  waitConfig: { type: string; [key: string]: any };
   [key: string]: any;
 }
 
 interface AgentBlockNodeProps {
   block: BlockData;
   isSelected: boolean;
+  isTopologyLocked?: boolean;
+  isMultiSelected?: boolean;
 }
 
-const AgentBlockNode = ({ block, isSelected }: AgentBlockNodeProps) => {
-  const { setSelectedElementId, nodeStatus } = useBuilderStore();
-  const status = nodeStatus[block.id] || 'idle';
-  const blockW = block.size?.width || 260;
-  const blockH = block.size?.height || 150;
-
-  let borderClasses = 'border-white/[0.04] bg-[#111118] hover:border-white/20 shadow-xl z-10';
-  let pulseClass = '';
-
-  if (isSelected) {
-    borderClasses = 'border-[#A259FF] bg-[#181824] shadow-[0_0_30px_rgba(162,89,255,0.4)] z-50';
-  } else if (status === 'running') {
-    borderClasses = 'border-[#F6E27F] bg-[#181824] shadow-[0_0_30px_rgba(246,226,127,0.4)] z-40';
-    pulseClass = 'animate-pulse';
-  } else if (status === 'success') {
-    borderClasses = 'border-[#DEF767] bg-[#111118] shadow-[0_0_20px_rgba(222,247,103,0.2)] z-30';
-  } else if (status === 'error') {
-    borderClasses = 'border-[#ff4b4b] bg-[#111118] shadow-[0_0_20px_rgba(255,75,75,0.2)] z-30';
-  }
+const AgentBlockNode = ({ block, isSelected, isTopologyLocked, isMultiSelected }: AgentBlockNodeProps) => {
+  const {
+    blockW,
+    blockH,
+    borderClasses,
+    pulseClass,
+    handleNodeClick,
+  } = useAgentBlockNode({ block, isSelected, isMultiSelected });
 
   return (
     // eslint-disable-next-line
     <div
-      onClick={(e) => {
-        e.stopPropagation();
-        setSelectedElementId(block.id);
-      }}
-      className={`absolute border rounded-3xl p-5 transition-all n8n-node overflow-visible group cursor-pointer ${borderClasses} ${pulseClass}`}
+      onClick={handleNodeClick}
+      className={`absolute border rounded-3xl p-5 transition-all duration-300 ease-out n8n-node overflow-visible group cursor-pointer font-sans flex flex-col ${borderClasses} ${pulseClass}`}
       style={{
-        left: block.position.x,
-        top: block.position.y,
-        width: blockW,
-        minHeight: blockH,
+        left: Math.round(block.position.x),
+        top: Math.round(block.position.y),
+        width: Math.round(blockW),
+        height: Math.round(blockH),
       }}
     >
       {/* Port - Input */}
       <div
-        className="absolute w-4 h-4 bg-[#111118] border-2 border-[#A259FF] rounded-full left-1/2 -translate-x-1/2 -top-2 z-20 hover:scale-[2] hover:bg-[#A259FF] transition-all cursor-crosshair connection-port"
+        className="absolute w-3.5 h-3.5 bg-[#181818] border border-[#5b5b5b] hover:border-[#DEF767] hover:bg-[#DEF767] rounded-full left-1/2 -translate-x-1/2 -top-1.5 z-20 transition-colors duration-150 cursor-crosshair connection-port"
         data-port-id={block.id}
         data-port-position="top"
       />
 
       {/* Header */}
-      <div className="flex items-start justify-between mb-4 pb-3">
+      <div className="flex items-start justify-between mb-3 pb-3 border-b border-[#3e3e3e] shrink-0 w-full">
         <div className="flex items-center gap-3">
-          <div className="p-1.5 rounded-lg bg-gradient-to-br from-[#A259FF] to-[#6c39b3] text-white shadow-lg">
-            <Settings size={14} />
+          <div className={`p-1.5 rounded-lg bg-[#1a1a1a] border border-[#3e3e3e] ${block.isGroupOutput ? 'text-[#A259FF]' : 'text-[#DEF767]'}`}>
+            {block.isGroupOutput ? <Layers size={14} /> : <Settings size={14} />}
           </div>
-          <h3 className="text-[14px] font-bold text-white tracking-wide truncate max-w-[150px]">
-            {block.name || 'Agent Block'}
-          </h3>
+          <div className="flex flex-col">
+            <div className="flex items-center gap-2">
+              <h3 className="text-[14px] font-bold text-white tracking-wide truncate max-w-[150px] font-sans">
+                {block.name || 'Agent Block'}
+              </h3>
+              {block.isGroupOutput && (
+                <span className="text-[8px] bg-[#A259FF]/20 text-[#A259FF] border border-[#A259FF]/30 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">
+                  GROUP OUTPUT
+                </span>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Body */}
-      <p className="text-[11px] text-slate-400 line-clamp-3 min-h-[48px] font-secondary mb-4 leading-relaxed">
+      {/* Body Description */}
+      <p className="text-[11px] text-zinc-300 line-clamp-3 font-sans mb-3 leading-relaxed flex-grow overflow-y-auto custom-scrollbar-neon pr-1 shrink">
         {block.description || 'No description provided.'}
       </p>
 
       {/* Footer Details */}
-      <div className="flex items-center justify-between mt-auto pt-4 border-t border-white/[0.04] text-[10px] text-slate-300 font-bold uppercase tracking-widest">
-        <div className="flex items-center gap-1.5 bg-white/5 hover:bg-white/10 transition-colors px-2.5 py-1.5 rounded-md">
-          <Play size={10} className="text-[#46B1FF]" /> {block.triggerConfig.type.substring(0, 4)}
+      <div className="flex items-center justify-between mt-auto pt-3 border-t border-[#3e3e3e] text-[10px] text-zinc-400 font-bold uppercase tracking-widest gap-2 font-sans shrink-0 w-full">
+        <div className="flex items-center gap-1.5 bg-[#1a1a1a] border border-[#3e3e3e] px-2.5 py-1 rounded-md min-w-max whitespace-nowrap">
+          <Play size={10} className="text-zinc-400" /> {String(block.triggerConfig.type || '').toUpperCase()}
         </div>
         {(block.waitConfig.type !== 'none') && (
-          <div className="flex items-center gap-1.5 bg-white/5 hover:bg-white/10 transition-colors px-2.5 py-1.5 rounded-md">
-            <Clock size={10} className="text-[#DEF767]" /> {block.waitConfig.type.substring(0, 4)}
+          <div className="flex items-center gap-1.5 bg-[#1a1a1a] border border-[#3e3e3e] px-2.5 py-1 rounded-md min-w-max whitespace-nowrap">
+            <Clock size={10} className="text-zinc-400" /> {String(block.waitConfig.type || '').toUpperCase()}
           </div>
         )}
       </div>
 
       {/* Port - Output (Bottom) */}
       <div
-        className="absolute w-4 h-4 bg-[#111118] border-2 border-[#A259FF] rounded-full left-1/2 -translate-x-1/2 -bottom-2 z-20 hover:scale-150 hover:bg-[#A259FF] transition-all cursor-crosshair connection-port"
+        className="absolute w-3.5 h-3.5 bg-[#181818] border border-[#5b5b5b] hover:border-[#DEF767] hover:bg-[#DEF767] rounded-full left-1/2 -translate-x-1/2 -bottom-1.5 z-20 transition-colors duration-150 cursor-crosshair connection-port"
         data-port-id={block.id}
         data-port-position="bottom"
       />
 
       {/* Port - Left */}
       <div
-        className="absolute w-4 h-4 bg-[#111118] border-2 border-[#A259FF] rounded-full -left-2 top-1/2 -translate-y-1/2 z-20 hover:scale-150 hover:bg-[#A259FF] transition-all cursor-crosshair connection-port"
+        className="absolute w-3.5 h-3.5 bg-[#181818] border border-[#5b5b5b] hover:border-[#DEF767] hover:bg-[#DEF767] rounded-full -left-1.5 top-1/2 -translate-y-1/2 z-20 transition-colors duration-150 cursor-crosshair connection-port"
         data-port-id={block.id}
         data-port-position="left"
       />
 
       {/* Port - Right */}
       <div
-        className="absolute w-4 h-4 bg-[#111118] border-2 border-[#A259FF] rounded-full -right-2 top-1/2 -translate-y-1/2 z-20 hover:scale-150 hover:bg-[#A259FF] transition-all cursor-crosshair connection-port"
+        className="absolute w-3.5 h-3.5 bg-[#181818] border border-[#5b5b5b] hover:border-[#DEF767] hover:bg-[#DEF767] rounded-full -right-1.5 top-1/2 -translate-y-1/2 z-20 transition-colors duration-150 cursor-crosshair connection-port"
         data-port-id={block.id}
         data-port-position="right"
       />
@@ -8558,12 +7809,10 @@ const AgentBlockNode = ({ block, isSelected }: AgentBlockNodeProps) => {
       {/* Resize Handle */}
       {/* eslint-disable-next-line */}
       <div
-        className="resize-handle absolute bottom-0 right-0 w-5 h-5 cursor-nwse-resize opacity-0 group-hover:opacity-100 transition-opacity z-30"
-        style={{
-          background: 'linear-gradient(135deg, transparent 50%, rgba(162,89,255,0.5) 50%)',
-          borderRadius: '0 0 12px 0',
-        }}
-      />
+        className="resize-handle absolute bottom-0 right-0 w-6 h-6 cursor-nwse-resize opacity-0 group-hover:opacity-100 transition-opacity z-30 flex items-end justify-end p-1.5"
+      >
+        <div className="w-2.5 h-2.5 border-r-2 border-b-2 border-[#5b5b5b] group-hover:border-[#DEF767] transition-colors pointer-events-none" />
+      </div>
     </div>
   );
 };
@@ -8762,6 +8011,10 @@ import { useBuilderStore } from '../lib/builderStore';
 import AgentBlockNode from './AgentBlockNode';
 import WebhookBlockNode from './WebhookBlockNode';
 import { Trash2 } from 'lucide-react';
+import { computeEdgePath } from '../lib/edgeRouter';
+import type { ToolType } from '../types/engine';
+import MultiSelectActionBar from './MultiSelectActionBar';
+import CreateGroupModal from './CreateGroupModal';
 
 interface Coords { x: number; y: number; }
 
@@ -8789,8 +8042,8 @@ interface ResizingElement {
 }
 
 interface BuilderCanvasProps {
-  activeTool: string;
-  setActiveTool: (tool: string) => void;
+  activeTool: ToolType;
+  setActiveTool: (tool: ToolType) => void;
   getCanvasCoords: (clientX: number, clientY: number) => Coords;
 }
 
@@ -8800,8 +8053,11 @@ const BuilderCanvas = ({ activeTool, setActiveTool, getCanvasCoords }: BuilderCa
     setSelectedElementId, connectBlocks,
     stickyNotes, addStickyNote, updateStickyNote, deleteStickyNote,
     textLabels, addTextLabel, updateTextLabel, deleteTextLabel,
-    nodeStatus
+    nodeStatus,  isTopologyLocked,
+    groups, selectedBlockIds, toggleBlockSelection, clearBlockSelection, createGroup
   } = useBuilderStore();
+
+  const [isCreateGroupModalOpen, setIsCreateGroupModalOpen] = useState(false);
 
   const [draggingElement, setDraggingElement] = useState<DraggingElement | null>(null);
   const [wiringState, setWiringState] = useState<WiringState | null>(null);
@@ -8873,6 +8129,7 @@ const BuilderCanvas = ({ activeTool, setActiveTool, getCanvasCoords }: BuilderCa
   const handleBlockMouseDown = (e: React.MouseEvent, block: any) => {
     const target = e.target as HTMLElement;
     if (target.classList.contains('resize-handle')) {
+      if (isTopologyLocked) return; // Prevent resizing when topology is locked
       e.stopPropagation();
       setResizingElement({
         type: 'block',
@@ -8885,12 +8142,21 @@ const BuilderCanvas = ({ activeTool, setActiveTool, getCanvasCoords }: BuilderCa
 
     // Check if clicked port
     if (target.classList.contains('connection-port')) {
+        if (isTopologyLocked) return; // Prevent wiring when topology is locked
        e.stopPropagation();
        const portPosition = target.getAttribute('data-port-position');
-       const blockRect = target.getBoundingClientRect();
-       const portCenterX = blockRect.left + blockRect.width / 2;
-       const portCenterY = blockRect.top + blockRect.height / 2;
-       const canvasStartCoords = getCanvasCoords(portCenterX, portCenterY);
+       const blockW = block.size?.width || 260;
+       const blockH = block.size?.height || 150;
+       
+       const getAnchorCoords = (b: any, port: string, w: number, h: number) => {
+         if (port === 'top') return { x: b.position.x + w / 2, y: b.position.y };
+         if (port === 'bottom') return { x: b.position.x + w / 2, y: b.position.y + h };
+         if (port === 'left') return { x: b.position.x, y: b.position.y + h / 2 };
+         if (port === 'right') return { x: b.position.x + w, y: b.position.y + h / 2 };
+         return { x: b.position.x + w / 2, y: b.position.y };
+       };
+
+       const canvasStartCoords = getAnchorCoords(block, portPosition!, blockW, blockH);
        const coords = getCanvasCoords(e.clientX, e.clientY);
        
        setWiringState({
@@ -8904,7 +8170,13 @@ const BuilderCanvas = ({ activeTool, setActiveTool, getCanvasCoords }: BuilderCa
 
     if (activeTool === 'cursor') {
       e.stopPropagation();
+      if (e.shiftKey || e.ctrlKey || e.metaKey) {
+        toggleBlockSelection(block.id);
+        return;
+      }
       setSelectedElementId(block.id);
+      clearBlockSelection();
+      if (isTopologyLocked) return; // Prevent dragging when topology is locked
       const coords = getCanvasCoords(e.clientX, e.clientY);
       setDraggingElement({
         type: 'block',
@@ -8960,6 +8232,52 @@ const BuilderCanvas = ({ activeTool, setActiveTool, getCanvasCoords }: BuilderCa
     }
   };
 
+  const renderGroupBoundaries = () => {
+    return groups.map((group) => {
+      const groupBlockIds = [...group.blockIds, group.outputBlockId];
+      const groupBlocks = blocks.filter(b => groupBlockIds.includes(b.id));
+      if (groupBlocks.length === 0) return null;
+
+      let minX = Infinity;
+      let minY = Infinity;
+      let maxX = -Infinity;
+      let maxY = -Infinity;
+
+      groupBlocks.forEach(b => {
+        const w = b.size?.width || 260;
+        const h = b.size?.height || 150;
+        minX = Math.min(minX, b.position.x);
+        minY = Math.min(minY, b.position.y);
+        maxX = Math.max(maxX, b.position.x + w);
+        maxY = Math.max(maxY, b.position.y + h);
+      });
+
+      const padding = 24;
+      const x = minX - padding;
+      const y = minY - padding;
+      const width = (maxX - minX) + padding * 2;
+      const height = (maxY - minY) + padding * 2;
+
+      return (
+        <div
+          key={`group-boundary-${group.id}`}
+          className="absolute border border-dashed border-[#A259FF]/30 bg-[#A259FF]/3 rounded-[32px] pointer-events-none transition-all duration-300"
+          style={{
+            left: x,
+            top: y,
+            width,
+            height,
+            zIndex: 0,
+          }}
+        >
+          <div className="absolute -top-7 left-6 bg-[#0f0f15] border border-[#A259FF]/30 text-[#A259FF] text-[9px] font-black uppercase tracking-[0.15em] px-2.5 py-1 rounded-lg">
+            Phase: {group.name}
+          </div>
+        </div>
+      );
+    });
+  };
+
   const renderConnections = () => {
     const paths = connections.map((conn: any) => {
       const srcBlock = blocks.find((b: any) => b.id === conn.sourceBlockId);
@@ -8977,49 +8295,38 @@ const BuilderCanvas = ({ activeTool, setActiveTool, getCanvasCoords }: BuilderCa
       const tPort = conn.targetPort || (isSrcAbove ? 'top' : 'bottom');
 
       const getAnchor = (block: any, port: string, width: number, height: number) => {
-        if (port === 'top') return { x: block.position.x + width / 2, y: block.position.y - 12 };
+        if (port === 'top') return { x: block.position.x + width / 2, y: block.position.y };
         if (port === 'bottom') return { x: block.position.x + width / 2, y: block.position.y + height };
-        if (port === 'left') return { x: block.position.x - 12, y: block.position.y + height / 2 };
+        if (port === 'left') return { x: block.position.x, y: block.position.y + height / 2 };
         if (port === 'right') return { x: block.position.x + width, y: block.position.y + height / 2 };
-        return { x: block.position.x + width / 2, y: block.position.y - 12 };
+        return { x: block.position.x + width / 2, y: block.position.y };
       };
 
       const p1 = getAnchor(srcBlock, sPort, srcW, srcH);
       const p2 = getAnchor(tgtBlock, tPort, tgtW, tgtH);
 
-      const dist = Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
-      const offset = dist * 0.4 + 40; 
-      
-      const cp1 = { ...p1 };
-      if (sPort === 'top') cp1.y -= offset;
-      if (sPort === 'bottom') cp1.y += offset;
-      if (sPort === 'left') cp1.x -= offset;
-      if (sPort === 'right') cp1.x += offset;
-
-      const cp2 = { ...p2 };
-      if (tPort === 'top') cp2.y -= offset;
-      if (tPort === 'bottom') cp2.y += offset;
-      if (tPort === 'left') cp2.x -= offset;
-      if (tPort === 'right') cp2.x += offset;
-
-      const pathData = `M ${p1.x} ${p1.y} C ${cp1.x} ${cp1.y}, ${cp2.x} ${cp2.y}, ${p2.x} ${p2.y}`;
       const isSelected = selectedElementId === conn.id;
-
       const srcStatus = nodeStatus[conn.sourceBlockId];
       const tgtStatus = nodeStatus[conn.targetBlockId];
       const isAnimating = srcStatus === 'success' && tgtStatus === 'running';
 
+      // Generate Manhattan Path
+      const pathData = computeEdgePath(p1, p2, { sPort: sPort as any, tPort: tPort as any });
+
       return (
         <g key={conn.id} onClick={(e) => { e.stopPropagation(); setSelectedElementId(conn.id); }}>
-          <path d={pathData} stroke="transparent" strokeWidth="20" fill="none" className="cursor-pointer" />
+          {/* Thick hover buffer wire */}
+          <path d={pathData} stroke="transparent" strokeWidth="20" fill="none" className="cursor-pointer" style={{ strokeLinejoin: 'round', strokeLinecap: 'round' }} />
+          {/* Main wire path */}
           <path
             d={pathData}
-            stroke={isSelected ? "#DEF767" : "#A259FF"}
-            strokeWidth={isSelected ? "4" : "2"}
+            stroke={isSelected || isAnimating ? "#b5b5b5" : "#5b5b5b"}
+            strokeWidth={isSelected || isAnimating ? "3" : "1.5"}
             fill="none"
-            strokeDasharray="8 6"
-            className={`transition-all cursor-pointer thread-wire ${isAnimating ? 'thread-active' : 'hover:stroke-[#DEF767]'}`}
-            style={{ opacity: isSelected || isAnimating ? 1 : 0.6 }}
+            strokeDasharray={isSelected || isAnimating ? undefined : "6 4"}
+            strokeLinejoin="round"
+            strokeLinecap="round"
+            className={`transition-all cursor-pointer thread-wire ${isAnimating ? 'thread-active' : 'hover:stroke-[#b5b5b5]'}`}
           />
         </g>
       );
@@ -9030,25 +8337,35 @@ const BuilderCanvas = ({ activeTool, setActiveTool, getCanvasCoords }: BuilderCa
       const p2 = wiringState.currentMousePos;
       const sPort = wiringState.sourcePort;
 
-      const dist = Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
-      const offset = dist * 0.4 + 40; 
-      
-      const cp1 = { ...p1 };
-      if (sPort === 'top') cp1.y -= offset;
-      if (sPort === 'bottom') cp1.y += offset;
-      if (sPort === 'left') cp1.x -= offset;
-      if (sPort === 'right') cp1.x += offset;
+      const dx = Math.abs(p2.x - p1.x);
+      const dy = Math.abs(p2.y - p1.y);
+      const controlDist = Math.max(5, Math.min(100, Math.max(dx, dy) * 0.5));
 
-      const cp2 = { ...p2 };
-      if (sPort === 'top' || sPort === 'bottom') {
-         cp2.y += (p1.y < p2.y ? -offset : offset);
+      let cp1 = { x: p1.x, y: p1.y };
+      if (sPort === 'right') cp1.x += controlDist;
+      else if (sPort === 'left') cp1.x -= controlDist;
+      else if (sPort === 'bottom') cp1.y += controlDist;
+      else if (sPort === 'top') cp1.y -= controlDist;
+
+      let cp2 = { x: p2.x, y: p2.y };
+      if (sPort === 'bottom' || sPort === 'top') {
+        cp2.y += p2.y < p1.y ? controlDist : -controlDist;
       } else {
-         cp2.x += (p1.x < p2.x ? -offset : offset);
+        cp2.x += p2.x < p1.x ? controlDist : -controlDist;
       }
-      
+
       const actPath = `M ${p1.x} ${p1.y} C ${cp1.x} ${cp1.y}, ${cp2.x} ${cp2.y}, ${p2.x} ${p2.y}`;
       paths.push(
-        <path key="active-wire" d={actPath} stroke="#A259FF" strokeWidth="2" fill="none" strokeDasharray="8 6" opacity="0.8" />
+        <path 
+          key="active-wire" 
+          d={actPath} 
+          stroke="#b5b5b5" 
+          strokeWidth="2" 
+          fill="none" 
+          strokeDasharray="6 4" 
+          strokeLinejoin="round" 
+          strokeLinecap="round" 
+        />
       );
     }
 
@@ -9063,6 +8380,8 @@ const BuilderCanvas = ({ activeTool, setActiveTool, getCanvasCoords }: BuilderCa
          </g>
       </svg>
       
+      {renderGroupBoundaries()}
+
       {/* Agent & Webhook Blocks */}
       {blocks.map((block: any) => (
         <div key={block.id} className="pointer-events-auto absolute" onMouseDown={(e) => handleBlockMouseDown(e, block)}>
@@ -9070,27 +8389,32 @@ const BuilderCanvas = ({ activeTool, setActiveTool, getCanvasCoords }: BuilderCa
             <WebhookBlockNode
               block={block}
               isSelected={selectedElementId === block.id}
+              isTopologyLocked={isTopologyLocked}
+              isMultiSelected={selectedBlockIds.has(block.id)}
             />
           ) : (
             <AgentBlockNode
               block={block}
               isSelected={selectedElementId === block.id}
+              isTopologyLocked={isTopologyLocked}
+              isMultiSelected={selectedBlockIds.has(block.id)}
             />
           )}
         </div>
       ))}
 
-      {/* Builder Sticky Notes */}
+      {/* Builder Sticky Notes (Flat Brutalist Styling) */}
       {stickyNotes.map((note: any) => {
-        const noteColor = note.color || '#A259FF';
+        const noteColor = '#DEF767'; // Enforce binary Lime accent
         const noteW = note.size?.width || 220;
         const noteH = note.size?.height || 160;
+        const isSelected = selectedElementId === `sticky-${note.id}`;
 
         return (
           <div
             key={`builder-sticky-${note.id}`}
-            className={`absolute sticky-note p-3 rounded-2xl z-20 transition-all font-secondary flex flex-col group shadow-2xl cursor-pointer ${
-              selectedElementId === `sticky-${note.id}` ? 'border' : 'border border-transparent'
+            className={`absolute sticky-note p-3 rounded-2xl z-20 transition-all font-sans flex flex-col group cursor-pointer border ${
+              isSelected ? 'border-[#DEF767]' : 'border-[#2e2e2e]'
             }`}
             onMouseDown={(e) => handleStickyMouseDown(e, note)}
             style={{
@@ -9098,14 +8422,14 @@ const BuilderCanvas = ({ activeTool, setActiveTool, getCanvasCoords }: BuilderCa
               top: note.position.y,
               width: noteW,
               height: noteH,
-              background: 'rgba(26, 26, 46, 0.75)',
-              borderColor: selectedElementId === `sticky-${note.id}` ? noteColor : `${noteColor}40`,
-              backdropFilter: 'blur(16px)',
+              background: '#181818',
               pointerEvents: 'auto',
-              boxShadow: selectedElementId === `sticky-${note.id}` ? `0 0 30px ${noteColor}40` : `0 10px 30px rgba(0,0,0,0.5)`,
             }}
           >
-            <div className="w-full h-1.5 rounded-t-xl absolute top-0 left-0" style={{ background: `linear-gradient(to right, ${noteColor}, ${noteColor}80)` }} />
+            <div 
+              className="w-full h-1 rounded-t-xl absolute top-0 left-0" 
+              style={{ background: isSelected ? '#DEF767' : '#5b5b5b' }} 
+            />
             
             <button
               aria-label="Delete Sticky Note"
@@ -9114,9 +8438,9 @@ const BuilderCanvas = ({ activeTool, setActiveTool, getCanvasCoords }: BuilderCa
                 e.stopPropagation();
                 deleteStickyNote(note.id);
               }}
-              className="absolute top-3 right-3 p-1.5 rounded-lg bg-black/60 text-slate-400 hover:text-white hover:bg-[#ff4b4b] transition-all opacity-0 group-hover:opacity-100 z-50 shadow-md"
+              className="absolute top-3 right-3 p-1.5 rounded-lg bg-[#2e2e2e] text-slate-400 hover:text-white hover:bg-[#ff6a6a] transition-all opacity-0 group-hover:opacity-100 z-50"
             >
-              <Trash2 size={14} />
+              <Trash2 size={12} />
             </button>
             
             <textarea
@@ -9129,9 +8453,9 @@ const BuilderCanvas = ({ activeTool, setActiveTool, getCanvasCoords }: BuilderCa
 
             {/* Resize Handle */}
             <div
-              className="resize-handle absolute bottom-0 right-0 w-6 h-6 cursor-nwse-resize opacity-0 group-hover:opacity-100 transition-opacity z-30"
+              className="resize-handle absolute bottom-0 right-0 w-5 h-5 cursor-nwse-resize opacity-0 group-hover:opacity-100 transition-opacity z-30"
               style={{
-                background: `linear-gradient(135deg, transparent 50%, ${noteColor}80 50%)`,
+                background: `linear-gradient(135deg, transparent 50%, ${isSelected ? '#DEF767' : '#5b5b5b'} 50%)`,
                 borderRadius: '0 0 16px 0',
               }}
             />
@@ -9148,7 +8472,7 @@ const BuilderCanvas = ({ activeTool, setActiveTool, getCanvasCoords }: BuilderCa
           style={{ left: label.x - 75, top: label.y - 15 }}
         >
           <input
-            className="bg-transparent outline-none text-white text-sm font-bold w-[150px] placeholder-slate-500 border-b border-dashed border-white/20 focus:border-[#46B1FF]/50 pb-1 transition-colors"
+            className="bg-transparent outline-none text-white text-sm font-bold w-[150px] placeholder-slate-500 border-b border-dashed border-[#2e2e2e] focus:border-[#DEF767] pb-1 transition-colors font-sans"
             placeholder="Type label..."
             value={label.text}
             onMouseDown={e => e.stopPropagation()}
@@ -9158,12 +8482,28 @@ const BuilderCanvas = ({ activeTool, setActiveTool, getCanvasCoords }: BuilderCa
             aria-label="Delete Label"
             title="Delete Label"
             onClick={() => deleteTextLabel(label.id)}
-            className="absolute -top-2 -right-2 w-5 h-5 rounded-md bg-[#ff4b4b]/20 hover:bg-[#ff4b4b]/80 border border-[#ff4b4b]/50 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all shadow-lg"
+            className="absolute -top-2 -right-2 w-5 h-5 rounded-md bg-[#2e2e2e] hover:bg-[#ff6a6a] border border-[#2e2e2e] text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all"
           >
             <Trash2 size={10} />
           </button>
         </div>
       ))}
+
+      <MultiSelectActionBar
+        selectedCount={selectedBlockIds.size}
+        onCreateGroup={() => setIsCreateGroupModalOpen(true)}
+        onClearSelection={clearBlockSelection}
+      />
+
+      <CreateGroupModal
+        isOpen={isCreateGroupModalOpen}
+        selectedAgentNames={blocks.filter(b => selectedBlockIds.has(b.id)).map(b => b.name || 'New Agent')}
+        onCreate={(name) => {
+          createGroup(name);
+          setIsCreateGroupModalOpen(false);
+        }}
+        onClose={() => setIsCreateGroupModalOpen(false)}
+      />
     </div>
   );
 };
@@ -9180,18 +8520,23 @@ export default BuilderCanvas;
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useBuilderStore } from '../lib/builderStore';
-import { Settings, Play, Clock, Key, Trash2, Download, Loader2, Webhook, Link2 } from 'lucide-react';
+import { Settings, Play, Clock, Key, Trash2, Download, Loader2, Webhook, Link2, Lock } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 
 const BuilderSidebar = () => {
-  const { blocks, connections, selectedElementId, setSelectedElementId, updateBlock, deleteBlock, deleteConnection } = useBuilderStore();
-  
+  const { blocks, connections, selectedElementId, setSelectedElementId, updateBlock, deleteBlock, deleteConnection, isTopologyLocked, groups } = useBuilderStore();
+
   const [showResultOverlay, setShowResultOverlay] = useState(false);
   const [globalContextLog] = useState("");
   const [availableSequences, setAvailableSequences] = useState<any[]>([]);
 
   const selectedBlock = blocks.find(b => b.id === selectedElementId);
   const selectedConnection = connections.find(c => c.id === selectedElementId);
+
+  const group = groups.find(g => g.outputBlockId === selectedBlock?.id);
+  const groupMembers = group
+    ? blocks.filter(b => group.blockIds.includes(b.id))
+    : [];
 
   // Fetch available sequences for webhook linking
   useEffect(() => {
@@ -9231,118 +8576,207 @@ const BuilderSidebar = () => {
           <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
             {selectedBlock ? (
               <div className="animate-fade-in flex flex-col h-full gap-6">
-                {/* Core Settings */}
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2 block">
-                      {isWebhook ? 'Bridge Name' : 'Agent Name'}
-                    </label>
-                    <input
-                      value={selectedBlock.name}
-                      onChange={(e) => updateBlock(selectedBlock.id, { name: e.target.value })}
-                      className="w-full bg-black/40 border border-white/5 focus:border-[#A259FF]/50 rounded-xl px-4 py-3 text-sm text-white transition-colors outline-none"
-                      placeholder={isWebhook ? 'E.g., Data Pipeline Bridge' : 'E.g., User Researcher'}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2 block">
-                      {isWebhook ? 'Bridge Description' : 'Objective / Description'}
-                    </label>
-                    <textarea
-                      value={selectedBlock.description}
-                      onChange={(e) => updateBlock(selectedBlock.id, { description: e.target.value })}
-                      className="w-full bg-black/40 border border-white/5 focus:border-[#A259FF]/50 rounded-xl px-4 py-3 text-sm text-slate-300 min-h-[100px] transition-colors outline-none resize-none custom-scrollbar"
-                      placeholder={isWebhook ? 'Describe what data this bridge passes...' : 'Describe what this agent does...'}
-                    />
-                  </div>
-                </div>
-
-                {/* Webhook-specific: Linked Sequence Picker */}
-                {isWebhook && (
-                  <div className="space-y-4 pt-4 border-t border-[#46B1FF]/10">
-                    <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
-                      <Link2 size={14} className="text-[#46B1FF]" /> Linked Workflow
-                    </h3>
-                    <select
-                      title="Select linked workflow"
-                      value={selectedBlock.linkedSequenceId || ''}
-                      onChange={(e) => {
-                        const seq = availableSequences.find((s: any) => s.id === e.target.value);
-                        updateBlock(selectedBlock.id, {
-                          linkedSequenceId: e.target.value || null,
-                          linkedSequenceName: seq?.title || ''
-                        });
-                      }}
-                      className="w-full bg-black/40 border border-[#46B1FF]/20 focus:border-[#46B1FF]/50 rounded-xl px-4 py-3 text-sm text-white transition-colors outline-none appearance-none"
-                    >
-                      <option value="">— Select a workflow —</option>
-                      {availableSequences
-                        .filter((s: any) => s.id !== localStorage.getItem('active_sequence_id'))
-                        .map((s: any) => (
-                          <option key={s.id} value={s.id}>{s.title}</option>
-                        ))
-                      }
-                    </select>
-                    {selectedBlock.linkedSequenceId && (
-                      <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-[#46B1FF]/10 border border-[#46B1FF]/20">
-                        <Webhook size={14} className="text-[#46B1FF]" />
-                        <span className="text-xs text-[#46B1FF] font-bold">Bridge active → {selectedBlock.linkedSequenceName}</span>
+                {selectedBlock.isGroupOutput ? (
+                  <div className="space-y-6 flex-1 flex flex-col justify-between">
+                    <div className="space-y-6">
+                      <div className="p-4 bg-[#A259FF]/5 border border-[#A259FF]/20 rounded-2xl">
+                        <p className="text-xs text-[#A259FF] font-bold uppercase tracking-wider mb-1">Synthesis Node</p>
+                        <p className="text-[11px] text-slate-400 leading-relaxed">
+                          This node automatically synthesizes and summarizes the outputs of all agents in the <strong>{group?.name}</strong> phase group.
+                        </p>
                       </div>
-                    )}
-                  </div>
-                )}
 
-                {/* Agent-specific: Triggers and Waits */}
-                {!isWebhook && (
-                  <>
-                    <div className="space-y-4 pt-4 border-t border-white/[0.04]">
-                      <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2"><Play size={14} className="text-[#46B1FF]" /> Trigger Config</h3>
-                      <select 
-                        title="Select trigger type"
-                        value={selectedBlock.triggerConfig.type}
-                        onChange={(e) => updateBlock(selectedBlock.id, { triggerConfig: { ...selectedBlock.triggerConfig, type: e.target.value } })}
-                        className="w-full bg-black/40 border border-white/5 focus:border-[#46B1FF]/50 rounded-xl px-4 py-3 text-sm text-white transition-colors outline-none appearance-none"
-                      >
-                        <option value="manual">Manual Trigger</option>
-                        <option value="scheduled">Scheduled (Cron)</option>
-                        <option value="event">Event-driven (Webhook)</option>
-                      </select>
+                      <div className="space-y-2">
+                        <span className="text-[10px] text-slate-500 uppercase tracking-widest font-black block">
+                          Parent Phase Group
+                        </span>
+                        <div className="text-sm font-bold text-white bg-white/[0.02] border border-white/5 rounded-2xl px-4 py-3">
+                          {group?.name}
+                        </div>
+                      </div>
+
+                      <div className="space-y-3">
+                        <span className="text-[10px] text-slate-500 uppercase tracking-widest font-black block">
+                          Agents in Phase ({groupMembers.length})
+                        </span>
+                        <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-4 space-y-2.5 max-h-[220px] overflow-y-auto custom-scrollbar-neon">
+                          {groupMembers.map((member, i) => (
+                            <div key={member.id || i} className="flex items-center gap-2.5 text-xs text-slate-300 font-medium">
+                              <span className="w-1.5 h-1.5 rounded-full bg-[#DEF767]" />
+                              <span className="truncate">{member.name || 'Agent'}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     </div>
 
-                    <div className="space-y-4 pt-4 border-t border-white/5">
-                      <h3 className="text-xs font-bold uppercase tracking-widest text-white flex items-center gap-2"><Clock size={14} className="text-[#DEF767]" /> wait config</h3>
-                      <select 
-                        title="Select wait type"
-                        value={selectedBlock.waitConfig.type}
-                        onChange={(e) => updateBlock(selectedBlock.id, { waitConfig: { ...selectedBlock.waitConfig, type: e.target.value } })}
-                        className="w-full bg-black/40 border border-white/5 focus:border-[#DEF767]/50 rounded-xl px-4 py-3 text-sm text-white transition-colors outline-none appearance-none"
-                      >
-                        <option value="none">No Delay</option>
-                        <option value="delay">Fixed Time Delay</option>
-                        <option value="condition">Wait for Condition</option>
-                        <option value="event">Wait for Event</option>
-                      </select>
+                    <div className="pt-6 border-t border-white/5 mt-auto">
+                      <div className="text-center p-4 bg-white/[0.02] border border-white/5 text-[11px] text-slate-500 rounded-2xl font-bold uppercase tracking-wider">
+                        Managed by Group Phase
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    {/* Core Settings */}
+                    <div className="space-y-4">
+                      <div>
+                        <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2 block">
+                          {isWebhook ? 'Bridge Name' : 'Agent Name'}
+                        </label>
+                        <input
+                          value={selectedBlock.name}
+                          onChange={(e) => updateBlock(selectedBlock.id, { name: e.target.value })}
+                          className="w-full bg-black/40 border border-white/5 focus:border-[#A259FF]/50 rounded-xl px-4 py-3 text-sm text-white transition-colors outline-none"
+                          placeholder={isWebhook ? 'E.g., Data Pipeline Bridge' : 'E.g., User Researcher'}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2 block">
+                          {isWebhook ? 'Bridge Description' : 'Objective / Description'}
+                        </label>
+                        <textarea
+                          value={selectedBlock.description}
+                          onChange={(e) => updateBlock(selectedBlock.id, { description: e.target.value })}
+                          className="w-full bg-black/40 border border-white/5 focus:border-[#A259FF]/50 rounded-xl px-4 py-3 text-sm text-slate-300 min-h-[100px] transition-colors outline-none resize-none custom-scrollbar"
+                          placeholder={isWebhook ? 'Describe what data this bridge passes...' : 'Describe what this agent does...'}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Webhook-specific: Linked Sequence Picker */}
+                    {isWebhook && (
+                      <div className="space-y-4 pt-4 border-t border-[#46B1FF]/10">
+                        <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
+                          <Link2 size={14} className="text-[#46B1FF]" /> Linked Workflow
+                        </h3>
+                        <select
+                          title="Select linked workflow"
+                          value={selectedBlock.linkedSequenceId || ''}
+                          onChange={(e) => {
+                            const seq = availableSequences.find((s: any) => s.id === e.target.value);
+                            updateBlock(selectedBlock.id, {
+                              linkedSequenceId: e.target.value || null,
+                              linkedSequenceName: seq?.title || ''
+                            });
+                          }}
+                          className="w-full bg-black/40 border border-[#46B1FF]/20 focus:border-[#46B1FF]/50 rounded-xl px-4 py-3 text-sm text-white transition-colors outline-none appearance-none"
+                        >
+                          <option value="">— Select a workflow —</option>
+                          {availableSequences
+                            .filter((s: any) => s.id !== localStorage.getItem('active_sequence_id'))
+                            .map((s: any) => (
+                              <option key={s.id} value={s.id}>{s.title}</option>
+                            ))
+                          }
+                        </select>
+                        {selectedBlock.linkedSequenceId && (
+                          <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-[#46B1FF]/10 border border-[#46B1FF]/20">
+                            <Webhook size={14} className="text-[#46B1FF]" />
+                            <span className="text-xs text-[#46B1FF] font-bold">Bridge active → {selectedBlock.linkedSequenceName}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {/* API Key Configuration */}
+                    {!isWebhook && (
+                      <div className="space-y-3 pt-4 border-t border-white/[0.04]">
+                        <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
+                          <Key size={14} className="text-[#DEF767]" /> API Key
+                        </h3>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => updateBlock(selectedBlock.id, { useCustomKey: false, apiKey: '' })}
+                            className={`flex-1 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest border transition-all ${!selectedBlock.useCustomKey
+                              ? 'bg-[#DEF767]/10 border-[#DEF767]/40 text-[#DEF767]'
+                              : 'bg-black/20 border-white/5 text-slate-500 hover:text-slate-300'
+                              }`}
+                          >
+                            Global Key
+                          </button>
+                          <button
+                            onClick={() => updateBlock(selectedBlock.id, { useCustomKey: true })}
+                            className={`flex-1 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest border transition-all ${selectedBlock.useCustomKey
+                              ? 'bg-[#A259FF]/10 border-[#A259FF]/40 text-[#A259FF]'
+                              : 'bg-black/20 border-white/5 text-slate-500 hover:text-slate-300'
+                              }`}
+                          >
+                            Custom Key
+                          </button>
+                        </div>
+                        {selectedBlock.useCustomKey && (
+                          <input
+                            type="password"
+                            value={selectedBlock.apiKey || ''}
+                            onChange={(e) => updateBlock(selectedBlock.id, { apiKey: e.target.value })}
+                            className="w-full bg-black/40 border border-[#A259FF]/20 focus:border-[#A259FF]/50 rounded-xl px-4 py-3 text-sm text-white transition-colors outline-none font-mono"
+                            placeholder="sk-... or your API key"
+                          />
+                        )}
+                        {selectedBlock.useCustomKey && selectedBlock.apiKey && (
+                          <p className="text-[10px] text-slate-500">Node Key → fallback to Global Key if exhausted</p>
+                        )}
+                      </div>
+                    )}
+                    {/* Agent-specific: Triggers and Waits */}
+                    {!isWebhook && (
+                      <>
+                        <div className="space-y-4 pt-4 border-t border-white/[0.04]">
+                          <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2"><Play size={14} className="text-[#46B1FF]" /> Trigger Config</h3>
+                          <select
+                            title="Select trigger type"
+                            value={selectedBlock.triggerConfig.type}
+                            onChange={(e) => updateBlock(selectedBlock.id, { triggerConfig: { ...selectedBlock.triggerConfig, type: e.target.value } })}
+                            className="w-full bg-black/40 border border-white/5 focus:border-[#46B1FF]/50 rounded-xl px-4 py-3 text-sm text-white transition-colors outline-none appearance-none"
+                          >
+                            <option value="manual">Manual Trigger</option>
+                            <option value="scheduled">Scheduled (Cron)</option>
+                            <option value="event">Event-driven (Webhook)</option>
+                          </select>
+                        </div>
+
+                        <div className="space-y-4 pt-4 border-t border-white/5">
+                          <h3 className="text-xs font-bold uppercase tracking-widest text-white flex items-center gap-2"><Clock size={14} className="text-[#DEF767]" /> wait config</h3>
+                          <select
+                            title="Select wait type"
+                            value={selectedBlock.waitConfig.type}
+                            onChange={(e) => updateBlock(selectedBlock.id, { waitConfig: { ...selectedBlock.waitConfig, type: e.target.value } })}
+                            className="w-full bg-black/40 border border-white/5 focus:border-[#DEF767]/50 rounded-xl px-4 py-3 text-sm text-white transition-colors outline-none appearance-none"
+                          >
+                            <option value="none">No Delay</option>
+                            <option value="delay">Fixed Time Delay</option>
+                            <option value="condition">Wait for Condition</option>
+                            <option value="event">Wait for Event</option>
+                          </select>
+                        </div>
+                      </>
+                    )}
+
+                    <div className="mt-auto">
+                      {isTopologyLocked ? (
+                        <div className="w-full py-3 rounded-xl bg-white/[0.02] border border-white/5 text-slate-600 text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2">
+                          <Lock size={14} /> Structure Locked
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => deleteBlock(selectedBlock.id)}
+                          className="w-full py-3 rounded-xl bg-[#ff4b4b]/10 border border-[#ff4b4b]/20 text-[#ff4b4b] text-xs font-bold uppercase tracking-widest hover:bg-[#ff4b4b]/20 transition-colors flex items-center justify-center gap-2"
+                        >
+                          <Trash2 size={14} /> Delete {isWebhook ? 'Webhook' : 'Agent'}
+                        </button>
+                      )}
                     </div>
                   </>
                 )}
-
-                <div className="mt-auto">
-                  <button
-                    onClick={() => deleteBlock(selectedBlock.id)}
-                    className="w-full py-3 rounded-xl bg-[#ff4b4b]/10 border border-[#ff4b4b]/20 text-[#ff4b4b] text-xs font-bold uppercase tracking-widest hover:bg-[#ff4b4b]/20 transition-colors flex items-center justify-center gap-2"
-                  >
-                    <Trash2 size={14} /> Delete {isWebhook ? 'Webhook' : 'Agent'}
-                  </button>
-                </div>
               </div>
             ) : (
               <div className="animate-fade-in flex flex-col h-full gap-6">
                 <p className="text-sm text-slate-400">Manage the data flow connection between two agents.</p>
                 <button
-                    onClick={() => deleteConnection(selectedConnection!.id)}
-                    className="w-full py-3 rounded-xl bg-[#ff4b4b]/10 border border-[#ff4b4b]/20 text-[#ff4b4b] text-xs font-bold uppercase tracking-widest hover:bg-[#ff4b4b]/20 transition-colors flex items-center justify-center gap-2"
-                  >
-                    <Trash2 size={14} /> Delete Connection
+                  onClick={() => deleteConnection(selectedConnection!.id)}
+                  className="w-full py-3 rounded-xl bg-[#ff4b4b]/10 border border-[#ff4b4b]/20 text-[#ff4b4b] text-xs font-bold uppercase tracking-widest hover:bg-[#ff4b4b]/20 transition-colors flex items-center justify-center gap-2"
+                >
+                  <Trash2 size={14} /> Delete Connection
                 </button>
               </div>
             )}
@@ -9351,25 +8785,25 @@ const BuilderSidebar = () => {
       )}
       {showResultOverlay && createPortal(
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#050505]/90 backdrop-blur-xl">
-           <div className="bg-[#0c0c14] border border-white/10 rounded-3xl p-8 max-w-3xl w-full max-h-[80vh] flex flex-col shadow-[0_0_100px_rgba(0,0,0,1)]">
-             <div className="flex justify-between items-center mb-6">
-                <div>
-                  <h2 className="text-3xl font-display font-black text-white tracking-wide">Builder Compilation</h2>
-                  <p className="text-sm text-slate-400 font-secondary mt-1">Global Context Output Sequence</p>
-                </div>
-                <button onClick={() => setShowResultOverlay(false)} className="p-3 bg-white/5 hover:bg-white/10 rounded-full transition-colors text-white">✕</button>
-             </div>
-             
-             <div className="flex-1 overflow-y-auto custom-scrollbar bg-black/40 rounded-xl p-6 border border-white/5 font-mono text-xs leading-loose text-slate-300">
-               {globalContextLog.split('\n').map((line, i) => <div key={i} className="mb-2">{line}</div>) || "No compilation sequence occurred."}
-             </div>
+          <div className="bg-[#0c0c14] border border-white/10 rounded-3xl p-8 max-w-3xl w-full max-h-[80vh] flex flex-col shadow-[0_0_100px_rgba(0,0,0,1)]">
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h2 className="text-3xl font-display font-black text-white tracking-wide">Builder Compilation</h2>
+                <p className="text-sm text-slate-400 font-secondary mt-1">Global Context Output Sequence</p>
+              </div>
+              <button onClick={() => setShowResultOverlay(false)} className="p-3 bg-white/5 hover:bg-white/10 rounded-full transition-colors text-white">✕</button>
+            </div>
 
-             <div className="mt-6 flex justify-end gap-4">
-                 <button className="flex items-center gap-2 px-6 py-3 rounded-xl border border-[#F6E27F] text-[#F6E27F] hover:bg-[#F6E27F]/10 font-bold uppercase tracking-widest text-xs transition-colors">
-                   <Download size={16} /> Download Result
-                 </button>
-             </div>
-           </div>
+            <div className="flex-1 overflow-y-auto custom-scrollbar bg-black/40 rounded-xl p-6 border border-white/5 font-mono text-xs leading-loose text-slate-300">
+              {globalContextLog.split('\n').map((line, i) => <div key={i} className="mb-2">{line}</div>) || "No compilation sequence occurred."}
+            </div>
+
+            <div className="mt-6 flex justify-end gap-4">
+              <button className="flex items-center gap-2 px-6 py-3 rounded-xl border border-[#F6E27F] text-[#F6E27F] hover:bg-[#F6E27F]/10 font-bold uppercase tracking-widest text-xs transition-colors">
+                <Download size={16} /> Download Result
+              </button>
+            </div>
+          </div>
         </div>,
         document.body
       )}
@@ -9383,19 +8817,133 @@ export default BuilderSidebar;
 
 ---
 
+## `src\components\CreateGroupModal.tsx`
+
+```tsx
+import React, { useState } from 'react';
+import { Layers, HelpCircle } from 'lucide-react';
+
+interface CreateGroupModalProps {
+  isOpen: boolean;
+  selectedAgentNames: string[];
+  onCreate: (name: string) => void;
+  onClose: () => void;
+}
+
+export default function CreateGroupModal({
+  isOpen,
+  selectedAgentNames,
+  onCreate,
+  onClose,
+}: CreateGroupModalProps) {
+  const [groupName, setGroupName] = useState('');
+
+  if (!isOpen) return null;
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!groupName.trim()) return;
+    onCreate(groupName.trim());
+    setGroupName('');
+  };
+
+  return (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/85 backdrop-blur-md pointer-events-auto">
+      <div 
+        className="relative w-[460px] max-w-[92vw] bg-[#0d0d15] border border-[#A259FF]/25 rounded-3xl shadow-[0_40px_120px_rgba(162,89,255,0.15)] overflow-hidden pointer-events-auto"
+      >
+        <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#A259FF] to-transparent pointer-events-none" />
+        <div className="p-8">
+          <div className="flex items-start gap-4 mb-6">
+            <div className="w-12 h-12 rounded-2xl bg-[#A259FF]/10 border border-[#A259FF]/20 flex items-center justify-center flex-shrink-0 shadow-[0_0_24px_rgba(162,89,255,0.2)] text-[#A259FF]">
+              <Layers size={22} />
+            </div>
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#A259FF] mb-1">Execution Pipeline</p>
+              <h2 className="text-2xl font-black text-white font-display leading-tight">Create Phase Group</h2>
+            </div>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="space-y-2">
+              <label htmlFor="group-name-input" className="text-[10px] text-slate-500 uppercase tracking-widest font-black block">
+                Group Name
+              </label>
+              <input
+                id="group-name-input"
+                type="text"
+                autoFocus
+                placeholder="e.g., Target Identification"
+                value={groupName}
+                onChange={(e) => setGroupName(e.target.value)}
+                className="w-full px-4 py-3.5 bg-white/[0.02] border border-white/10 rounded-2xl text-white outline-none focus:border-[#A259FF] focus:ring-1 focus:ring-[#A259FF]/50 transition-all font-sans text-sm"
+                required
+              />
+            </div>
+
+            <div className="space-y-3">
+              <span className="text-[10px] text-slate-500 uppercase tracking-widest font-black block">
+                Selected Agents ({selectedAgentNames.length})
+              </span>
+              <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-4 max-h-[140px] overflow-y-auto custom-scrollbar-neon space-y-2.5">
+                {selectedAgentNames.map((name, i) => (
+                  <div key={i} className="flex items-center gap-2.5 text-xs text-slate-300 font-medium">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#A259FF]/60" />
+                    <span className="truncate">{name}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3 p-3.5 bg-[#A259FF]/5 border border-[#A259FF]/10 rounded-2xl text-[11px] text-[#A259FF] leading-relaxed">
+              <HelpCircle size={14} className="flex-shrink-0 mt-0.5" />
+              <span>
+                Creating a group will wrap these agents inside a phase and automatically add a synthesized <strong>Group Output</strong> node to summarize the combined outputs.
+              </span>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 py-3.5 rounded-2xl bg-white/5 border border-white/10 text-sm font-bold text-slate-300 hover:bg-white/10 hover:text-white transition-all uppercase tracking-widest"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={!groupName.trim()}
+                className="flex-[1.5] py-3.5 rounded-2xl bg-[#A259FF] text-white text-sm font-black uppercase tracking-widest hover:bg-[#b06fff] disabled:opacity-50 disabled:hover:bg-[#A259FF] active:scale-95 transition-all shadow-[0_8px_30px_rgba(162,89,255,0.3)]"
+              >
+                Create Phase
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+```
+
+---
+
 ## `src\components\Dashboard.tsx`
 
 ```tsx
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Search, Plus, Star, LayoutGrid, Clock, Folder, Trash2, User, X, GripVertical } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Search, Plus, Star, LayoutGrid, Folder, Trash2, User, X, GripVertical } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { ROUTES } from '../lib/routes';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../lib/auth';
 
-// ── Brand color palette for auto-assigning folder colors ──
-const FOLDER_COLORS = ['#A259FF', '#46B1FF', '#DEF767', '#FF6A6A', '#FACC15'];
+// Brand color palette for auto-assigning folder colors
+const FOLDER_COLORS = ['#8e8e8e', '#5b5b5b', '#929292'];
 
-type ActiveView = 'all' | 'starred' | 'recent' | 'folder';
+type ActiveView = 'all' | 'starred' | 'folder';
 
 interface FolderType {
   id: string;
@@ -9418,14 +8966,14 @@ export default function Dashboard() {
   const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
   const { user } = useAuth();
 
-  // ── Data Fetching ──
+  // Data Fetching
   const fetchSequences = async () => {
     setLoading(true);
     const { data } = await supabase
       .from('sequences')
       .select('*')
       .order('updated_at', { ascending: false });
-    
+
     if (data) setSequences(data);
     setLoading(false);
   };
@@ -9437,7 +8985,7 @@ export default function Dashboard() {
       .select('*')
       .eq('user_id', user.id)
       .order('created_at', { ascending: true });
-    
+
     if (data) setFolders(data);
   };
 
@@ -9447,34 +8995,33 @@ export default function Dashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-  // ── Actions ──
   const handleNewFlow = async () => {
-    if (!user) return;
-    
-    const newSeq = {
-      user_id: user.id,
-      title: 'Untitled Flow',
-      status: 'Idle',
-      status_color: '#46B1FF',
-      agents_active: 0,
-      total_agents: 16,
-      is_starred: false,
-      space_id: activeFolderId || null,
-    };
-    
-    const { data } = await supabase
-      .from('sequences')
-      .insert([newSeq])
-      .select()
-      .single();
-      
-    if (data) {
-      setSequences([data, ...sequences]);
-      localStorage.setItem('active_sequence_id', data.id);
-      window.location.href = '/canvas'; 
-    }
+  if (!user) return;
+
+  const newSeq = {
+    user_id: user.id,
+    title: 'Untitled Flow',
+    status: 'Idle',
+    status_color: '#8e8e8e',
+    agents_active: 0,
+    total_agents: 0,
+    is_starred: false,
+    space_id: activeFolderId || null,
   };
-  
+
+  const { data } = await supabase
+    .from('sequences')
+    .insert([newSeq])
+    .select()
+    .single();
+
+  if (data) {
+    setSequences([data, ...sequences]);
+    localStorage.setItem('active_sequence_id', data.id);
+    navigate(ROUTES.canvas);
+  }
+};
+
   const handleDelete = async (id: string | number) => {
     setSequences(sequences.filter((seq: any) => seq.id !== id));
     await supabase.from('sequences').delete().eq('id', id);
@@ -9483,24 +9030,22 @@ export default function Dashboard() {
   const handleToggleStar = async (id: string | number) => {
     const seq = sequences.find((s: any) => s.id === id);
     if (!seq) return;
-    
+
     const newStarred = !seq.is_starred;
-    // Optimistic update
     setSequences(sequences.map((s: any) => s.id === id ? { ...s, is_starred: newStarred } : s));
     await supabase.from('sequences').update({ is_starred: newStarred }).eq('id', id);
   };
 
-  // ── Folder CRUD ──
+  // Folder CRUD
   const handleCreateFolder = async () => {
     if (!user || !newFolderName.trim()) return;
-    
-    const color = FOLDER_COLORS[folders.length % FOLDER_COLORS.length];
+
     const { data } = await supabase
       .from('spaces')
       .insert([{ name: newFolderName.trim(), user_id: user.id }])
       .select()
       .single();
-    
+
     if (data) {
       setFolders([...folders, data]);
     }
@@ -9509,30 +9054,26 @@ export default function Dashboard() {
   };
 
   const handleDeleteFolder = async (folderId: string) => {
-    // Unlink all sequences in this folder first
     await supabase.from('sequences').update({ space_id: null }).eq('space_id', folderId);
     setSequences(sequences.map((s: any) => s.space_id === folderId ? { ...s, space_id: null } : s));
-    
-    // Delete the folder
+
     await supabase.from('spaces').delete().eq('id', folderId);
     setFolders(folders.filter((f: FolderType) => f.id !== folderId));
-    
-    // If viewing this folder, go back to all
+
     if (activeFolderId === folderId) {
       setActiveView('all');
       setActiveFolderId(null);
     }
   };
 
-  // ── Drag & Drop (move workflow into folder) ──
+  // Drag & Drop
   const handleDragStart = (seqId: string) => {
     setDraggedSequenceId(seqId);
   };
 
   const handleDragEnd = async () => {
     if (draggedSequenceId && dragOverFolderId) {
-      // Move the sequence to the folder
-      setSequences(sequences.map((s: any) => 
+      setSequences(sequences.map((s: any) =>
         s.id === draggedSequenceId ? { ...s, space_id: dragOverFolderId } : s
       ));
       await supabase.from('sequences').update({ space_id: dragOverFolderId }).eq('id', draggedSequenceId);
@@ -9541,30 +9082,27 @@ export default function Dashboard() {
     setDragOverFolderId(null);
   };
 
-  // ── View Filtering ──
+  // View Filtering
   const getFilteredSequences = () => {
     let filtered = sequences;
-    
+
     if (activeView === 'starred') {
       filtered = filtered.filter((s: any) => s.is_starred);
-    } else if (activeView === 'recent') {
-      filtered = filtered.slice(0, 10); // Already sorted by updated_at desc
     } else if (activeView === 'folder' && activeFolderId) {
       filtered = filtered.filter((s: any) => s.space_id === activeFolderId);
     }
-    
+
     if (searchQuery) {
-      filtered = filtered.filter((s: any) => 
+      filtered = filtered.filter((s: any) =>
         s.title?.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
-    
+
     return filtered;
   };
 
   const getViewTitle = () => {
     if (activeView === 'starred') return 'Starred Assets';
-    if (activeView === 'recent') return 'Recent Activity';
     if (activeView === 'folder') {
       const folder = folders.find((f: FolderType) => f.id === activeFolderId);
       return folder?.name || 'Folder';
@@ -9574,60 +9112,64 @@ export default function Dashboard() {
 
   const filteredSequences = getFilteredSequences();
 
-  // ── Folder sequence counts ──
   const folderCounts: Record<string, number> = {};
   folders.forEach((f: FolderType) => {
     folderCounts[f.id] = sequences.filter((s: any) => s.space_id === f.id).length;
   });
 
+  const navigate = useNavigate();
+
   return (
-    <div className="h-screen w-screen bg-[#050507] text-slate-200 flex font-secondary overflow-hidden">
-      
-      {/* ── SIDEBAR ── */}
-      <aside className="w-72 shrink-0 border-r border-white/[0.03] bg-[#0c0c12]/60 backdrop-blur-3xl flex flex-col z-20">
-        <div className="p-8 mb-4">
-          <div className="flex items-center gap-6">
-            <div className="w-11 h-11 rounded-xl shadow-lg flex items-center justify-center shrink-0 logo-gradient-box">
-              <img src="/logo.png" alt="Logo" className="w-6 h-6 object-contain" />
+    <div className="h-screen w-screen bg-[#121212] text-white flex font-sans overflow-hidden relative select-none">
+
+      {/* SIDEBAR */}
+      <aside className="w-72 shrink-0 border-r border-[#2e2e2e] bg-[#181818] flex flex-col z-20 relative shadow-[10px_0_30px_rgba(0,0,0,0.5)]">
+        <div className="p-8 mb-4 border-b border-[#2e2e2e]">
+          <button
+            type="button"
+            onClick={() => navigate(ROUTES.landing)}
+            className="flex items-center gap-4 text-left focus:outline-none"
+          >
+            <div className="w-20 h-20  flex items-center justify-center shrink-0 rounded-2xl shadow-inner">
+              <img src="/o.svg" alt="Logo" className="w-25 h-25 object-contain" />
             </div>
-            <h1 className="text-2xl font-black text-white font-display tracking-tight">
-              Agentic<span className="text-[#A259FF]">Flow</span>
-            </h1>
-          </div>
+            {/* <div>
+              <h1 className="text-lg font-bold font-serif uppercase tracking-wider text-white">
+                Float<span className="text-[#EB9A21]">it</span>
+              </h1>
+              <span className="text-[9px] font-mono text-zinc-400 tracking-widest block">v0.9.4.SYS</span>
+            </div> */}
+          </button>
         </div>
 
-        <nav className="flex-1 px-4 space-y-10 mt-6 overflow-y-auto custom-scrollbar">
+        <nav className="flex-1 px-4 py-4 space-y-8 overflow-y-auto custom-scrollbar">
           {/* Navigation Section */}
-          <div className="space-y-1">
-            <span className="text-[10px] uppercase tracking-[0.25em] text-slate-600 font-black ml-4 mb-4 block">Navigation</span>
-            <SidebarItem 
-              icon={<LayoutGrid size={18} />} 
-              title="All Sequences" 
-              active={activeView === 'all'} 
-              onClick={() => { setActiveView('all'); setActiveFolderId(null); }} 
-            />
-            <SidebarItem 
-              icon={<Star size={18} />} 
-              title="Starred Assets" 
-              active={activeView === 'starred'} 
-              onClick={() => { setActiveView('starred'); setActiveFolderId(null); }} 
-            />
-            <SidebarItem 
-              icon={<Clock size={18} />} 
-              title="Recent Activity" 
-              active={activeView === 'recent'} 
-              onClick={() => { setActiveView('recent'); setActiveFolderId(null); }} 
-            />
+          <div>
+            <span className="text-[10px] uppercase tracking-[0.25em] text-zinc-400 font-sans block mb-3 pl-2">Navigation</span>
+            <div className="flex flex-col space-y-2.5">
+              <SidebarItem
+                icon={<LayoutGrid size={18} />}
+                title="All Sequences"
+                active={activeView === 'all'}
+                onClick={() => { setActiveView('all'); setActiveFolderId(null); }}
+              />
+              <SidebarItem
+                icon={<Star size={18} />}
+                title="Starred Assets"
+                active={activeView === 'starred'}
+                onClick={() => { setActiveView('starred'); setActiveFolderId(null); }}
+              />
+            </div>
           </div>
 
           {/* Project Spaces Section */}
-          <div className="space-y-1" data-tour="folders-sidebar">
-            <div className="flex items-center justify-between ml-4 mb-4">
-              <span className="text-[10px] uppercase tracking-[0.25em] text-slate-600 font-black">Project Spaces</span>
-              <button 
-                aria-label="Add project space" 
-                title="Add project space" 
-                className="text-slate-500 hover:text-white transition-colors p-1"
+          <div data-tour="folders-sidebar">
+            <div className="flex items-center justify-between mb-3 pl-2">
+              <span className="text-[10px] uppercase tracking-[0.25em] text-zinc-400 font-sans">Project Spaces</span>
+              <button
+                aria-label="Add project space"
+                title="Add project space"
+                className="text-zinc-400 hover:text-[#EB9A21] transition-colors p-1"
                 onClick={() => setShowNewFolderInput(true)}
               >
                 <Plus size={14} />
@@ -9637,184 +9179,167 @@ export default function Dashboard() {
             {/* New Folder Input */}
             <AnimatePresence>
               {showNewFolderInput && (
-                <motion.div 
-                  initial={{ opacity: 0, height: 0 }} 
-                  animate={{ opacity: 1, height: 'auto' }} 
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0 }}
-                  className="px-3 mb-2 overflow-hidden"
+                  className="overflow-hidden"
                 >
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      placeholder="Folder name..."
-                      value={newFolderName}
-                      onChange={(e: any) => setNewFolderName(e.target.value)}
-                      onKeyDown={(e: any) => { if (e.key === 'Enter') handleCreateFolder(); if (e.key === 'Escape') setShowNewFolderInput(false); }}
-                      autoFocus
-                      className="flex-1 bg-white/[0.04] border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-[#A259FF]/50 placeholder:text-slate-600"
-                      title="New folder name"
-                      aria-label="New folder name"
-                    />
-                    <button 
-                      onClick={handleCreateFolder}
-                      className="p-1.5 rounded-lg bg-[#A259FF]/20 text-[#A259FF] hover:bg-[#A259FF]/30 transition-colors"
-                      title="Create folder"
-                      aria-label="Create folder"
-                    >
-                      <Plus size={14} />
-                    </button>
-                    <button 
-                      onClick={() => { setShowNewFolderInput(false); setNewFolderName(''); }}
-                      className="p-1.5 rounded-lg text-slate-500 hover:text-white hover:bg-white/5 transition-colors"
-                      title="Cancel"
-                      aria-label="Cancel"
-                    >
-                      <X size={14} />
-                    </button>
+                  <div className="px-2 mb-3">
+                    <div className="flex items-center gap-2 border border-[#3e3e3e] bg-[#242424] p-2.5 rounded-xl shadow-lg">
+                      <input
+                        type="text"
+                        placeholder="Folder name..."
+                        value={newFolderName}
+                        onChange={(e: any) => setNewFolderName(e.target.value)}
+                        onKeyDown={(e: any) => { if (e.key === 'Enter') handleCreateFolder(); if (e.key === 'Escape') setShowNewFolderInput(false); }}
+                        autoFocus
+                        className="flex-1 bg-transparent text-white text-sm outline-none placeholder:text-zinc-500 font-sans border-0 p-0"
+                        title="New folder name"
+                        aria-label="New folder name"
+                      />
+                      <button
+                        onClick={handleCreateFolder}
+                        className="p-1 border border-[#3e3e3e] hover:border-[#EB9A21] hover:text-[#EB9A21] text-zinc-400 bg-[#1c1c1c] transition-colors rounded-lg"
+                        title="Create folder"
+                        aria-label="Create folder"
+                      >
+                        <Plus size={14} />
+                      </button>
+                      <button
+                        onClick={() => { setShowNewFolderInput(false); setNewFolderName(''); }}
+                        className="p-1 border border-[#3e3e3e] hover:border-[#ff6a6a] hover:text-[#ff6a6a] text-zinc-400 bg-[#1c1c1c] transition-colors rounded-lg"
+                        title="Cancel"
+                        aria-label="Cancel"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
                   </div>
                 </motion.div>
               )}
             </AnimatePresence>
 
             {/* Dynamic Folder List */}
-            {folders.map((folder: FolderType, i: number) => (
-              <FolderItem
-                key={folder.id}
-                folder={{ ...folder, color: folder.color || FOLDER_COLORS[i % FOLDER_COLORS.length]! }}
-                count={folderCounts[folder.id] || 0}
-                active={activeView === 'folder' && activeFolderId === folder.id}
-                isDragOver={dragOverFolderId === folder.id}
-                onClick={() => { setActiveView('folder'); setActiveFolderId(folder.id); }}
-                onDelete={() => handleDeleteFolder(folder.id)}
-                onDragOver={() => setDragOverFolderId(folder.id)}
-                onDragLeave={() => setDragOverFolderId(null)}
-                onDrop={handleDragEnd}
-              />
-            ))}
-
-            {folders.length === 0 && !showNewFolderInput && (
-              <p className="text-[11px] text-slate-600 ml-4 italic">No folders yet. Click + to create one.</p>
+            {folders.length > 0 ? (
+              <div className="flex flex-col space-y-2">
+                {folders.map((folder: FolderType, i: number) => (
+                  <FolderItem
+                    key={folder.id}
+                    folder={{ ...folder, color: folder.color || FOLDER_COLORS[i % FOLDER_COLORS.length]! }}
+                    count={folderCounts[folder.id] || 0}
+                    active={activeView === 'folder' && activeFolderId === folder.id}
+                    isDragOver={dragOverFolderId === folder.id}
+                    onClick={() => { setActiveView('folder'); setActiveFolderId(folder.id); }}
+                    onDelete={() => handleDeleteFolder(folder.id)}
+                    onDragOver={() => setDragOverFolderId(folder.id)}
+                    onDragLeave={() => setDragOverFolderId(null)}
+                    onDrop={handleDragEnd}
+                  />
+                ))}
+              </div>
+            ) : (
+              !showNewFolderInput && (
+                <p className="text-[11px] text-zinc-500 font-mono pl-2 italic">NO ACTIVE SPACES. PRESS + TO INITIALIZE.</p>
+              )
             )}
           </div>
         </nav>
       </aside>
 
-      {/* ── MAIN DASHBOARD AREA ── */}
-      <main className="flex-1 flex flex-col relative h-screen bg-black">
-        {/* Background Mesh */}
-        <div className="absolute inset-0 pointer-events-none opacity-[0.4] z-0 overflow-hidden">
-          <div className="absolute -top-[20%] -left-[10%] w-[60%] h-[60%] bg-[#A259FF]/10 blur-[120px] rounded-full" />
-          <div className="absolute -bottom-[20%] -right-[10%] w-[50%] h-[50%] bg-[#46B1FF]/10 blur-[120px] rounded-full" />
-        </div>
+      {/* MAIN DASHBOARD AREA */}
+      <main className="flex-1 flex flex-col relative h-screen bg-[#121212] overflow-hidden">
 
-        {/* ── HEADER ── */}
-        <header className="shrink-0 px-12 py-8 flex justify-between items-center z-10 border-b border-white/[0.03] bg-black/40 backdrop-blur-xl">
-          <div className="flex-1"></div>
-          <div className="relative w-[450px] group flex-none mx-auto">
-            <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-600 group-focus-within:text-[#A259FF] transition-colors" size={20} />
-            <input 
-              type="text" 
-              placeholder="Search via sequence fingerprint..." 
+        {/* Dot grid */}
+        <div
+          className="absolute inset-0 pointer-events-none z-0 opacity-20"
+          style={{
+            backgroundImage: 'radial-gradient(#3e3e3e 1.5px, transparent 1.5px)',
+            backgroundSize: '24px 24px'
+          }}
+        />
+
+        {/* HEADER */}
+        <header className="shrink-0 px-12 py-8 flex justify-between items-center z-10 border-b border-[#2e2e2e] bg-[#181818] gap-8 shadow-md">
+          <div className="relative flex-1 max-w-4xl group">
+            <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-zinc-500 group-focus-within:text-[#FFFFFF] transition-colors" size={18} />
+            <input
+              type="text"
+              placeholder="SEARCH VIA SEQUENCE FINGERPRINT..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-4 pl-14 pr-6 text-sm focus:border-[#A259FF]/50 outline-none text-white transition-all shadow-2xl placeholder:text-slate-600 font-secondary"
+              className="w-full bg-[#1e1e1e] border border-[#2e2e2e] rounded-2xl py-3.5 pl-14 pr-6 text-xs uppercase tracking-wider focus:border-[#EB9A21] outline-none text-white transition-colors placeholder:text-zinc-500 font-mono shadow-inner"
             />
           </div>
-          
-          <div className="flex items-center gap-4 flex-1 justify-end">
-            <button 
-              onClick={() => window.location.href = '/profile'}
-              className="w-12 h-12 flex items-center justify-center rounded-2xl bg-white/[0.03] border border-white/10 text-slate-400 hover:text-white hover:bg-white/10 transition-all shadow-lg hover:shadow-[0_0_20px_rgba(255,255,255,0.05)] active:scale-95"
+
+          <div className="flex items-center gap-4 shrink-0 justify-end">
+            <button
+              onClick={() => navigate(ROUTES.profile)}
+              className="w-12 h-12 flex items-center justify-center rounded-2xl border border-[#2e2e2e] text-zinc-400 hover:text-[#EB9A21] hover:border-[#EB9A21] bg-[#1e1e1e] shadow-md hover:-translate-y-0.5 transition-all"
               aria-label="User Profile"
               title="User Profile"
             >
-              <User size={20} />
-            </button>
-            <button 
-               data-tour="create-flow-btn"
-               onClick={handleNewFlow}
-               className="bg-white text-black px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center gap-3 hover:bg-[#DEF767] transition-all hover:-translate-y-1 shadow-[0_10px_30px_rgba(255,255,255,0.1)] active:scale-95"
-            >
-              <Plus size={18} strokeWidth={3} />
-              Create Flow
+              <User size={18} />
             </button>
           </div>
         </header>
 
-        {/* ── CONTENT ── */}
+        {/* CONTENT */}
         <div className="flex-1 px-12 py-10 overflow-y-auto custom-scrollbar z-10 relative">
-          <div className="flex items-center justify-between mb-10">
-            <h2 className="text-2xl font-display font-black text-white tracking-tight flex items-center gap-4">
-               {getViewTitle()}
+          <div className="flex items-center justify-between mb-8">
+            <h2 className="text-lg font-bold uppercase tracking-widest text-[#ffffff] font-sans">
+              {getViewTitle()}
             </h2>
           </div>
-          
+
           {loading ? (
             <div className="flex justify-center items-center h-40">
-              <div className="w-8 h-8 border-4 border-[#A259FF] border-t-transparent rounded-full animate-spin"></div>
-            </div>
-          ) : activeView === 'recent' ? (
-            /* ── Recent Activity Timeline ── */
-            <div className="space-y-3 max-w-3xl">
-              {filteredSequences.length === 0 ? (
-                <p className="text-slate-500 text-sm">No recent activity.</p>
-              ) : (
-                filteredSequences.map((seq: any, i: number) => (
-                  <motion.div
-                    key={seq.id}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.3, delay: i * 0.04 }}
-                    onClick={() => {
-                      localStorage.setItem('active_sequence_id', seq.id);
-                      window.location.href = '/canvas';
-                    }}
-                    className="flex items-center gap-4 px-6 py-4 rounded-2xl bg-white/[0.02] border border-white/[0.04] hover:border-[#A259FF]/30 hover:bg-white/[0.04] cursor-pointer transition-all group"
-                  >
-                    <div className="w-2 h-2 rounded-full bg-[#A259FF] shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <h4 className="text-sm font-bold text-white truncate group-hover:text-[#A259FF] transition-colors">{seq.title}</h4>
-                    </div>
-                    <span className="text-[10px] text-slate-600 font-bold uppercase tracking-wider shrink-0">
-                      {formatDate(seq.updated_at)}
-                    </span>
-                    {seq.is_starred && <Star size={14} className="text-[#FACC15] shrink-0" fill="currentColor" />}
-                  </motion.div>
-                ))
-              )}
+              <div className="w-8 h-8 border-2 border-[#EB9A21] border-t-transparent animate-spin"></div>
             </div>
           ) : (
-            /* ── Card Grid ── */
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-8">
-               {filteredSequences.map((seq: any, i: number) => (
-                 <SessionCard 
-                   key={seq.id} 
-                   sequence={seq} 
-                   index={i} 
-                   onDelete={handleDelete} 
-                   onToggleStar={handleToggleStar}
-                   onDragStart={handleDragStart}
-                   isDragging={draggedSequenceId === seq.id}
-                 />
-               ))}
-               {filteredSequences.length === 0 && (
-                 <div className="col-span-full text-center py-20">
-                   <p className="text-slate-500 text-sm">
-                     {activeView === 'starred' ? 'No starred sequences yet. Star a workflow to see it here.' : 
-                      activeView === 'folder' ? 'This folder is empty. Drag workflows here to organize them.' :
-                      'No sequences found.'}
-                   </p>
-                 </div>
-               )}
+            /* Card Grid */
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
+              {filteredSequences.map((seq: any, i: number) => (
+                <SessionCard
+                  key={seq.id}
+                  sequence={seq}
+                  index={i}
+                  onDelete={handleDelete}
+                  onToggleStar={handleToggleStar}
+                  onDragStart={handleDragStart}
+                  isDragging={draggedSequenceId === seq.id}
+                />
+              ))}
+              {filteredSequences.length === 0 && (
+                <div className="col-span-full text-center py-20 bg-[#1e1e1e] border border-[#2e2e2e] rounded-3xl">
+                  <p className="text-zinc-500 text-xs font-mono uppercase tracking-wider">
+                    {activeView === 'starred' ? 'NO STARRED ASSETS FOUND.' :
+                      activeView === 'folder' ? 'SPACE IS EMPTY. DRAG SEQUENCES HERE TO ORGANIZE.' :
+                        'NO ACTIVE SEQUENCES FOUND.'}
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </div>
+
+        {/* CREATE FLOW FIXED FAB */}
+        <button
+          data-tour="create-flow-btn"
+          onClick={handleNewFlow}
+          className="fixed bottom-8 right-8 z-50 w-14 h-14 rounded-full bg-[#EB9A21] border border-[#c57f12] shadow-[0_8px_30px_rgba(235,154,33,0.35)] hover:shadow-[0_15px_40px_rgba(235,154,33,0.6)] hover:-translate-y-1 hover:scale-105 transition-all duration-300 flex items-center justify-center text-[#FFFFFF]"
+          aria-label="Create Flow"
+          title="Create Flow"
+        >
+          <Plus size={24} strokeWidth={3} />
+        </button>
+
       </main>
     </div>
   );
 }
 
-// ── Helper ──
+// Helper
 function formatDate(dateString: string) {
   if (!dateString) return 'Just now';
   const date = new Date(dateString);
@@ -9831,7 +9356,7 @@ function formatDate(dateString: string) {
   return date.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
-// ── Sidebar Item ──
+// Sidebar Item
 interface SidebarItemProps {
   icon: React.ReactNode;
   title: string;
@@ -9841,17 +9366,26 @@ interface SidebarItemProps {
 
 function SidebarItem({ icon, title, active, onClick }: SidebarItemProps) {
   return (
-    <button 
+    <button
       onClick={onClick}
-      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${active ? 'bg-white/[0.08] text-white shadow-inner border border-white/5' : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'}`}
+      className={`w-full min-h-[72px] flex items-center gap-4 px-6 border border-[#2e2e2e] text-left transition-all duration-200 font-sans relative rounded-2xl shadow-[0_4px_15px_rgba(0,0,0,0.3)] hover:shadow-[0_8px_25px_rgba(0,0,0,0.5)] hover:-translate-y-0.5 ${active
+        ? 'bg-[#ff6a6a] text-[#171717] font-bold shadow-[0_6px_20px_rgba(255,106,106,0.25)] border-[#ff6a6a]'
+        : 'bg-[#1e1e1e] text-zinc-400 hover:text-white hover:bg-[#242424]'
+        }`}
     >
-      {icon}
-      <span className="text-sm tracking-wide text-left">{title}</span>
+      <motion.div
+        animate={{ rotate: active ? 45 : 0 }}
+        transition={{ type: "spring", stiffness: 300, damping: 25 }}
+        className="shrink-0 flex items-center justify-center"
+      >
+        {icon}
+      </motion.div>
+      <span className="text-sm font-medium tracking-wide">{title}</span>
     </button>
   );
 }
 
-// ── Folder Item (with drop target) ──
+// Folder Item
 interface FolderItemProps {
   folder: FolderType;
   count: number;
@@ -9870,23 +9404,38 @@ function FolderItem({ folder, count, active, isDragOver, onClick, onDelete, onDr
       onDragOver={(e: any) => { e.preventDefault(); onDragOver(); }}
       onDragLeave={onDragLeave}
       onDrop={(e: any) => { e.preventDefault(); onDrop(); }}
-      className={`group relative w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all cursor-pointer ${
-        isDragOver 
-          ? 'bg-[#A259FF]/20 border border-[#A259FF]/40 scale-[1.02]' 
-          : active 
-            ? 'bg-white/[0.08] text-white shadow-inner border border-white/5' 
-            : 'text-slate-400 hover:text-white hover:bg-white/[0.04] border border-transparent'
-      }`}
+      className={`group relative w-full min-h-[64px] flex items-center gap-4 px-6 border cursor-pointer transition-all duration-200 font-sans rounded-2xl shadow-[0_4px_15px_rgba(0,0,0,0.3)] hover:shadow-[0_8px_25px_rgba(0,0,0,0.5)] hover:-translate-y-0.5 ${isDragOver
+        ? 'bg-[#EB9A21] text-[#FFFFFF] border-[#EB9A21] shadow-[0_6px_20px_rgba(235,154,33,0.25)]'
+        : active
+          ? 'bg-[#ff6a6a] text-[#171717] border-[#ff6a6a] shadow-[0_6px_20px_rgba(255,106,106,0.25)]'
+          : 'bg-[#1e1e1e] text-zinc-400 hover:text-white hover:bg-[#242424] border-[#2e2e2e]'
+        }`}
       onClick={onClick}
     >
-      <Folder size={18} style={{ color: folder.color }} />
-      <span className="text-sm tracking-wide text-left flex-1 truncate">{folder.name}</span>
+      <motion.div
+        animate={{ rotate: active ? 45 : 0 }}
+        transition={{ type: "spring", stiffness: 300, damping: 25 }}
+        className="shrink-0 flex items-center justify-center"
+      >
+        <Folder size={18} style={{ color: active || isDragOver ? '#171717' : folder.color }} />
+      </motion.div>
+      <span className="text-sm font-medium tracking-wide flex-1 truncate">{folder.name}</span>
+
       {count > 0 && (
-        <span className="text-[9px] bg-white/5 border border-white/10 px-1.5 py-0.5 rounded-md text-slate-500 font-bold">{count}</span>
+        <span className={`text-[10px] font-mono border px-1.5 py-0.5 rounded-md ${active || isDragOver
+          ? 'border-[#171717] text-[#171717]'
+          : 'border-[#3e3e3e] bg-[#1c1c1c] text-zinc-400'
+          }`}>
+          {count}
+        </span>
       )}
+
       <button
         onClick={(e: any) => { e.stopPropagation(); onDelete(); }}
-        className="opacity-0 group-hover:opacity-100 p-1 rounded-lg text-slate-600 hover:text-[#ff4b4b] transition-all"
+        className={`opacity-0 group-hover:opacity-100 p-1.5 transition-colors ${active || isDragOver
+          ? 'text-[#171717] hover:text-red-950'
+          : 'text-zinc-500 hover:text-[#ff6a6a]'
+          }`}
         title={`Delete ${folder.name}`}
         aria-label={`Delete ${folder.name}`}
       >
@@ -9896,7 +9445,7 @@ function FolderItem({ folder, count, active, isDragOver, onClick, onDelete, onDr
   );
 }
 
-// ── Session Card (with long-press drag) ──
+// Session Card
 interface SessionCardProps {
   sequence: any;
   index: number;
@@ -9908,6 +9457,7 @@ interface SessionCardProps {
 
 function SessionCard({ sequence, index, onDelete, onToggleStar, onDragStart, isDragging }: SessionCardProps) {
   const isStarred = sequence.is_starred;
+  const navigate = useNavigate();
   const longPressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isLongPressed, setIsLongPressed] = useState(false);
 
@@ -9932,7 +9482,7 @@ function SessionCard({ sequence, index, onDelete, onToggleStar, onDragStart, isD
   }, [isLongPressed, onDragStart, sequence.id]);
 
   return (
-    <motion.div 
+    <motion.div
       draggable={isLongPressed}
       onDragStart={handleDragStartInternal}
       onPointerDown={handlePointerDown}
@@ -9941,55 +9491,56 @@ function SessionCard({ sequence, index, onDelete, onToggleStar, onDragStart, isD
       onClick={() => {
         if (!isLongPressed) {
           localStorage.setItem('active_sequence_id', sequence.id);
-          window.location.href = '/canvas';
+          navigate(ROUTES.canvas);
         }
       }}
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: isDragging ? 0.4 : 1, y: 0, scale: isLongPressed ? 1.03 : 1 }}
-      transition={{ duration: 0.5, delay: index * 0.05 }}
-      whileHover={{ y: -8, transition: { duration: 0.2 } }}
-      className={`bg-[#0f0f15]/40 backdrop-blur-2xl rounded-[32px] p-8 border border-white/[0.04] shadow-2xl group cursor-pointer relative overflow-hidden flex flex-col h-full hover:border-[#A259FF]/30 transition-all ${
-        isLongPressed ? 'ring-2 ring-[#A259FF]/40 cursor-grab' : ''
-      }`}
+      initial={{ opacity: 0, y: 15 }}
+      animate={{ opacity: isDragging ? 0.4 : 1, scale: isLongPressed ? 1.02 : 1 }}
+      transition={{ duration: 0.3, delay: index * 0.02 }}
+      className={`bg-[#242424] p-8 border border-[#3e3e3e] hover:border-[#EB9A21] shadow-[0_8px_30px_rgba(0,0,0,0.5)] hover:shadow-[0_20px_40px_rgba(0,0,0,0.7)] hover:-translate-y-1.5 hover:scale-[1.02] transition-all duration-300 ease-out group cursor-pointer relative overflow-hidden flex flex-col h-full rounded-3xl ${isLongPressed ? 'ring-1 ring-[#EB9A21] cursor-grab' : ''}`}
     >
-      {/* Visual Accent */}
-      <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-[#A259FF]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-
       {/* Drag Handle Indicator */}
       {isLongPressed && (
         <div className="absolute top-3 left-1/2 -translate-x-1/2">
-          <GripVertical size={16} className="text-[#A259FF]/60" />
+          <GripVertical size={16} className="text-[#EB9A21]" />
         </div>
       )}
 
       <div className="flex justify-between items-start z-10 relative mb-6">
         <div />
         <div className="flex items-center gap-2">
-          <button 
-             onClick={(e: any) => { e.stopPropagation(); onDelete(sequence.id); }}
-             className="w-10 h-10 flex items-center justify-center rounded-xl text-slate-600 hover:text-[#ff4b4b] hover:bg-[#ff4b4b]/10 transition-all relative z-20"
-             title="Delete Sequence"
-             aria-label="Delete Sequence"
+          <button
+            onClick={(e: any) => { e.stopPropagation(); onDelete(sequence.id); }}
+            className="w-10 h-10 flex items-center justify-center border border-[#3e3e3e] text-zinc-400 hover:text-[#ff6a6a] hover:border-[#ff6a6a] transition-all relative z-20 rounded-xl bg-[#1c1c1c] shadow-md"
+            title="Delete Sequence"
+            aria-label="Delete Sequence"
           >
-            <Trash2 size={18} />
+            <Trash2 size={16} />
           </button>
-          <button 
-             onClick={(e: any) => { e.stopPropagation(); onToggleStar(sequence.id); }}
-             aria-label={isStarred ? "Unstar sequence" : "Star sequence"}
-             title={isStarred ? "Unstar sequence" : "Star sequence"}
-             className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all relative z-20 ${isStarred ? 'text-[#FACC15] bg-[#FACC15]/10' : 'text-slate-600 hover:text-white hover:bg-white/5'}`}
+          <button
+            onClick={(e: any) => { e.stopPropagation(); onToggleStar(sequence.id); }}
+            aria-label={isStarred ? "Unstar sequence" : "Star sequence"}
+            title={isStarred ? "Unstar sequence" : "Star sequence"}
+            className={`w-10 h-10 flex items-center justify-center border transition-all relative z-20 rounded-xl shadow-md bg-[#1c1c1c] ${isStarred
+              ? 'text-[#EB9A21] border-[#EB9A21]'
+              : 'text-zinc-400 border-[#3e3e3e] hover:text-[#EB9A21] hover:border-[#EB9A21]'
+              }`}
           >
-            <Star size={18} fill={isStarred ? 'currentColor' : 'none'} strokeWidth={2} />
+            <Star size={16} fill={isStarred ? 'currentColor' : 'none'} />
           </button>
         </div>
       </div>
 
       <div className="z-10 relative flex-1">
-        <h3 className="text-[20px] font-black text-white font-display leading-[1.2] mb-3 group-hover:text-[#A259FF] transition-colors">{sequence.title}</h3>
+        <h3 className="text-xl font-bold font-sans text-white leading-tight mb-4 group-hover:text-[#EB9A21] transition-colors uppercase tracking-tight">
+          {sequence.title}
+        </h3>
       </div>
 
-      <div className="mt-auto z-10 relative pt-4">
-        <span className="text-[10px] text-slate-600 font-bold uppercase tracking-tighter">Updated {formatDate(sequence.updated_at)}</span>
+      <div className="mt-auto z-10 relative pt-4 border-t border-[#3e3e3e]">
+        <span className="text-xs text-zinc-400 font-mono uppercase tracking-wider">
+          UPDATED: {formatDate(sequence.updated_at)}
+        </span>
       </div>
     </motion.div>
   );
@@ -10202,74 +9753,19 @@ export default FlowFooter;
 
 ```tsx
 import React, { useState } from 'react';
-import { ChevronLeft, GitMerge, LayoutGrid, Play, Loader2, LayoutDashboard, AlertTriangle, X } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { LayoutDashboard } from 'lucide-react';
 import { useBuilderStore } from '../lib/builderStore';
 import { useWorkflowStore } from '../lib/store';
-import { supabase } from '../lib/supabaseClient';
+import { ROUTES } from '../lib/routes';
+
 
 const FlowHeader = () => {
-  const { viewMode, setViewMode, blocks } = useBuilderStore();
-  const [isDeploying, setIsDeploying] = useState(false);
-  const [validationErrors, setValidationErrors] = useState<string[]>([]);
-  const [showValidationPopup, setShowValidationPopup] = useState(false);
+  const { viewMode } = useBuilderStore();
 
-  const handleInitializeEngine = async () => {
-    // ── BUILDER VALIDATION: Require exactly 8 nodes, each with name + description ──
-    const errors: string[] = [];
 
-    if (blocks.length !== 8) {
-      errors.push(`You have ${blocks.length} node${blocks.length !== 1 ? 's' : ''}. Exactly 8 agent nodes are required.`);
-    }
 
-    blocks.forEach((block: any, idx: number) => {
-      const label = block.name && block.name.trim() !== '' && block.name !== 'New Agent' ? block.name : null;
-      const desc = block.description && block.description.trim() !== '' && block.description !== 'Describe the agent objective...' ? block.description : null;
-
-      if (!label) {
-        errors.push(`Node ${idx + 1}: Missing a custom agent name.`);
-      }
-      if (!desc) {
-        errors.push(`Node ${idx + 1}${label ? ` (${label})` : ''}: Missing agent description.`);
-      }
-    });
-
-    if (errors.length > 0) {
-      setValidationErrors(errors);
-      setShowValidationPopup(true);
-      return;
-    }
-
-    setIsDeploying(true);
-    
-    // Zoom out canvas elements visually
-    const canvasRef = document.getElementById('builder-canvas-area');
-    if (canvasRef) canvasRef.classList.add('scale-75', 'opacity-0', 'transition-all', 'duration-1000');
-    
-    // Gradient Pulse transition effect portal hook
-    const transitionOverlay = document.createElement('div');
-    transitionOverlay.className = "fixed inset-0 z-[150] bg-gradient-to-r from-cyan-500/0 via-purple-500/20 to-cyan-500/0 backdrop-blur-3xl animate-fade-in pointer-events-none flex flex-col items-center justify-center";
-    transitionOverlay.innerHTML = `<h1 class="text-4xl font-display font-black text-white mix-blend-overlay tracking-widest uppercase shadow-black drop-shadow-xl animate-pulse">Compiling Neural Path...</h1>`;
-    document.body.appendChild(transitionOverlay);
-
-    // Save configuration — MUST await before switching view
-    const templateName = blocks.length > 0 ? blocks[0].name : "Custom Builder Flow";
-    const deployedId = await useBuilderStore.getState().deployProject(templateName);
-
-    // Remove Overlay
-    document.body.removeChild(transitionOverlay);
-    setIsDeploying(false);
-    
-    // Clear styles
-    if (canvasRef) canvasRef.classList.remove('scale-75', 'opacity-0');
-    
-    if (!deployedId) {
-      alert('Compilation failed. Please try again or add blocks first.');
-      return;
-    }
-
-    // Only switch after store has deployedTemplateId confirmed
-    setViewMode('pipeline');
-  };
+  const navigate = useNavigate();
 
   return (
     <>
@@ -10278,33 +9774,37 @@ const FlowHeader = () => {
       >
         {/* Left: Navigation & Logo */}
         <div className="flex items-center gap-6 flex-1 min-w-0">
-          
+
           {/* Return to Hub */}
-          <a 
-            href="/dashboard"
+          <Link
+            to={ROUTES.dashboard}
             className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/[0.03] backdrop-blur-md border border-white/10 text-gray-400 transition-all duration-300 hover:border-[#A259FF]/50 hover:text-white hover:bg-white/10 shadow-lg text-[11px] font-black uppercase tracking-wider group"
             title="Return to Dashboard"
             aria-label="Return to Dashboard"
           >
             <LayoutDashboard size={16} className="group-hover:scale-110 transition-transform" />
             <span>Dashboard</span>
-          </a>
+          </Link>
 
           {/* Logo and Title */}
-          <div className="flex items-center gap-6 flex-1 min-w-0">
+          <button
+            type="button"
+            onClick={() => navigate(ROUTES.landing)}
+            className="flex items-center gap-6 flex-1 min-w-0 text-left focus:outline-none"
+          >
             <div className="flex items-center gap-4 border-r border-white/10 pr-6 flex-shrink-0">
-              <div className="w-10 h-10 rounded-[14px] flex items-center justify-center shadow-lg logo-gradient-box">
-                <img src="/logo.png" alt="Logo" className="w-7 h-7 object-contain" />
+              <div className="w-20 h-20 rounded-[14px] flex items-center justify-center ">
+                <img src="/o.svg" alt="Logo" className="w-25 h-25 object-contain" />
               </div>
-              <div>
+              {/* <div>
                 <h1 className="text-[18px] font-black tracking-tight text-white font-display leading-tight">
-                  Agentic<span className="text-[#A259FF]">Flow</span>
+                  Float<span className="text-[#EB9A21]">it</span>
                 </h1>
-              </div>
+              </div> */}
             </div>
-            
+
             <div className="flex items-center group flex-1 min-w-0 mr-4">
-              <input 
+              <input
                 type="text"
                 value={useWorkflowStore(state => state.flowTitle) || ''}
                 onChange={(e) => useWorkflowStore.getState().setFlowTitle(e.target.value)}
@@ -10312,115 +9812,81 @@ const FlowHeader = () => {
                 className="bg-transparent border-none outline-none text-sm font-medium text-zinc-300 placeholder-zinc-600 focus:text-white transition-colors w-full min-w-0 text-ellipsis overflow-hidden whitespace-nowrap"
               />
             </div>
-          </div>
-        </div>
-
-        {/* Center: View Toggles */}
-        <div className="flex items-center justify-center gap-[4rem] bg-white/[0.02] border border-white/[0.05] py-2 px-8 rounded-3xl shadow-xl backdrop-blur-xl flex-shrink-0 mx-4">
-          <button
-            data-tour="pipeline-toggle"
-            onClick={() => setViewMode('pipeline')}
-            className={`flex items-center gap-2.5 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-300 ${
-              viewMode === 'pipeline' 
-                ? 'bg-[#46B1FF] text-white shadow-[0_5px_20px_rgba(70,177,255,0.3)]' 
-                : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
-            }`}
-          >
-            <GitMerge size={14} className={viewMode === 'pipeline' ? 'animate-pulse' : ''} /> Pipeline
-          </button>
-          <button
-            onClick={() => setViewMode('builder')}
-            className={`flex items-center gap-2.5 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-300 ${
-              viewMode === 'builder' 
-                ? 'bg-[#A259FF] text-white shadow-[0_5px_20px_rgba(162,89,255,0.3)]' 
-                : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
-            }`}
-          >
-            <LayoutGrid size={14} /> Builder
           </button>
         </div>
 
-        {/* Right: Action */}
-        <div className="flex items-center justify-end gap-4 flex-1">
-          {viewMode === 'builder' && (
-            <button 
-              onClick={handleInitializeEngine}
-              disabled={isDeploying}
-              className={`bg-gradient-to-r from-[#A259FF] to-[#6c39b3] text-white px-6 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-transform flex items-center gap-2 shadow-[0_0_20px_rgba(162,89,255,0.4)] ${isDeploying ? 'opacity-80 scale-95 cursor-wait' : 'hover:scale-105'}`}
-            >
-              {isDeploying ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
-              {isDeploying ? 'Deploying...' : 'Initialize Engine'}
-            </button>
-          )}
-        </div>
+
+
+{/* Right */}
+        <div className="flex items-center justify-end gap-4 flex-1" />
       </header>
 
-      {/* ── VALIDATION POPUP ── */}
-      {showValidationPopup && (
-        <div 
-          className="fixed inset-0 z-[200] flex items-center justify-center"
-          style={{ background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(12px)' }}
-          onClick={() => setShowValidationPopup(false)}
-        >
-          <div 
-            className="w-full max-w-lg rounded-3xl overflow-hidden"
-            style={{
-              background: 'linear-gradient(180deg, #14141f 0%, #0a0a12 100%)',
-              border: '1px solid rgba(255,75,75,0.25)',
-              boxShadow: '0 32px 80px rgba(0,0,0,0.8), 0 0 60px rgba(255,75,75,0.1)',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.06] bg-[#ff4b4b]/5">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-[#ff4b4b]/10 border border-[#ff4b4b]/20">
-                  <AlertTriangle size={18} className="text-[#ff4b4b]" />
-                </div>
-                <div>
-                  <h2 className="text-base font-bold text-white font-display">Pipeline Setup Incomplete</h2>
-                  <p className="text-[10px] text-slate-500 uppercase tracking-wider font-bold mt-0.5">Please fix the following before compiling</p>
-                </div>
-              </div>
-              <button 
-                onClick={() => setShowValidationPopup(false)}
-                className="p-2 rounded-xl hover:bg-white/5 transition-all text-slate-500 hover:text-white"
-              >
-                <X size={16} />
-              </button>
-            </div>
 
-            {/* Error List */}
-            <div className="px-6 py-5 max-h-[50vh] overflow-y-auto custom-scrollbar space-y-2">
-              {validationErrors.map((err, i) => (
-                <div 
-                  key={i} 
-                  className="flex items-start gap-3 px-4 py-3 rounded-xl bg-white/[0.02] border border-white/[0.04]"
-                >
-                  <span className="text-[#ff4b4b] text-xs font-black mt-0.5 shrink-0">{i + 1}.</span>
-                  <span className="text-sm text-slate-300 leading-relaxed">{err}</span>
-                </div>
-              ))}
-            </div>
-
-            {/* Footer */}
-            <div className="px-6 py-4 border-t border-white/[0.06] bg-black/30">
-              <button 
-                onClick={() => setShowValidationPopup(false)}
-                className="w-full py-3 rounded-xl bg-[#A259FF] text-white text-xs font-bold uppercase tracking-widest hover:bg-[#A259FF]/80 transition-colors"
-              >
-                Got it — I'll fix it
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 };
 
 export default FlowHeader;
 
+
+```
+
+---
+
+## `src\components\MultiSelectActionBar.tsx`
+
+```tsx
+import React from 'react';
+import { Layers, X } from 'lucide-react';
+
+interface MultiSelectActionBarProps {
+  selectedCount: number;
+  onCreateGroup: () => void;
+  onClearSelection: () => void;
+}
+
+export default function MultiSelectActionBar({
+  selectedCount,
+  onCreateGroup,
+  onClearSelection,
+}: MultiSelectActionBarProps) {
+  if (selectedCount < 2) return null;
+
+  return (
+    <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[50] pointer-events-auto">
+      <div className="flex items-center gap-6 px-6 py-4 bg-[#141419]/90 backdrop-blur-md border border-[#3e3e4a] shadow-[0_20px_50px_rgba(0,0,0,0.6)] rounded-2xl animate-fade-in transition-all">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-xl bg-[#DEF767]/10 border border-[#DEF767]/20 text-[#DEF767]">
+            <Layers size={16} />
+          </div>
+          <div className="flex flex-col">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">Selection Mode</span>
+            <span className="text-sm font-bold text-white tracking-wide">
+              {selectedCount} agent{selectedCount > 1 ? 's' : ''} selected
+            </span>
+          </div>
+        </div>
+
+        <div className="h-8 w-[1px] bg-[#2e2e38]" />
+
+        <div className="flex items-center gap-3">
+          <button
+            onClick={onClearSelection}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-xs font-bold text-slate-300 hover:bg-white/10 hover:text-white transition-all uppercase tracking-wider"
+          >
+            <X size={12} /> Clear
+          </button>
+          <button
+            onClick={onCreateGroup}
+            className="px-5 py-2 rounded-xl bg-gradient-to-r from-[#DEF767] to-[#A3E636] text-black text-xs font-black uppercase tracking-widest shadow-lg shadow-[#DEF767]/15 hover:scale-[1.03] active:scale-[0.98] transition-all"
+          >
+            Create Group
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 ```
 
@@ -10437,6 +9903,7 @@ import {
 import StatusBadge from './StatusBadge';
 import ThinkingTerminal from './ThinkingTerminal';
 import { useWorkflowStore } from '../lib/store';
+import { useBuilderStore } from '../lib/builderStore';
 
 const ICON_MAP = {
   Search, Eye, Users, BookOpen, User, Compass, Target, Lightbulb,
@@ -10444,13 +9911,14 @@ const ICON_MAP = {
 };
 
 const PHASE_COLORS = {
-  'discover': { accent: '#46B1FF', bg: 'rgba(70,177,255,0.1)' },
-  'define': { accent: '#CEA3FF', bg: 'rgba(206,163,255,0.1)' },
-  'develop': { accent: '#A259FF', bg: 'rgba(162,89,255,0.1)' },
-  'deliver': { accent: '#DEF767', bg: 'rgba(222,247,103,0.1)' },
+  'discover': { accent: '#DEF767', bg: '#1a1a1a' },
+  'define': { accent: '#ff6a6a', bg: '#1a1a1a' },
+  'develop': { accent: '#DEF767', bg: '#1a1a1a' },
+  'deliver': { accent: '#ff6a6a', bg: '#1a1a1a' },
 };
 
 interface NodeData {
+  id: string;
   x: number;
   y: number;
   icon: string;
@@ -10470,87 +9938,135 @@ const NodeContainer = ({ node, state, onClick, isVisible = true }: NodeContainer
   const IconComponent = ICON_MAP[node.icon as keyof typeof ICON_MAP] || Box;
   const phaseColor = PHASE_COLORS[node.phase as keyof typeof PHASE_COLORS] || PHASE_COLORS['discover'];
 
-  const stateClass =
-    state === 'running'
-      ? 'node-running'
-      : state === 'completed'
-      ? 'node-completed'
-      : 'node-idle';
+  const [size, setSize] = React.useState({
+    width: node.blockRef?.size?.width || node.size?.width || 260,
+    height: node.blockRef?.size?.height || node.size?.height || 150
+  });
+
+  // Keep size in sync if node properties change (e.g. database hydration)
+  React.useEffect(() => {
+    setSize({
+      width: node.blockRef?.size?.width || node.size?.width || 260,
+      height: node.blockRef?.size?.height || node.size?.height || 150
+    });
+  }, [node]);
+
+  const handleResizeMouseDown = (mouseDownEvent: React.MouseEvent) => {
+    mouseDownEvent.stopPropagation();
+    mouseDownEvent.preventDefault();
+
+    const startWidth = size.width;
+    const startHeight = size.height;
+    const startMouseX = mouseDownEvent.clientX;
+    const startMouseY = mouseDownEvent.clientY;
+
+    // Dynamically retrieve canvas zoom level from DOM state custom property
+    const canvasContent = document.querySelector('.canvas-content') as HTMLElement;
+    const zoom = canvasContent ? parseFloat(getComputedStyle(canvasContent).getPropertyValue('--canvas-zoom')) || 1.0 : 1.0;
+
+    const handleMouseMove = (mouseMoveEvent: MouseEvent) => {
+      const dx = (mouseMoveEvent.clientX - startMouseX) / zoom;
+      const dy = (mouseMoveEvent.clientY - startMouseY) / zoom;
+
+      const newWidth = Math.max(180, startWidth + dx);
+      const newHeight = Math.max(120, startHeight + dy);
+
+      setSize({ width: newWidth, height: newHeight });
+
+      // Propagate dimension changes to the Builder Zustand store
+      const store = useBuilderStore.getState();
+      if (store.updateBlock && node.id) {
+        store.updateBlock(node.id, {
+          size: { width: newWidth, height: newHeight }
+        });
+      }
+    };
+
+    const handleMouseUp = () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+  };
 
   return (
     <div
-      className={`absolute pointer-events-auto n8n-node rounded-2xl cursor-pointer
-        ${isVisible ? 'revealed' : 'hidden'} ${stateClass}`}
+      className={`absolute border rounded-3xl p-5 transition-all duration-300 ease-out n8n-node overflow-visible cursor-pointer font-sans flex flex-col pointer-events-auto group ${
+        isVisible ? 'revealed' : 'hidden'
+      } ${
+        state === 'running'
+          ? 'border-white bg-[#242424] shadow-[0_0_30px_rgba(255,255,255,0.25)] scale-[1.01] -translate-y-0.5 z-40 animate-pulse'
+          : state === 'completed'
+          ? 'border-[#5b8a62] bg-[#242424] shadow-[0_12px_30px_rgba(0,0,0,0.5),0_0_20px_rgba(91,138,98,0.15)] z-30'
+          : 'border-[#3e3e3e] bg-[#242424] shadow-[0_12px_30px_rgba(0,0,0,0.5)] hover:shadow-[0_20px_45px_rgba(0,0,0,0.7)] hover:-translate-y-1 hover:scale-[1.01] z-10'
+      }`}
       style={{
         left: node.x,
         top: node.y,
-        width: 140, // Match config
-        height: 140,
-        borderColor: state === 'running' ? phaseColor.accent : 'rgba(255,255,255,0.1)',
+        width: Math.round(size.width),
+        height: Math.round(size.height),
       }}
       onClick={onClick}
     >
+      {/* Stream Logs & Thinking Terminal integration */}
       <ThinkingTerminal node={node} isRunning={state === 'running'} />
-      <div className="flex flex-col items-center justify-center h-full p-4 gap-3">
-        {/* Icon Unit */}
-        <div
-          className="w-14 h-14 rounded-xl flex items-center justify-center shadow-lg"
-          style={{ 
-            background: phaseColor.bg,
-            border: `1px solid ${phaseColor.accent}33`
-          }}
-        >
-          <IconComponent size={24} style={{ color: phaseColor.accent }} />
-        </div>
 
-        {/* Info */}
-        <div className="text-center">
-          <h3 className="text-[11px] font-bold text-slate-100 uppercase tracking-wider font-display line-clamp-2">
+      {/* Port - Input (Left) */}
+      <div
+        className="absolute w-3.5 h-3.5 bg-[#181818] rounded-full -left-1.5 top-1/2 -translate-y-1/2 z-20 transition-colors duration-150 border"
+        style={{
+          borderColor: state === 'running' ? '#ffffff' : state === 'completed' ? '#5b8a62' : '#5b5b5b'
+        }}
+      />
+
+      {/* Header */}
+      <div className="flex items-start justify-between mb-3 pb-3 border-b border-[#3e3e3e] shrink-0 w-full">
+        <div className="flex items-center gap-3">
+          <div className="p-1.5 rounded-lg bg-[#1a1a1a] border border-[#3e3e3e] flex items-center justify-center shrink-0">
+            <IconComponent size={14} style={{ color: phaseColor.accent }} />
+          </div>
+          <h3 className="text-[14px] font-bold text-white tracking-wide truncate max-w-[150px] font-sans">
             {node.category.name}
           </h3>
-          <div className="mt-1 flex items-center justify-center">
-             <StatusBadge state={state} mini />
-          </div>
         </div>
       </div>
 
-      {/* Input Port (Left Center) */}
-      <div
-        className="absolute w-3.5 h-3.5 rounded-full flex items-center justify-center bg-black"
-        style={{
-          left: -7,
-          top: '50%',
-          transform: 'translateY(-50%)',
-          border: `1.5px solid ${state === 'running' ? phaseColor.accent : '#334155'}`,
-          zIndex: 10,
-        }}
-      >
-        <div className="w-1 h-1 rounded-full" style={{ background: '#334155' }} />
+      {/* Body Description */}
+      <p className="text-[11px] text-zinc-300 line-clamp-3 font-sans mb-3 leading-relaxed flex-grow overflow-y-auto custom-scrollbar-neon pr-1 shrink text-left w-full">
+        {node.category.description || `Orchestrating ${node.category.name.toLowerCase()} agent protocols...`}
+      </p>
+
+      {/* Footer Details */}
+      <div className="flex items-center justify-between mt-auto pt-3 border-t border-[#3e3e3e] text-[10px] text-zinc-400 font-bold uppercase tracking-widest gap-2 font-sans shrink-0 w-full">
+        <div className="flex items-center gap-1.5 bg-[#1a1a1a] border border-[#3e3e3e] px-2.5 py-1 rounded-md min-w-max whitespace-nowrap">
+          <StatusBadge state={state} />
+        </div>
+        {node.phase && (
+          <div className="flex items-center gap-1.5 bg-[#1a1a1a] border border-[#3e3e3e] px-2.5 py-1 rounded-md min-w-max whitespace-nowrap">
+            <span style={{ color: phaseColor.accent }}>{node.phase.toUpperCase()}</span>
+          </div>
+        )}
       </div>
 
-      {/* Output Port (Right Center) */}
+      {/* Port - Output (Right) */}
       <div
-        className="absolute w-3.5 h-3.5 rounded-full flex items-center justify-center bg-black"
+        className="absolute w-3.5 h-3.5 bg-[#181818] rounded-full -right-1.5 top-1/2 -translate-y-1/2 z-20 transition-colors duration-150 border"
         style={{
-          right: -7,
-          top: '50%',
-          transform: 'translateY(-50%)',
-          border: `1.5px solid ${state === 'completed' ? '#DEF767' : '#334155'}`,
-          zIndex: 10,
+          borderColor: state === 'completed' ? '#5b8a62' : state === 'running' ? '#ffffff' : '#5b5b5b'
         }}
-      >
-        <div className="w-1 h-1 rounded-full" style={{ background: '#334155' }} />
-      </div>
+      />
 
       {/* Stuck Debugger Overlay */}
       {state === 'stuck_debugger' && (
-        <div className="absolute inset-0 bg-red-950/95 rounded-2xl backdrop-blur-md flex flex-col items-center justify-center p-2 z-20 border border-red-500/50">
-          <AlertTriangle size={20} className="text-red-400 mb-1" />
-          <span className="text-[9px] font-bold text-red-200 uppercase tracking-widest text-center leading-tight mb-2">Process<br/>Halted</span>
-          <div className="flex gap-1.5 mt-auto w-full px-1">
+        <div className="absolute inset-0 bg-[#242424] rounded-3xl flex flex-col items-center justify-center p-5 z-50 border border-[#ff6a6a] shadow-[0_15px_40px_rgba(255,106,106,0.2)]">
+          <AlertTriangle size={24} className="text-[#ff6a6a] mb-2" />
+          <span className="text-[11px] font-bold text-red-200 uppercase tracking-widest text-center leading-tight mb-4 font-sans">Process Halted</span>
+          <div className="flex gap-2.5 mt-auto w-full">
              <button 
                onClick={(e) => { e.stopPropagation(); useWorkflowStore.getState().setNodeState(node.id, 'running'); }}
-               className="flex-1 bg-red-500/20 text-red-200 text-[9px] font-bold py-1.5 rounded hover:bg-red-500/40 transition-colors"
+               className="flex-1 bg-[#ff6a6a]/20 text-[#ff6a6a] text-[10px] font-bold py-2 rounded-xl border border-[#ff6a6a]/40 hover:bg-[#ff6a6a]/40 transition-all duration-200 font-sans"
              >
                RETRY
              </button>
@@ -10560,13 +10076,22 @@ const NodeContainer = ({ node, state, onClick, isVisible = true }: NodeContainer
                  useWorkflowStore.getState().setNodeResult(node.id, { content: 'Skipped manually', ui: '<div style="padding:20px;color:#888;">Manually skipped by user.</div>' });
                  useWorkflowStore.getState().setNodeState(node.id, 'completed'); 
                }}
-               className="flex-1 bg-white/10 text-white text-[9px] font-bold py-1.5 rounded hover:bg-white/20 transition-colors"
+               className="flex-1 bg-[#1a1a1a] text-white text-[10px] font-bold py-2 rounded-xl border border-[#3e3e3e] hover:bg-white/10 transition-all duration-200 font-sans"
              >
                SKIP
              </button>
           </div>
         </div>
       )}
+
+      {/* Resize Handle */}
+      {/* eslint-disable-next-line */}
+      <div
+        onMouseDown={handleResizeMouseDown}
+        className="resize-handle absolute bottom-0 right-0 w-6 h-6 cursor-nwse-resize opacity-0 group-hover:opacity-100 transition-opacity z-30 flex items-end justify-end p-1.5"
+      >
+        <div className="w-2.5 h-2.5 border-r-2 border-b-2 border-[#5b5b5b] group-hover:border-[#DEF767] transition-colors pointer-events-none" />
+      </div>
     </div>
   );
 };
@@ -10582,9 +10107,10 @@ export default React.memo(NodeContainer);
 ```tsx
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useLocation } from 'react-router-dom';
-import { 
-  Sparkles, LayoutDashboard, PlusSquare, FolderOpen, 
+import { useLocation, useNavigate } from 'react-router-dom';
+import { ROUTES } from '../lib/routes';
+import {
+  Sparkles, LayoutDashboard, PlusSquare, FolderOpen,
   Layers, Play, Webhook, Save, ArrowRight, X, Rocket
 } from 'lucide-react';
 
@@ -10637,7 +10163,7 @@ const TOUR_STEPS = [
     subtitle: 'Your AI Workflow Command Center',
     description: 'Let\'s take a quick tour to get you up and running. We\'ll show you how to build, connect, and deploy AI agent workflows — all from one powerful interface.',
     accentColor: ACCENT_COLORS.purple,
-    route: '/dashboard',
+    route: ROUTES.dashboard,
     target: null,
   },
   {
@@ -10647,7 +10173,7 @@ const TOUR_STEPS = [
     subtitle: 'Your Mission Control',
     description: 'This is your home base. Every workflow you create appears here as a session card. You can search, star, organize into folders, and pick up right where you left off.',
     accentColor: ACCENT_COLORS.blue,
-    route: '/dashboard',
+    route: ROUTES.dashboard,
     target: null,
   },
   {
@@ -10657,7 +10183,7 @@ const TOUR_STEPS = [
     subtitle: 'Keep things tidy',
     description: 'Create Project Spaces in the sidebar to organize your workflows. Long-press any session card and drag it into a folder. Simple, clean, and scalable.',
     accentColor: ACCENT_COLORS.blue,
-    route: '/dashboard',
+    route: ROUTES.dashboard,
     target: '[data-tour="folders-sidebar"]',
     placement: 'right'
   },
@@ -10668,13 +10194,13 @@ const TOUR_STEPS = [
     subtitle: 'Start building in one click',
     description: 'Hit the "Create Flow" button to create a fresh canvas and enter the Builder — where the magic happens.',
     accentColor: ACCENT_COLORS.green,
-    route: '/dashboard',
+    route: ROUTES.dashboard,
     target: '[data-tour="create-flow-btn"]',
     placement: 'bottom-start',
-    onNext: () => { 
+    onNext: ({ navigate }: { navigate: any }) => {
       const btn = document.querySelector('[data-tour="create-flow-btn"]') as HTMLButtonElement;
       if (btn) btn.click();
-      else window.location.href = '/canvas';
+      else navigate(ROUTES.canvas);
     }
   },
   {
@@ -10684,7 +10210,7 @@ const TOUR_STEPS = [
     subtitle: 'Drag, Drop, Connect',
     description: 'On the canvas, use the bottom toolbar to add Agent Blocks. Each block represents an AI worker. Drag them around, resize them, and wire them together.',
     accentColor: ACCENT_COLORS.purple,
-    route: '/canvas',
+    route: ROUTES.canvas,
     target: null,
   },
   {
@@ -10694,7 +10220,7 @@ const TOUR_STEPS = [
     subtitle: 'Deploy AI workers',
     description: 'Click here to spawn a new Agent block onto the canvas. You can configure its prompt, model, and triggers in the sidebar.',
     accentColor: ACCENT_COLORS.purple,
-    route: '/canvas',
+    route: ROUTES.canvas,
     target: '[data-tour="add-agent-btn"]',
     placement: 'top'
   },
@@ -10705,7 +10231,7 @@ const TOUR_STEPS = [
     subtitle: 'Connect different workflows',
     description: 'Use Webhook Bridge blocks to link separate workflows together. Select which workflow to connect to, and data flows seamlessly between them — just like n8n.',
     accentColor: ACCENT_COLORS.blue,
-    route: '/canvas',
+    route: ROUTES.canvas,
     target: '[data-tour="add-webhook-btn"]',
     placement: 'top'
   },
@@ -10716,7 +10242,7 @@ const TOUR_STEPS = [
     subtitle: 'Execute your flow',
     description: 'Switch to Pipeline view to type your project goal and hit Execute. Each agent processes your task in sequence.',
     accentColor: ACCENT_COLORS.green,
-    route: '/canvas',
+    route: ROUTES.canvas,
     target: '[data-tour="pipeline-toggle"]',
     placement: 'bottom'
   },
@@ -10727,7 +10253,7 @@ const TOUR_STEPS = [
     subtitle: 'Go build something extraordinary',
     description: 'That\'s everything you need to know. The future of automation is in your hands.',
     accentColor: ACCENT_COLORS.green,
-    route: '/canvas',
+    route: ROUTES.canvas,
     target: null,
   },
 ];
@@ -10740,7 +10266,7 @@ function useTargetRect(selector: string | null) {
       setRect(null);
       return;
     }
-    
+
     let lastRectStr = '';
 
     const updateRect = () => {
@@ -10759,7 +10285,7 @@ function useTargetRect(selector: string | null) {
           left: Math.round(newRect.left)
         };
         const currentRectStr = JSON.stringify(roundedRect);
-        
+
         if (currentRectStr !== lastRectStr) {
           lastRectStr = currentRectStr;
           // Return a mock DOMRect object with the properties
@@ -10772,7 +10298,7 @@ function useTargetRect(selector: string | null) {
         }
       }
     };
-    
+
     updateRect();
     window.addEventListener('resize', updateRect);
     window.addEventListener('scroll', updateRect, true);
@@ -10822,6 +10348,7 @@ interface OnboardingTourProps {
 export default function OnboardingTour({ onComplete, user }: OnboardingTourProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const location = useLocation(); // Hook to force re-render on route change
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (!user) return;
@@ -10841,7 +10368,7 @@ export default function OnboardingTour({ onComplete, user }: OnboardingTourProps
 
   // Auto-advance or sync step if route changes unexpectedly
   useEffect(() => {
-    const currentRoute = window.location.pathname;
+    const currentRoute = location.pathname;
     if (step.route !== currentRoute) {
       // Find the first step that matches the new route
       const matchingStepIndex = TOUR_STEPS.findIndex(s => s.route === currentRoute);
@@ -10857,7 +10384,7 @@ export default function OnboardingTour({ onComplete, user }: OnboardingTourProps
 
   // If the step belongs to a different route, don't render the tour card right now.
   // The effect above will sync it shortly.
-  if (window.location.pathname !== step.route) {
+  if (location.pathname !== step.route) {
     return null;
   }
 
@@ -10871,7 +10398,7 @@ export default function OnboardingTour({ onComplete, user }: OnboardingTourProps
         const userStepKey = `${ONBOARDING_STEP_KEY}_${user.id}`;
         localStorage.setItem(userStepKey, nextStep.toString());
       }
-      if (step.onNext) step.onNext();
+      if (step.onNext) step.onNext({ navigate });
     }
   };
 
@@ -10911,32 +10438,32 @@ export default function OnboardingTour({ onComplete, user }: OnboardingTourProps
           </mask>
         </defs>
         {/* Background layer */}
-        <motion.rect 
-          x="0" y="0" width="100%" height="100%" 
-          fill="rgba(5,5,7,0.9)" 
-          mask="url(#tour-mask)" 
+        <motion.rect
+          x="0" y="0" width="100%" height="100%"
+          fill="rgba(5,5,7,0.9)"
+          mask="url(#tour-mask)"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
         />
-        
+
         {/* Optional glowing outline around the cutout */}
         {targetRect && (
-           <motion.rect
-             fill="none"
-             stroke={step.accentColor}
-             strokeWidth={2}
-             rx={12}
-             initial={false}
-             animate={{
-               x: targetRect.left - 8,
-               y: targetRect.top - 8,
-               width: targetRect.width + 16,
-               height: targetRect.height + 16,
-               opacity: 0.8
-             }}
-             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-           />
+          <motion.rect
+            fill="none"
+            stroke={step.accentColor}
+            strokeWidth={2}
+            rx={12}
+            initial={false}
+            animate={{
+              x: targetRect.left - 8,
+              y: targetRect.top - 8,
+              width: targetRect.width + 16,
+              height: targetRect.height + 16,
+              opacity: 0.8
+            }}
+            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+          />
         )}
       </svg>
 
@@ -10978,10 +10505,10 @@ export default function OnboardingTour({ onComplete, user }: OnboardingTourProps
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.2 }}
-            className="bg-[#0c0c14]/90 backdrop-blur-3xl border border-white/[0.06] rounded-[24px] p-6 shadow-[0_30px_80px_rgba(0,0,0,0.8)] relative overflow-hidden"
+            className="bg-[#0c0c14]/90 backdrop-blur-3xl border border-white/[0.06] rounded-none p-6 shadow-[0_30px_80px_rgba(0,0,0,0.8)] relative overflow-hidden"
           >
             {/* Gradient accent top bar */}
-            <div 
+            <div
               className={`absolute top-0 left-0 right-0 h-1 rounded-t-[24px] bg-gradient-to-r ${TOPBAR_CLASSES[step.accentColor]}`}
             />
 
@@ -10997,7 +10524,7 @@ export default function OnboardingTour({ onComplete, user }: OnboardingTourProps
                   {step.icon}
                 </div>
               </motion.div>
-              
+
               <div className="pt-1">
                 <h2 className="text-xl font-black text-white font-display tracking-tight leading-none mb-1">
                   {step.title}
@@ -11021,29 +10548,28 @@ export default function OnboardingTour({ onComplete, user }: OnboardingTourProps
             {/* Action Buttons */}
             <div className="flex items-center justify-between">
               <div className="flex gap-1.5">
-                 {TOUR_STEPS.map((_, i) => (
-                    <motion.div
-                      key={i}
-                      className="rounded-full transition-all"
-                      animate={{
-                        width: i === stepIndex ? 16 : 4,
-                        height: 4,
-                        backgroundColor: i === stepIndex ? step.accentColor : 'rgba(255,255,255,0.08)',
-                      }}
-                      transition={{ duration: 0.3 }}
-                    />
-                  ))}
+                {TOUR_STEPS.map((_, i) => (
+                  <motion.div
+                    key={i}
+                    className="rounded-full transition-all"
+                    animate={{
+                      width: i === stepIndex ? 16 : 4,
+                      height: 4,
+                      backgroundColor: i === stepIndex ? step.accentColor : 'rgba(255,255,255,0.08)',
+                    }}
+                    transition={{ duration: 0.3 }}
+                  />
+                ))}
               </div>
 
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={handleNext}
-                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-black text-[11px] uppercase tracking-widest transition-all shadow-xl bg-gradient-to-br ${
-                  isLast 
-                    ? 'from-[#DEF767] to-[#A259FF] text-black shadow-[#DEF767]/40' 
-                    : BUTTON_CLASSES[step.accentColor]
-                }`}
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-black text-[11px] uppercase tracking-widest transition-all shadow-xl bg-gradient-to-br ${isLast
+                  ? 'from-[#DEF767] to-[#A259FF] text-black shadow-[#DEF767]/40'
+                  : BUTTON_CLASSES[step.accentColor]
+                  }`}
               >
                 {isLast ? (
                   <>
@@ -11072,10 +10598,10 @@ export function useOnboardingStatus() {
 
   useEffect(() => {
     if (!user) return; // Don't show tour if no user is logged in
-    
+
     const userOnboardingKey = `${ONBOARDING_KEY}_${user.id}`;
     const completed = localStorage.getItem(userOnboardingKey);
-    
+
     if (!completed) {
       // Small delay so elements mount before querying rects
       const timer = setTimeout(() => setShowOnboarding(true), 500);
@@ -11089,7 +10615,7 @@ export function useOnboardingStatus() {
     if (!user) return;
     const userOnboardingKey = `${ONBOARDING_KEY}_${user.id}`;
     const userStepKey = `${ONBOARDING_STEP_KEY}_${user.id}`;
-    
+
     setShowOnboarding(false);
     localStorage.setItem(userOnboardingKey, 'true');
     localStorage.removeItem(userStepKey);
@@ -11110,6 +10636,7 @@ import { X, Download, Copy, FileText, CheckCircle2 } from 'lucide-react';
 import { useWorkflowStore } from '../lib/store';
 import { WORKFLOW_PHASES } from '../data/schema';
 import { callLLM } from '../lib/llm';
+import { useBuilderStore } from '../lib/builderStore';
 
 interface OutputScreenProps {
   isOpen: boolean;
@@ -11129,8 +10656,11 @@ const OutputScreen = ({ isOpen, onClose, phaseFilter }: OutputScreenProps) => {
     ? WORKFLOW_PHASES.filter(p => p.id === phaseFilter)
     : WORKFLOW_PHASES;
   
+  const blocks = useBuilderStore((state: any) => state.blocks);
+  const matchedBlock = blocks?.find((b: any) => b.id === phaseFilter);
+
   const phaseTitle = phaseFilter
-    ? (WORKFLOW_PHASES.find(p => p.id === phaseFilter)?.label || phaseFilter) + ' Phase Report'
+    ? (WORKFLOW_PHASES.find(p => p.id === phaseFilter)?.label || matchedBlock?.name || 'Synthesis Report')
     : 'Full Strategic Briefing';
 
   // ── Detect builder pipeline results (non-standard keys) ──
@@ -11139,7 +10669,13 @@ const OutputScreen = ({ isOpen, onClose, phaseFilter }: OutputScreenProps) => {
     phase.categories.forEach(c => standardKeys.add(`${phase.id}::${c}`));
   });
   const builderResults = Object.entries(nodeResults || {})
-    .filter(([key]) => !standardKeys.has(key))
+    .filter(([key]) => {
+      if (standardKeys.has(key)) return false;
+      if (phaseFilter) {
+        return key === phaseFilter;
+      }
+      return true;
+    })
     .map(([id, result]) => ({ id, result: result as any }));
   const hasBuilderResults = builderResults.length > 0;
 
@@ -11317,28 +10853,22 @@ ${rawOutputs}
 
   return (
     <div
-      className="fixed inset-0 z-[200] flex items-center justify-center modal-overlay"
-      style={{ background: 'rgba(0,0,0,0.92)', backdropFilter: 'blur(16px)' }}
+      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-md pointer-events-auto"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-5xl h-[90vh] rounded-3xl overflow-hidden flex flex-col modal-content"
-        style={{
-          background: 'linear-gradient(180deg, #0c0c14 0%, #050508 100%)',
-          border: '1px solid rgba(162, 89, 255, 0.2)',
-          boxShadow: '0 32px 100px rgba(0,0,0,0.9), 0 0 80px rgba(162,89,255,0.1)',
-        }}
+        className="w-full max-w-5xl h-[90vh] rounded-[32px] overflow-hidden flex flex-col border border-white/10 bg-[#0a0a0f] shadow-[0_40px_100px_rgba(0,0,0,0.8)] relative"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-8 py-5 border-b border-white/[0.06] bg-black/40 shrink-0">
+        <div className="flex items-center justify-between px-8 py-5 border-b border-white/5 bg-black/20 shrink-0">
           <div className="flex items-center gap-4">
             <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-[#DEF767]/10 border border-[#DEF767]/20">
               <FileText size={18} className="text-[#DEF767]" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-white font-display">{phaseTitle}</h2>
-              <p className="text-[10px] text-slate-500 font-secondary mt-0.5 tracking-wide uppercase">
+              <h2 className="text-lg font-bold text-white font-display uppercase tracking-wide">{phaseTitle}</h2>
+              <p className="text-[10px] text-slate-500 font-mono mt-0.5 tracking-widest uppercase font-bold">
                 {totalResults} agent{totalResults !== 1 ? 's' : ''} completed • {projectPrompt?.substring(0, 50)}{projectPrompt?.length > 50 ? '...' : ''}
               </p>
             </div>
@@ -11346,14 +10876,14 @@ ${rawOutputs}
           <div className="flex items-center gap-3">
             <button
               onClick={handleCopyAll}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-slate-300 text-xs font-bold uppercase tracking-wider hover:bg-white/10 transition-colors"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-slate-300 text-xs font-bold uppercase tracking-wider hover:bg-white/10 transition-colors font-sans"
             >
               {copied ? <><CheckCircle2 size={14} className="text-[#DEF767]" /> Copied</> : <><Copy size={14} /> Copy All</>}
             </button>
             <button
               onClick={handleDownloadPDF}
               disabled={isDownloading}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#A259FF] to-[#46B1FF] text-white text-xs font-bold uppercase tracking-wider transition-opacity shadow-lg shadow-[#A259FF]/20 ${isDownloading ? 'opacity-50 cursor-wait' : 'hover:opacity-80'}`}
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#DEF767] text-black text-xs font-black uppercase tracking-wider transition-opacity hover:opacity-90 font-sans ${isDownloading ? 'opacity-50 cursor-wait' : ''}`}
             >
               <Download size={14} className={isDownloading ? "animate-bounce" : ""} /> 
               {isDownloading ? 'Generating...' : 'Download PDF'}
@@ -11370,12 +10900,12 @@ ${rawOutputs}
 
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto custom-scrollbar">
-          <div ref={contentRef} className="p-8 space-y-10" style={{ background: '#0a0a10', color: '#e2e8f0' }}>
+          <div ref={contentRef} className="p-8 space-y-10" style={{ background: '#0a0a0f', color: '#e2e8f0' }}>
             {/* Title Section for PDF */}
-            <div className="text-center pb-6 border-b border-white/[0.04]">
-              <h1 className="text-3xl font-black text-white font-display tracking-tight mb-2">Agentic Flow — {phaseTitle}</h1>
-              <p className="text-sm text-slate-400 font-secondary">{projectPrompt}</p>
-              <p className="text-[10px] text-slate-600 mt-2 font-mono">{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+            <div className="text-center pb-6 border-b border-white/5">
+              <h1 className="text-3xl font-black text-white font-display uppercase tracking-wider mb-2">Agentic Flow — {phaseTitle}</h1>
+              <p className="text-sm text-slate-400 font-sans">{projectPrompt}</p>
+              <p className="text-[10px] text-slate-600 mt-2 font-mono uppercase tracking-widest font-bold">{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
             </div>
 
             {/* Phase by Phase Results — filtered if phaseFilter is set */}
@@ -11567,7 +11097,6 @@ import { useWorkflowStore } from '../lib/store';
 function useOutsideClick(ref: any, handler: any) {
   useEffect(() => {
     const listener = (event: any) => {
-      // Don't trigger if click is inside the modal or the toggle button
       if (!ref.current || ref.current.contains(event.target)) {
         return;
       }
@@ -11589,31 +11118,22 @@ const PhaseSummaryBox = ({ phase, x, y }: any) => {
   useOutsideClick(modalRef, () => setIsOpen(false));
   const nodeResults = useWorkflowStore((state: any) => state.nodeResults);
   
-  // Aggregate output
   const phaseResults = Object.entries(nodeResults)
     .filter(([id]) => id.startsWith(phase.id + '::'))
     .map(([id, result]) => ({ id, ...(result as any) }));
 
   return (
     // eslint-disable-next-line
-    <div className="absolute z-50 flex flex-col items-center" style={{ left: x, top: y, transform: 'translate(-50%, 0)' }}>
-      {/* Default State - Pulse Anchor */}
+    <div className="absolute z-50 flex flex-col items-center font-sans" style={{ left: x, top: y, transform: 'translate(-50%, 0)' }}>
+      {/* Default State - Flat Anchor */}
       <motion.button
         onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }}
-        className="flex items-center gap-3 px-5 py-2.5 rounded-full cursor-pointer relative shadow-lg hover:shadow-xl transition-shadow"
-        style={{
-          background: 'rgba(13, 10, 25, 0.8)',
-          backdropFilter: 'blur(24px)',
-          border: '1px solid transparent',
-          backgroundImage: 'linear-gradient(rgba(13, 10, 25, 0.9), rgba(13, 10, 25, 0.9)), linear-gradient(to right, #A259FF, #46B1FF)',
-          backgroundOrigin: 'border-box',
-          backgroundClip: 'padding-box, border-box',
-        }}
+        className="flex items-center gap-3 px-5 py-2.5 rounded-full cursor-pointer relative border border-[#2e2e2e] bg-[#181818] hover:border-[#DEF767] transition-all font-sans"
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
       >
-        <div className="w-2 h-2 rounded-full bg-[#A259FF] shadow-[0_0_8px_#A259FF] animate-pulse" />
-        <span className="text-xs font-bold tracking-widest text-[#e2e8f0] uppercase font-display">
+        <div className="w-2 h-2 rounded-full bg-[#DEF767]" />
+        <span className="text-xs font-bold tracking-widest text-[#e2e8f0] uppercase font-sans">
           Phase Output: {phase.label}
         </span>
       </motion.button>
@@ -11626,7 +11146,7 @@ const PhaseSummaryBox = ({ phase, x, y }: any) => {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.4, ease: 'easeOut' }}
-            className="fixed inset-0 z-[100] flex items-center justify-center bg-[#050505]/80 backdrop-blur-xl p-8"
+            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-md p-8 font-sans pointer-events-auto"
           >
             <motion.div
               ref={modalRef}
@@ -11634,28 +11154,23 @@ const PhaseSummaryBox = ({ phase, x, y }: any) => {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ duration: 0.4, ease: 'easeOut' }}
-              className="w-full max-w-4xl max-h-[85vh] rounded-3xl overflow-hidden shadow-[0_0_50px_rgba(162,89,255,0.15)] flex flex-col"
-              style={{
-                background: 'rgba(5, 5, 5, 0.9)',
-                border: '0.5px solid rgba(255, 255, 255, 0.1)',
-                backdropFilter: 'blur(30px)'
-              }}
+              className="w-full max-w-4xl max-h-[85vh] rounded-[32px] overflow-hidden flex flex-col border border-white/10 bg-[#0a0a0f] shadow-[0_40px_100px_rgba(0,0,0,0.8)] font-sans"
             >
-              <div className="p-6 border-b border-white/[0.05] flex justify-between items-center bg-white/[0.02]">
-                <h3 className="text-xl font-black text-white uppercase tracking-[0.2em] font-display">
-                  <span className="text-[#A259FF]">Synthesis //</span> {phase.label}
+              <div className="p-6 border-b border-white/5 flex justify-between items-center bg-black/20">
+                <h3 className="text-lg font-black text-white uppercase tracking-wider font-display">
+                  <span className="text-[#DEF767]">Synthesis //</span> {phase.label}
                 </h3>
                 <button 
                   onClick={(e) => { e.stopPropagation(); setIsOpen(false); }}
-                  className="text-slate-400 hover:text-white transition-colors w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10"
+                  className="text-slate-400 hover:text-white transition-colors w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/5"
                 >
                   ✕
                 </button>
               </div>
               
-              <div className="p-8 overflow-y-auto custom-scrollbar-neon flex-1 text-slate-300">
+              <div className="p-8 overflow-y-auto custom-scrollbar-neon flex-1 text-slate-300 bg-[#0a0a0f]">
                 {phaseResults.length === 0 ? (
-                  <div className="text-sm text-slate-500 italic text-center py-16">
+                  <div className="text-sm text-slate-500 italic text-center py-16 font-sans">
                     Sequence idle. Execute the {phase.label} phase to synthesize data.
                   </div>
                 ) : (
@@ -11663,11 +11178,11 @@ const PhaseSummaryBox = ({ phase, x, y }: any) => {
                     {phaseResults.map((res, idx) => {
                       const cleanName = res.id.split('::')[1].replace('-', ' ');
                       return (
-                        <div key={idx} className="bg-white/[0.03] p-6 rounded-2xl border border-white/[0.05] shadow-inner">
-                          <div className="text-xs text-[#46B1FF] uppercase font-bold tracking-widest mb-3">
+                        <div key={idx} className="bg-[#0f0f15] p-6 rounded-2xl border border-white/5">
+                          <div className="text-xs text-[#ff6a6a] uppercase font-bold tracking-widest mb-3 font-sans">
                             AGENT: {cleanName}
                           </div>
-                          <div className="text-sm text-slate-300 font-secondary leading-relaxed space-y-4">
+                          <div className="text-sm text-slate-300 font-sans leading-relaxed space-y-4">
                              {res.content ? res.content : 'Awaiting output...'}
                           </div>
                         </div>
@@ -11677,10 +11192,10 @@ const PhaseSummaryBox = ({ phase, x, y }: any) => {
                 )}
               </div>
 
-              <div className="p-6 border-t border-white/[0.05] bg-white/[0.02] flex justify-between items-center">
-                <span className="text-[10px] text-slate-500 uppercase tracking-widest">Midnight Luxe Theme Active</span>
+              <div className="p-6 border-t border-white/5 bg-black/20 flex justify-between items-center font-sans">
+                <span className="text-[10px] text-slate-500 uppercase tracking-widest font-mono font-bold">UXISM Theme Active</span>
                 <button 
-                  className="px-6 py-3 rounded-xl border border-[#F6E27F]/50 text-[#F6E27F] font-bold uppercase tracking-widest hover:bg-[#F6E27F]/10 transition-colors text-xs flex items-center gap-2 shadow-[0_0_15px_rgba(246,226,127,0.1)]"
+                  className="px-6 py-3 rounded-xl bg-[#DEF767] text-black font-black uppercase tracking-widest hover:opacity-90 transition-opacity text-xs flex items-center gap-2 font-sans"
                 >
                   Download Result
                 </button>
@@ -11715,19 +11230,19 @@ const StatusBadge = ({ state }: StatusBadgeProps) => {
   if (state === 'running') {
     return (
       <div className="flex items-center gap-1.5">
-        <Loader2 className="animate-spin text-[#A259FF]" size={12} />
-        <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#A259FF]">
+        <Loader2 className="animate-spin text-white" size={12} />
+        <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-white">
           Running
         </span>
       </div>
     );
   }
 
-  if (state === 'completed') {
+  if (state === 'completed' || state === 'success') {
     return (
       <div className="flex items-center gap-1.5">
-        <CheckCircle2 className="text-[#DEF767]" size={12} />
-        <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#DEF767]">
+        <CheckCircle2 className="text-[#5b8a62]" size={12} />
+        <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#5b8a62]">
           Ready
         </span>
       </div>
@@ -11736,8 +11251,8 @@ const StatusBadge = ({ state }: StatusBadgeProps) => {
 
   return (
     <div className="flex items-center gap-1.5 opacity-60">
-      <div className="w-1.5 h-1.5 rounded-full border border-[#46B1FF]" />
-      <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#46B1FF]">
+      <div className="w-1.5 h-1.5 rounded-full border border-zinc-500" />
+      <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-zinc-400">
         Standby
       </span>
     </div>
@@ -11756,12 +11271,15 @@ export default StatusBadge;
 import React, { useState } from 'react';
 import { useBuilderStore } from '../lib/builderStore';
 import { Layers, Plus, Trash2, ArrowRight, Pencil, Check, X } from 'lucide-react';
+import { buildDoubleDiamondBlocks, buildDoubleDiamondConnections } from '../data/templates/doubleDiamond';
+import { Diamond } from 'lucide-react';
 
 const TemplatesView = () => {
   const { templates, saveAsTemplate, applyTemplate, deleteTemplate, updateTemplate, blocks } = useBuilderStore();
   const [newTemplateName, setNewTemplateName] = useState('');
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState('');
+  
 
   const handleSave = () => {
     if (!newTemplateName.trim()) return;
@@ -11786,6 +11304,21 @@ const TemplatesView = () => {
     setEditingId(null);
     setEditName('');
   };
+
+  const applyDoubleDiamond = () => {
+  const blocks = buildDoubleDiamondBlocks();
+  const connections = buildDoubleDiamondConnections();
+  useBuilderStore.setState({
+    blocks,
+    connections,
+    stickyNotes: [],
+    textLabels: [],
+    selectedElementId: null,
+    viewMode: 'builder',
+
+    isTopologyLocked: true, 
+  });
+};
 
   return (
     <div className="absolute inset-0 z-30 bg-[#07070a]/95 backdrop-blur-3xl flex flex-col p-8 overflow-y-auto custom-scrollbar pt-28 pb-32">
@@ -11824,7 +11357,47 @@ const TemplatesView = () => {
             </button>
           </div>
         </div>
+{/* Built-in Templates */}
+        <div className="mb-12">
+          <div className="flex items-center mb-8">
+            <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Built-in Frameworks</h2>
+            <div className="h-px flex-1 bg-white/[0.05] ml-6" />
+          </div>
 
+          <div
+            onClick={applyDoubleDiamond}
+            className="bg-[#111118] border border-white/5 rounded-[24px] p-6 flex flex-col hover:border-[#DEF767]/40 transition-all hover:-translate-y-1 hover:shadow-[0_20px_40px_rgba(0,0,0,0.5)] group cursor-pointer max-w-sm"
+          >
+            <div className="flex items-center gap-4 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-[#DEF767]/10 border border-[#DEF767]/20 flex items-center justify-center">
+                <Diamond size={18} className="text-[#DEF767]" />
+              </div>
+              <div>
+                <h3 className="text-[17px] font-bold text-white tracking-tight">Double Diamond</h3>
+                <p className="text-[10px] text-slate-500 uppercase tracking-wider">Design Framework</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-500 mb-6 leading-relaxed">
+              4-phase design thinking framework. Discover → Define → Develop → Deliver. 20 agents, fully editable.
+            </p>
+
+            <div className="grid grid-cols-2 gap-3 mb-6">
+              <div className="bg-white/[0.03] border border-white/[0.05] rounded-xl p-3">
+                <div className="text-[10px] text-slate-600 uppercase font-black mb-1">Nodes</div>
+                <div className="text-lg font-display text-[#DEF767]">20</div>
+              </div>
+              <div className="bg-white/[0.03] border border-white/[0.05] rounded-xl p-3">
+                <div className="text-[10px] text-slate-600 uppercase font-black mb-1">Phases</div>
+                <div className="text-lg font-display text-[#A259FF]">4</div>
+              </div>
+            </div>
+
+            <div className="w-full py-3 rounded-2xl bg-[#DEF767]/5 border border-[#DEF767]/20 text-[#DEF767] text-[11px] font-bold uppercase tracking-[0.15em] group-hover:bg-[#DEF767] group-hover:text-black transition-all flex items-center justify-center gap-2">
+              Load into Canvas <ArrowRight size={14} />
+            </div>
+          </div>
+        </div>
         {/* Grid of Templates */}
         <div>
           <div className="flex items-center justify-between mb-8">
@@ -11926,6 +11499,13 @@ import { X, Maximize2 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { useWorkflowStore } from '../lib/store';
 
+const PHASE_COLORS: Record<string, string> = {
+  discover: '#DEF767',
+  define: '#FF6A6A',
+  develop: '#DEF767',
+  deliver: '#FF6A6A',
+};
+
 const ThinkingTerminal = ({ node, isRunning }: any) => {
   const [text, setText] = useState('');
   const [active, setActive] = useState(false);
@@ -11935,6 +11515,8 @@ const ThinkingTerminal = ({ node, isRunning }: any) => {
   const expandedRef = useRef(false);
   const scrollSmallRef = useRef<HTMLDivElement>(null);
   const scrollLargeRef = useRef<HTMLDivElement>(null);
+
+  const phaseColor = PHASE_COLORS[node?.phase] || '#DEF767';
 
   useEffect(() => {
     if (scrollSmallRef.current) scrollSmallRef.current.scrollTop = scrollSmallRef.current.scrollHeight;
@@ -12047,14 +11629,31 @@ const ThinkingTerminal = ({ node, isRunning }: any) => {
                setExpanded(true);
              }}
           >
-             <div className="flex flex-col overflow-hidden relative transition-all duration-300 bg-[#050505]/95 backdrop-blur-xl border border-[#8B5CF6]/50 rounded-lg w-64 shadow-[0_0_20px_rgba(139,92,246,0.15)] group-hover:border-[#8B5CF6] group-hover:shadow-[0_0_30px_rgba(139,92,246,0.3)]">
+             <div 
+                className="flex flex-col overflow-hidden relative transition-all duration-300 bg-[#050505]/95 backdrop-blur-xl border rounded-xl w-64"
+                style={{
+                  borderColor: `${phaseColor}80`,
+                  boxShadow: `0 12px 40px rgba(0,0,0,0.7), 0 0 20px ${phaseColor}20`,
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = phaseColor;
+                  e.currentTarget.style.boxShadow = `0 20px 50px rgba(0,0,0,0.85), 0 0 30px ${phaseColor}40`;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = `${phaseColor}80`;
+                  e.currentTarget.style.boxShadow = `0 12px 40px rgba(0,0,0,0.7), 0 0 20px ${phaseColor}20`;
+                }}
+             >
                 
                 {/* Header */}
                 <div className="flex items-center gap-1.5 px-3 py-2 border-b border-white/10 bg-white/[0.02]">
                    <div className="w-1.5 h-1.5 rounded-full bg-red-500/50" />
                    <div className="w-1.5 h-1.5 rounded-full bg-yellow-500/50" />
-                   <div className="w-1.5 h-1.5 rounded-full bg-[#DEF767] shadow-[0_0_5px_#DEF767] animate-pulse" />
-                   <span className="text-[9px] uppercase tracking-[0.2em] text-[#A259FF] ml-auto font-bold opacity-80 flex items-center gap-2">
+                   <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: phaseColor, boxShadow: `0 0 5px ${phaseColor}` }} />
+                   <span 
+                     className="text-[9px] uppercase tracking-[0.2em] ml-auto font-bold opacity-80 flex items-center gap-2"
+                     style={{ color: phaseColor }}
+                   >
                       COM-LINK // {isRunning ? 'RUNNING' : 'TERMINATED'}
                    </span>
                    <button 
@@ -12072,7 +11671,7 @@ const ThinkingTerminal = ({ node, isRunning }: any) => {
                 {/* Terminal Output */}
                 <div 
                   ref={scrollSmallRef}
-                  className="p-3 font-mono text-[10px] text-[#A78BFA] leading-relaxed break-words whitespace-pre-wrap flex-1 max-h-32 overflow-y-auto custom-scrollbar-neon scroll-smooth flex flex-col"
+                  className="p-3 font-mono text-[10px] text-slate-300 leading-relaxed break-words whitespace-pre-wrap flex-1 max-h-32 overflow-y-auto custom-scrollbar-neon scroll-smooth flex flex-col"
                 >
                    <div>
                      {text}
@@ -12101,15 +11700,22 @@ const ThinkingTerminal = ({ node, isRunning }: any) => {
                initial={{ opacity: 0, scale: 0.95, y: 20 }}
                animate={{ opacity: 1, scale: 1, y: 0 }}
                exit={{ opacity: 0, scale: 0.95, y: 20 }}
-               className="bg-[#050505] border border-[#8B5CF6] rounded-2xl w-[800px] h-[600px] shadow-[0_0_80px_rgba(139,92,246,0.4)] flex flex-col overflow-hidden relative"
+               className="bg-[#050505] border rounded-2xl w-[800px] h-[600px] flex flex-col overflow-hidden relative"
+               style={{
+                 borderColor: phaseColor,
+                 boxShadow: `0 0 80px ${phaseColor}30`,
+               }}
                onClick={(e) => e.stopPropagation()}
             >
                {/* Header */}
                <div className="flex items-center gap-1.5 px-6 py-4 border-b border-white/10 bg-white/[0.02]">
                   <div className="w-3 h-3 rounded-full bg-red-500/50" />
                   <div className="w-3 h-3 rounded-full bg-yellow-500/50" />
-                  <div className="w-3 h-3 rounded-full bg-[#DEF767] shadow-[0_0_8px_#DEF767] animate-pulse" />
-                  <span className="text-xs uppercase tracking-[0.2em] text-[#A259FF] ml-auto font-bold opacity-80 flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full animate-pulse" style={{ backgroundColor: phaseColor, boxShadow: `0 0 8px ${phaseColor}` }} />
+                  <span 
+                    className="text-xs uppercase tracking-[0.2em] ml-auto font-bold opacity-80 flex items-center gap-2"
+                    style={{ color: phaseColor }}
+                  >
                      <span className="text-white">AGENT LOGS // </span>
                      {isRunning ? 'RUNNING' : 'TERMINATED'}
                   </span>
@@ -12129,7 +11735,7 @@ const ThinkingTerminal = ({ node, isRunning }: any) => {
                {/* Terminal Output */}
                <div 
                  ref={scrollLargeRef}
-                 className="p-6 font-mono text-sm text-[#A78BFA] leading-relaxed break-words whitespace-pre-wrap flex-1 overflow-y-auto custom-scrollbar-neon scroll-smooth flex flex-col"
+                 className="p-6 font-mono text-sm text-slate-300 leading-relaxed break-words whitespace-pre-wrap flex-1 overflow-y-auto custom-scrollbar-neon scroll-smooth flex flex-col"
                >
                   <div>
                     {text}
@@ -12222,10 +11828,11 @@ const ToastItem = ({ toast, onClose }: { toast: Toast; onClose: () => void }) =>
 import React, { useState, useEffect, useRef } from 'react';
 import { MousePointer2, StickyNote, Highlighter, LayoutTemplate, Eraser, Camera, Lock, Unlock, Type, PlusSquare, Network, Webhook } from 'lucide-react';
 import { useBuilderStore } from '../lib/builderStore';
+import type { ToolType } from '../types/engine';
 
 interface ToolDockProps {
-  activeTool: string;
-  setActiveTool: (tool: string) => void;
+  activeTool: ToolType;
+  setActiveTool: (tool: ToolType) => void;
   canvasLocked: boolean;
   setCanvasLocked: (locked: boolean) => void;
   onScreenshot: () => void;
@@ -12234,8 +11841,8 @@ interface ToolDockProps {
 }
 
 const ToolDock = ({ activeTool, setActiveTool, canvasLocked, setCanvasLocked, onScreenshot, onEraseAll, onLockToggle }: ToolDockProps) => {
-  const { viewMode, setViewMode, addBlock, addWebhookBlock } = useBuilderStore();
-  
+  const { viewMode, setViewMode, addBlock, addWebhookBlock, isTopologyLocked } = useBuilderStore();
+
   // Apple-style persistent scaling state
   const [dockScale, setDockScale] = useState(1);
   const dockRef = useRef<HTMLDivElement>(null);
@@ -12249,24 +11856,22 @@ const ToolDock = ({ activeTool, setActiveTool, canvasLocked, setCanvasLocked, on
 
   const handleSeparatorDrag = (e: React.PointerEvent) => {
     e.preventDefault();
-    const startY = e.clientY;
+    const startX = e.clientX;
     const startScale = dockScale;
-    
-    // Lock the cursor globally so it doesn't flicker if you move the mouse fast
-    document.body.style.cursor = 'ns-resize';
+
+    document.body.style.cursor = 'ew-resize';
 
     const onPointerMove = (moveEvent: PointerEvent) => {
-      // Dragging up (negative delta clientY) increases scale since dock is at bottom
-      const deltaY = startY - moveEvent.clientY;
+      const deltaX = startX - moveEvent.clientX;
       const sensitivity = 0.005;
-      const newScale = Math.min(Math.max(0.5, startScale + deltaY * sensitivity), 2.5);
-      
+      const newScale = Math.min(Math.max(0.5, startScale - deltaX * sensitivity), 2.5);
+
       setDockScale(newScale);
       localStorage.setItem('agentic_flow_dock_scale', newScale.toString());
     };
 
     const onPointerUp = () => {
-      document.body.style.cursor = ''; // Release cursor lock
+      document.body.style.cursor = '';
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerup', onPointerUp);
     };
@@ -12276,34 +11881,37 @@ const ToolDock = ({ activeTool, setActiveTool, canvasLocked, setCanvasLocked, on
   };
 
   const Separator = () => (
-    <div 
-      className="w-4 h-12 flex items-center justify-center group/sep self-center"
-      style={{ cursor: 'ns-resize' }}
+    <div
+      className="w-12 h-4 flex items-center justify-center group/sep self-center"
+      style={{ cursor: 'ew-resize' }}
       onPointerDown={handleSeparatorDrag}
       title="Drag to resize dock"
     >
-      <div className="w-px h-8 bg-white/10 group-hover/sep:bg-white/40 transition-colors rounded-full" />
+      <div className="w-8 h-px bg-white/10 group-hover/sep:bg-slate-500 transition-colors rounded-full" />
     </div>
   );
 
   return (
-    <div 
+    <div
       ref={dockRef}
-      className="absolute bottom-8 left-1/2 z-50 flex items-end gap-4 p-3 px-6 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] bg-[#0f0f14]/60 backdrop-blur-2xl border border-white/5 group/dock"
+      className="absolute left-6 top-1/2 z-[60] flex flex-col items-center gap-4 p-4 py-6 rounded-[32px] border border-white/10 bg-[#0a0a0f]/80 backdrop-blur-3xl shadow-[0_30px_60px_rgba(0,0,0,0.8)] group/dock font-sans"
       style={{
-        transform: `translateX(-50%) scale(${dockScale})`,
-        transformOrigin: 'bottom center',
-        // We use transition only when not dragging to keep live-dragging completely smooth
+        transform: `translateY(-50%) scale(${dockScale})`,
+        transformOrigin: 'left center',
         transition: 'transform 0.1s ease-out, background-color 0.3s, border 0.3s'
       }}
     >
-      
+
       {viewMode === 'builder' && (
         <>
-          <ToolButton data-tour="add-agent-btn" onClick={() => addBlock()} icon={<PlusSquare size={20} />} title="Add Agent Block" />
-          <ToolButton data-tour="add-webhook-btn" onClick={() => addWebhookBlock()} icon={<Webhook size={20} />} title="Add Webhook Bridge" />
-          <ToolButton active={activeTool === 'connect'} onClick={() => setActiveTool('connect')} icon={<Network size={20} />} title="Connect Blocks" />
-          <Separator />
+          {!isTopologyLocked && (
+            <>
+              <ToolButton data-tour="add-agent-btn" onClick={() => addBlock()} icon={<PlusSquare size={20} />} title="Add Agent Block" />
+              <ToolButton data-tour="add-webhook-btn" onClick={() => addWebhookBlock()} icon={<Webhook size={20} />} title="Add Webhook Bridge" />
+              <ToolButton active={activeTool === 'connect'} onClick={() => setActiveTool('connect')} icon={<Network size={20} />} title="Connect Blocks" />
+              <Separator />
+            </>
+          )}
         </>
       )}
 
@@ -12311,29 +11919,29 @@ const ToolDock = ({ activeTool, setActiveTool, canvasLocked, setCanvasLocked, on
       <ToolButton active={activeTool === 'sticky'} onClick={() => setActiveTool('sticky')} icon={<StickyNote size={20} />} title="Sticky Note" />
       <ToolButton active={activeTool === 'text'} onClick={() => setActiveTool('text')} icon={<Type size={20} />} title="Text Label" />
       <ToolButton active={activeTool === 'highlighter'} onClick={() => setActiveTool('highlighter')} icon={<Highlighter size={20} />} title="Highlighter" />
-      
+
       <Separator />
-      
+
       <ToolButton onClick={onEraseAll} icon={<Eraser size={20} />} title="Clear & Reset" />
       <ToolButton onClick={onScreenshot} icon={<Camera size={20} />} title="Screenshot Canvas" />
-      <ToolButton 
-        active={canvasLocked} 
+      <ToolButton
+        active={canvasLocked}
         onClick={() => {
           const newState = !canvasLocked;
           setCanvasLocked(newState);
           onLockToggle?.(newState);
-        }} 
-        icon={canvasLocked ? <Lock size={20} /> : <Unlock size={20} />} 
-        title={canvasLocked ? "Unlock Canvas" : "Lock Canvas"} 
+        }}
+        icon={canvasLocked ? <Lock size={20} /> : <Unlock size={20} />}
+        title={canvasLocked ? "Unlock Canvas" : "Lock Canvas"}
       />
-      
+
       <Separator />
-      
-      <ToolButton 
-        active={viewMode === 'templates'} 
-        onClick={() => setViewMode(viewMode === 'templates' ? 'builder' : 'templates')} 
-        icon={<LayoutTemplate size={20} />} 
-        title="Templates Library" 
+
+      <ToolButton
+        active={viewMode === 'templates'}
+        onClick={() => setViewMode(viewMode === 'templates' ? 'builder' : 'templates')}
+        icon={<LayoutTemplate size={20} />}
+        title="Templates Library"
       />
     </div>
   );
@@ -12348,25 +11956,115 @@ interface ToolButtonProps {
 }
 
 const ToolButton = ({ active, onClick, icon, title, ...rest }: ToolButtonProps) => (
-  <div className="relative group/btn h-12 flex items-center" data-tour={rest['data-tour']}>
+  <div className="relative group/btn w-12 flex justify-center font-sans" data-tour={rest['data-tour']}>
     <button
       onClick={onClick}
-      className={`p-3 rounded-2xl transition-all duration-300 origin-bottom group-hover/btn:scale-[1.2] group-hover/btn:-translate-y-2 active:scale-95 ${
-        active 
-          ? 'bg-[#A259FF] text-white shadow-[0_0_20px_rgba(162,89,255,0.4)]' 
-          : 'text-slate-400 group-hover/btn:text-white group-hover/btn:bg-white/10'
-      }`}
+      className={`p-3 rounded-xl transition-all duration-300 origin-left group-hover/btn:scale-[1.2] group-hover/btn:translate-x-2 active:scale-95 border ${active
+        ? 'bg-[#DEF767] text-black border-[#DEF767] shadow-[0_0_20px_rgba(222,247,103,0.3)]'
+        : 'text-slate-400 border-transparent group-hover/btn:text-white group-hover/btn:bg-white/5 group-hover/btn:border-white/10'
+        }`}
     >
       {icon}
     </button>
-    <div className="absolute -top-12 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-lg bg-black/80 backdrop-blur-md border border-white/10 text-[10px] font-bold text-white opacity-0 group-hover/btn:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+    <div className="absolute left-16 top-1/2 -translate-y-1/2 px-3 py-2 rounded-xl bg-[#0a0a0f] border border-white/10 text-[10px] font-bold text-white uppercase tracking-widest opacity-0 group-hover/btn:opacity-100 transition-opacity whitespace-nowrap pointer-events-none shadow-[0_10px_30px_rgba(0,0,0,0.8)] font-sans z-50">
       {title}
     </div>
-    {active && <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[#A259FF]" />}
+    {active && <div className="absolute top-1/2 -left-1 -translate-y-1/2 w-1 h-1 rounded-full bg-[#DEF767]" />}
   </div>
 );
 
 export default ToolDock;
+
+```
+
+---
+
+## `src\components\useAgentBlockNode.ts`
+
+```typescript
+import { useBuilderStore } from '../lib/builderStore';
+import { useWorkflowStore } from '../lib/store';
+
+interface BlockPosition {
+  x: number;
+  y: number;
+}
+
+interface BlockData {
+  id: string;
+  name?: string;
+  description?: string;
+  position: BlockPosition;
+  size?: { width?: number; height?: number };
+  triggerConfig: { type: string;[key: string]: any };
+  waitConfig: { type: string;[key: string]: any };
+  [key: string]: any;
+}
+
+interface UseAgentBlockNodeProps {
+  block: BlockData;
+  isSelected: boolean;
+  isMultiSelected?: boolean | undefined;
+}
+
+export const useAgentBlockNode = ({ block, isSelected, isMultiSelected }: UseAgentBlockNodeProps) => {
+  const { setSelectedElementId } = useBuilderStore();
+  const nodeStates = useWorkflowStore((state: any) => state.nodeStates);
+  const rawStatus = nodeStates[block.id] || 'idle';
+  const status = rawStatus === 'completed' ? 'success' : rawStatus === 'stuck_debugger' ? 'error' : rawStatus;
+  const blockW = block.size?.width || 260;
+  const blockH = block.size?.height || 150;
+
+  // Accessible Depth Design: Elevated 3D look with custom shadow states
+  let borderClasses = 'border-[#3e3e3e] bg-[#242424] shadow-[0_12px_30px_rgba(0,0,0,0.5)] hover:shadow-[0_20px_45px_rgba(0,0,0,0.7)] hover:-translate-y-1 hover:scale-[1.01] z-10';
+  let pulseClass = '';
+
+  if (block.isGroupOutput) {
+    if (isSelected) {
+      borderClasses = 'border-[#A259FF] bg-[#242424] shadow-[0_15px_40px_rgba(162,89,255,0.35)] scale-[1.01] -translate-y-0.5 z-50';
+    } else if (isMultiSelected === true) {
+      borderClasses = 'border-dashed border-2 border-[#DEF767] bg-[#242424] shadow-[0_10px_25px_rgba(222,247,103,0.15)] z-40';
+    } else if (status === 'running') {
+      borderClasses = 'border-[#A259FF] bg-[#242424] shadow-[0_0_30px_rgba(162,89,255,0.3)] scale-[1.01] -translate-y-0.5 z-40';
+      pulseClass = 'animate-pulse';
+    } else if (status === 'success') {
+      borderClasses = 'border-[#5b8a62] bg-[#242424] shadow-[0_12px_30px_rgba(0,0,0,0.5),0_0_20px_rgba(91,138,98,0.15)] z-30';
+    } else if (status === 'error') {
+      borderClasses = 'border-[#ff6a6a] bg-[#242424] shadow-[0_15px_40px_rgba(255,106,106,0.15)] z-30';
+    } else {
+      borderClasses = 'border-[#A259FF] bg-[#242424] shadow-[0_12px_30px_rgba(162,89,255,0.15)] z-20';
+    }
+  } else {
+    if (isSelected) {
+      borderClasses = 'border-[#DEF767] bg-[#242424] shadow-[0_15px_40px_rgba(222,247,103,0.2)] scale-[1.01] -translate-y-0.5 z-50';
+    } else if (isMultiSelected === true) {
+      borderClasses = 'border-dashed border-2 border-[#DEF767] bg-[#242424] shadow-[0_10px_25px_rgba(222,247,103,0.15)] z-40';
+    } else if (status === 'running') {
+      borderClasses = 'border-white bg-[#242424] shadow-[0_0_30px_rgba(255,255,255,0.25)] scale-[1.01] -translate-y-0.5 z-40';
+      pulseClass = 'animate-pulse';
+    } else if (status === 'success') {
+      borderClasses = 'border-[#5b8a62] bg-[#242424] shadow-[0_12px_30px_rgba(0,0,0,0.5),0_0_20px_rgba(91,138,98,0.15)] z-30';
+    } else if (status === 'error') {
+      borderClasses = 'border-[#ff6a6a] bg-[#242424] shadow-[0_15px_40px_rgba(255,106,106,0.15)] z-30';
+    }
+  }
+
+  const handleNodeClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (e.shiftKey || e.ctrlKey || e.metaKey) {
+      return;
+    }
+    setSelectedElementId(block.id);
+  };
+
+  return {
+    blockW,
+    blockH,
+    borderClasses,
+    pulseClass,
+    handleNodeClick,
+  };
+};
 
 ```
 
@@ -12377,6 +12075,7 @@ export default ToolDock;
 ```tsx
 import { Webhook, Link2 } from 'lucide-react';
 import { useBuilderStore } from '../lib/builderStore';
+import { useWorkflowStore } from '../lib/store';
 
 interface BlockData {
   id: string;
@@ -12394,26 +12093,33 @@ interface BlockData {
 interface WebhookBlockNodeProps {
   block: BlockData;
   isSelected: boolean;
+  isTopologyLocked?: boolean;
+  isMultiSelected?: boolean;
 }
 
-const WebhookBlockNode = ({ block, isSelected }: WebhookBlockNodeProps) => {
-  const { setSelectedElementId, nodeStatus } = useBuilderStore();
-  const status = nodeStatus[block.id] || 'idle';
+const WebhookBlockNode = ({ block, isSelected, isTopologyLocked, isMultiSelected }: WebhookBlockNodeProps) => {
+  const { setSelectedElementId } = useBuilderStore();
+  const nodeStates = useWorkflowStore((state: any) => state.nodeStates);
+  const rawStatus = nodeStates[block.id] || 'idle';
+  const status = rawStatus === 'completed' ? 'success' : rawStatus === 'stuck_debugger' ? 'error' : rawStatus;
   const blockW = block.size?.width || 260;
   const blockH = block.size?.height || 150;
 
-  let borderClasses = 'border-[#46B1FF]/20 bg-[#0d1520] hover:border-[#46B1FF]/50 shadow-xl z-10';
+  // Accessible Depth Design: Elevated 3D look with custom shadow states
+  let borderClasses = 'border-[#3e3e3e] bg-[#242424] shadow-[0_12px_30px_rgba(0,0,0,0.5)] hover:shadow-[0_20px_45px_rgba(0,0,0,0.7)] hover:-translate-y-1 hover:scale-[1.01] z-10';
   let pulseClass = '';
 
   if (isSelected) {
-    borderClasses = 'border-[#46B1FF] bg-[#111d2e] shadow-[0_0_30px_rgba(70,177,255,0.4)] z-50';
+    borderClasses = 'border-[#DEF767] bg-[#242424] shadow-[0_15px_40px_rgba(222,247,103,0.2)] scale-[1.01] -translate-y-0.5 z-50';
+  } else if (isMultiSelected) {
+    borderClasses = 'border-dashed border-2 border-[#DEF767] bg-[#242424] shadow-[0_10px_25px_rgba(222,247,103,0.15)] z-40';
   } else if (status === 'running') {
-    borderClasses = 'border-[#F6E27F] bg-[#181824] shadow-[0_0_30px_rgba(246,226,127,0.4)] z-40';
+    borderClasses = 'border-white bg-[#242424] shadow-[0_0_30px_rgba(255,255,255,0.25)] scale-[1.01] -translate-y-0.5 z-40';
     pulseClass = 'animate-pulse';
   } else if (status === 'success') {
-    borderClasses = 'border-[#DEF767] bg-[#0d1520] shadow-[0_0_20px_rgba(222,247,103,0.2)] z-30';
+    borderClasses = 'border-[#5b8a62] bg-[#242424] shadow-[0_12px_30px_rgba(0,0,0,0.5),0_0_20px_rgba(91,138,98,0.15)] z-30';
   } else if (status === 'error') {
-    borderClasses = 'border-[#ff4b4b] bg-[#0d1520] shadow-[0_0_20px_rgba(255,75,75,0.2)] z-30';
+    borderClasses = 'border-[#ff6a6a] bg-[#242424] shadow-[0_15px_40px_rgba(255,106,106,0.15)] z-30';
   }
 
   return (
@@ -12421,72 +12127,75 @@ const WebhookBlockNode = ({ block, isSelected }: WebhookBlockNodeProps) => {
     <div
       onClick={(e) => {
         e.stopPropagation();
+        if (e.shiftKey || e.ctrlKey || e.metaKey) {
+          return;
+        }
         setSelectedElementId(block.id);
       }}
-      className={`absolute border rounded-3xl p-5 transition-all n8n-node overflow-visible group cursor-pointer ${borderClasses} ${pulseClass}`}
+      className={`absolute border rounded-3xl p-5 transition-all duration-300 ease-out n8n-node overflow-visible group cursor-pointer font-sans ${borderClasses} ${pulseClass}`}
       style={{
-        left: block.position.x,
-        top: block.position.y,
-        width: blockW,
-        minHeight: blockH,
+        left: Math.round(block.position.x),
+        top: Math.round(block.position.y),
+        width: Math.round(blockW),
+        minHeight: Math.round(blockH),
       }}
     >
       {/* Port - Input */}
       <div
-        className="absolute w-4 h-4 bg-[#0d1520] border-2 border-[#46B1FF] rounded-full left-1/2 -translate-x-1/2 -top-2 z-20 hover:scale-[2] hover:bg-[#46B1FF] transition-all cursor-crosshair connection-port"
+        className="absolute w-3.5 h-3.5 bg-[#181818] border border-[#5b5b5b] hover:border-[#DEF767] hover:bg-[#DEF767] rounded-full left-1/2 -translate-x-1/2 -top-1.5 z-20 transition-colors duration-150 cursor-crosshair connection-port"
         data-port-id={block.id}
         data-port-position="top"
       />
 
       {/* Header */}
-      <div className="flex items-start justify-between mb-4 pb-3">
+      <div className="flex items-start justify-between mb-4 pb-3 border-b border-[#3e3e3e] w-full">
         <div className="flex items-center gap-3">
-          <div className="p-1.5 rounded-lg bg-gradient-to-br from-[#46B1FF] to-[#1a6db0] text-white shadow-lg">
+          <div className="p-1.5 rounded-lg bg-[#1a1a1a] border border-[#3e3e3e] text-[#DEF767]">
             <Webhook size={14} />
           </div>
-          <h3 className="text-[14px] font-bold text-white tracking-wide truncate max-w-[150px]">
+          <h3 className="text-[14px] font-bold text-white tracking-wide truncate max-w-[150px] font-sans">
             {block.name || 'Webhook Bridge'}
           </h3>
         </div>
       </div>
 
       {/* Body */}
-      <p className="text-[11px] text-slate-400 line-clamp-2 min-h-[32px] font-secondary mb-3 leading-relaxed">
+      <p className="text-[11px] text-zinc-300 line-clamp-2 min-h-[32px] font-sans mb-3 leading-relaxed w-full">
         {block.description || 'Links to another workflow...'}
       </p>
 
       {/* Linked Sequence Badge */}
-      <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-[#46B1FF]/10 border border-[#46B1FF]/20 mb-3">
-        <Link2 size={12} className="text-[#46B1FF]" />
-        <span className="text-[10px] font-bold text-[#46B1FF] uppercase tracking-wider truncate">
+      <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-[#1a1a1a] border border-[#3e3e3e] mb-3 w-full">
+        <Link2 size={12} className="text-[#DEF767]" />
+        <span className="text-[10px] font-bold text-[#DEF767] uppercase tracking-wider truncate font-sans">
           {block.linkedSequenceName || 'No workflow linked'}
         </span>
       </div>
 
       {/* Footer Details */}
-      <div className="flex items-center justify-between mt-auto pt-3 border-t border-[#46B1FF]/10 text-[10px] text-slate-300 font-bold uppercase tracking-widest">
-        <div className="flex items-center gap-1.5 bg-[#46B1FF]/10 px-2.5 py-1.5 rounded-md">
-          <Webhook size={10} className="text-[#46B1FF]" /> Bridge
+      <div className="flex items-center justify-between mt-auto pt-3 border-t border-[#3e3e3e] text-[10px] text-zinc-400 font-bold uppercase tracking-widest font-sans w-full">
+        <div className="flex items-center gap-1.5 bg-[#1a1a1a] border border-[#3e3e3e] px-2.5 py-1.5 rounded-md">
+          <Webhook size={10} className="text-[#DEF767]" /> Bridge
         </div>
       </div>
 
       {/* Port - Output (Bottom) */}
       <div
-        className="absolute w-4 h-4 bg-[#0d1520] border-2 border-[#46B1FF] rounded-full left-1/2 -translate-x-1/2 -bottom-2 z-20 hover:scale-150 hover:bg-[#46B1FF] transition-all cursor-crosshair connection-port"
+        className="absolute w-3.5 h-3.5 bg-[#181818] border border-[#5b5b5b] hover:border-[#DEF767] hover:bg-[#DEF767] rounded-full left-1/2 -translate-x-1/2 -bottom-1.5 z-20 transition-colors duration-150 cursor-crosshair connection-port"
         data-port-id={block.id}
         data-port-position="bottom"
       />
 
       {/* Port - Left */}
       <div
-        className="absolute w-4 h-4 bg-[#0d1520] border-2 border-[#46B1FF] rounded-full -left-2 top-1/2 -translate-y-1/2 z-20 hover:scale-150 hover:bg-[#46B1FF] transition-all cursor-crosshair connection-port"
+        className="absolute w-3.5 h-3.5 bg-[#181818] border border-[#5b5b5b] hover:border-[#DEF767] hover:bg-[#DEF767] rounded-full -left-1.5 top-1/2 -translate-y-1/2 z-20 transition-colors duration-150 cursor-crosshair connection-port"
         data-port-id={block.id}
         data-port-position="left"
       />
 
       {/* Port - Right */}
       <div
-        className="absolute w-4 h-4 bg-[#0d1520] border-2 border-[#46B1FF] rounded-full -right-2 top-1/2 -translate-y-1/2 z-20 hover:scale-150 hover:bg-[#46B1FF] transition-all cursor-crosshair connection-port"
+        className="absolute w-3.5 h-3.5 bg-[#181818] border border-[#5b5b5b] hover:border-[#DEF767] hover:bg-[#DEF767] rounded-full -right-1.5 top-1/2 -translate-y-1/2 z-20 transition-colors duration-150 cursor-crosshair connection-port"
         data-port-id={block.id}
         data-port-position="right"
       />
@@ -12494,17 +12203,947 @@ const WebhookBlockNode = ({ block, isSelected }: WebhookBlockNodeProps) => {
       {/* Resize Handle */}
       {/* eslint-disable-next-line */}
       <div
-        className="resize-handle absolute bottom-0 right-0 w-5 h-5 cursor-nwse-resize opacity-0 group-hover:opacity-100 transition-opacity z-30"
-        style={{
-          background: 'linear-gradient(135deg, transparent 50%, rgba(70,177,255,0.5) 50%)',
-          borderRadius: '0 0 12px 0',
-        }}
-      />
+        className="resize-handle absolute bottom-0 right-0 w-6 h-6 cursor-nwse-resize opacity-0 group-hover:opacity-100 transition-opacity z-30 flex items-end justify-end p-1.5"
+      >
+        <div className="w-2.5 h-2.5 border-r-2 border-b-2 border-[#5b5b5b] group-hover:border-[#DEF767] transition-colors pointer-events-none" />
+      </div>
     </div>
   );
 };
 
 export default WebhookBlockNode;
+
+```
+
+---
+
+## `src\components\Engine\ApiKeyModal.tsx`
+
+```tsx
+import React, { useState } from 'react';
+import { Eye, EyeOff, ShieldCheck, Globe, Info as InfoIcon } from 'lucide-react';
+import { useToastStore } from '../../lib/toastStore';
+import { supabase } from '../../lib/supabaseClient';
+import type { ApiKeyModalType } from '../../types/engine';
+
+interface ApiKeyModalProps {
+  type: ApiKeyModalType;
+  onClose: () => void;
+  onSaved: () => void;
+}
+
+const titles: Record<ApiKeyModalType, string> = {
+  NO_KEY: 'API Key Required',
+  INVALID_KEY: 'Invalid API Key',
+  RATE_LIMIT: 'Rate Limit Reached'
+};
+
+const descriptions: Record<ApiKeyModalType, string> = {
+  NO_KEY: 'An API key is required to orchestrate this neural sequence. Choose how you want to store it.',
+  INVALID_KEY: 'The provided key was rejected by the provider. Please enter a valid OpenRouter or LLM API key.',
+  RATE_LIMIT: 'The current key is being rate limited. You can wait or provide a new key for this project.'
+};
+
+export default function ApiKeyModal({ type, onClose, onSaved }: ApiKeyModalProps) {
+  const [key, setKey] = useState('');
+  const [scope, setScope] = useState<'project' | 'global'>('project');
+  const [showKey, setShowKey] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const addToast = useToastStore(s => s.addToast);
+
+  const handleSave = async () => {
+    if (!key.trim()) return;
+    setSaving(true);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+
+      const seqId = localStorage.getItem('active_sequence_id');
+      const endpoint = scope === 'project' ? '/api/keys/save-project' : '/api/keys/save';
+      const payload = scope === 'project'
+        ? { userId: session.user.id, sequenceId: seqId, apiKey: key.trim() }
+        : { userId: session.user.id, apiKey: key.trim() };
+
+      const API_BASE = import.meta.env.PROD ? '' : 'http://localhost:3001';
+      const res = await fetch(`${API_BASE}${endpoint}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) throw new Error('Failed to save key');
+
+      addToast('success', `API Key saved ${scope === 'project' ? 'for this project' : 'globally'}`);
+      onSaved();
+    } catch (err: any) {
+      addToast('error', err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-6 pointer-events-auto">
+      <div
+        onClick={onClose}
+        className="absolute inset-0 bg-black/80 backdrop-blur-sm pointer-events-auto"
+      />
+
+      <div className="relative w-full max-w-md bg-[#0a0a0f] border border-white/10 rounded-[32px] p-8 shadow-[0_40px_100px_rgba(0,0,0,0.8)] overflow-hidden pointer-events-auto">
+        <div className="absolute -top-24 -right-24 w-48 h-48 bg-[#A259FF]/20 blur-[60px] rounded-full" />
+
+        <div className="relative z-10">
+          <div className="flex items-center gap-4 mb-6">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#A259FF] to-[#46B1FF] flex items-center justify-center text-white shadow-lg">
+              <ShieldCheck size={24} />
+            </div>
+            <div>
+              <h3 className="text-xl font-black text-white font-display tracking-tight">{titles[type]}</h3>
+              <p className="text-xs text-slate-500 font-medium">Neural Conductor Authentication</p>
+            </div>
+          </div>
+
+          <p className="text-sm text-slate-400 leading-relaxed mb-8">
+            {descriptions[type]}
+          </p>
+
+          <div className="space-y-6">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">API Key</label>
+              <div className="relative group">
+                <input
+                  type={showKey ? 'text' : 'password'}
+                  value={key}
+                  onChange={(e) => setKey(e.target.value)}
+                  placeholder="sk-or-v1-..."
+                  className="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-4 pl-5 pr-12 text-sm text-white focus:border-[#A259FF]/50 outline-none transition-all placeholder:text-slate-700"
+                />
+                <button
+                  onClick={() => setShowKey(!showKey)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-600 hover:text-white transition-colors"
+                  title={showKey ? 'Hide key' : 'Show key'}
+                  aria-label={showKey ? 'Hide key' : 'Show key'}
+                >
+                  {showKey ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => setScope('project')}
+                className={`flex flex-col items-center gap-2 p-4 rounded-2xl border transition-all ${scope === 'project'
+                    ? 'bg-[#A259FF]/10 border-[#A259FF]/40 text-white'
+                    : 'bg-white/[0.02] border-white/5 text-slate-500 hover:border-white/10'
+                  }`}
+              >
+                <ShieldCheck size={20} className={scope === 'project' ? 'text-[#A259FF]' : ''} />
+                <span className="text-[10px] font-black uppercase tracking-wider">Project Only</span>
+              </button>
+              <button
+                onClick={() => setScope('global')}
+                className={`flex flex-col items-center gap-2 p-4 rounded-2xl border transition-all ${scope === 'global'
+                    ? 'bg-[#46B1FF]/10 border-[#46B1FF]/40 text-white'
+                    : 'bg-white/[0.02] border-white/5 text-slate-500 hover:border-white/10'
+                  }`}
+              >
+                <Globe size={20} className={scope === 'global' ? 'text-[#46B1FF]' : ''} />
+                <span className="text-[10px] font-black uppercase tracking-wider">Global Use</span>
+              </button>
+            </div>
+
+            <div className="flex items-center gap-3 bg-white/[0.02] p-4 rounded-2xl border border-white/5">
+              <InfoIcon size={16} className="text-slate-600 shrink-0" />
+              <p className="text-[10px] text-slate-500 leading-normal">
+                {scope === 'project'
+                  ? 'Project keys are encrypted and stored specifically for this neural sequence.'
+                  : 'Global keys are saved to your profile and used as a fallback for all your sequences.'}
+              </p>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={onClose}
+                className="flex-1 py-4 rounded-2xl border border-white/10 text-xs font-black uppercase tracking-widest text-slate-400 hover:bg-white/5 transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={saving || !key.trim()}
+                className="flex-[2] py-4 rounded-2xl bg-white text-black text-xs font-black uppercase tracking-widest hover:bg-[#DEF767] transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-xl active:scale-95"
+              >
+                {saving ? (
+                  <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  'Authorize Access'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+```
+
+---
+
+## `src\components\Engine\EngineModalStack.tsx`
+
+```tsx
+import React from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { FileText } from 'lucide-react';
+import type { ApiKeyModalType, TokenLimitModalState } from '../../types/engine';
+import OutputScreen from '../OutputScreen';
+import ApiKeyModal from './ApiKeyModal';
+
+interface EngineModalStackProps {
+  showOutputButton: boolean;
+  onOpenOutputScreen: () => void;
+  showOutputScreen: boolean;
+  onCloseOutputScreen: () => void;
+  phaseOutputModal: string | null;
+  onClosePhaseOutput: () => void;
+  tokenLimitModal: TokenLimitModalState | null;
+  onDismissTokenLimit: () => void;
+  onSwitchApiKey: () => void;
+  showKeyModal: boolean;
+  keyModalType: ApiKeyModalType;
+  onCloseKeyModal: () => void;
+  onSavedKeyModal: () => void;
+}
+
+export default function EngineModalStack({
+  showOutputButton,
+  onOpenOutputScreen,
+  showOutputScreen,
+  onCloseOutputScreen,
+  phaseOutputModal,
+  onClosePhaseOutput,
+  tokenLimitModal,
+  onDismissTokenLimit,
+  onSwitchApiKey,
+  showKeyModal,
+  keyModalType,
+  onCloseKeyModal,
+  onSavedKeyModal,
+}: EngineModalStackProps) {
+  return (
+    <>
+      {showOutputButton && (
+        <button
+          onClick={onOpenOutputScreen}
+          className="fixed bottom-6 right-6 z-[60] flex items-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-[#DEF767] to-[#A3E636] text-black text-xs font-black uppercase tracking-widest shadow-xl shadow-[#DEF767]/20 hover:scale-105 transition-transform"
+        >
+          <FileText size={16} /> Full Report
+        </button>
+      )}
+
+      {phaseOutputModal && (
+        <OutputScreen
+          isOpen={true}
+          onClose={onClosePhaseOutput}
+          phaseFilter={phaseOutputModal}
+        />
+      )}
+
+      <OutputScreen isOpen={showOutputScreen} onClose={onCloseOutputScreen} />
+
+      <AnimatePresence>
+        {tokenLimitModal?.show && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-md pointer-events-auto"
+          >
+            <motion.div
+              initial={{ scale: 0.85, opacity: 0, y: 30 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              transition={{ type: 'spring', damping: 22, stiffness: 300 }}
+              className="relative w-[480px] max-w-[92vw] bg-[#0d0d15] border border-[#F6E27F]/25 rounded-3xl shadow-[0_40px_120px_rgba(246,226,127,0.15)] overflow-hidden pointer-events-auto"
+            >
+              <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#F6E27F] to-transparent pointer-events-none" />
+              <div className="p-8">
+                <div className="flex items-start gap-4 mb-6">
+                  <div className="w-12 h-12 rounded-2xl bg-[#F6E27F]/10 border border-[#F6E27F]/20 flex items-center justify-center flex-shrink-0 shadow-[0_0_24px_rgba(246,226,127,0.2)]">
+                    <span className="text-2xl">⚠️</span>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#F6E27F] mb-1">Context Window Exceeded</p>
+                    <h2 className="text-2xl font-black text-white font-display leading-tight">Token Limit Reached</h2>
+                  </div>
+                </div>
+
+                <div className="bg-white/[0.03] border border-white/5 rounded-2xl p-4 mb-5 space-y-2 pointer-events-none">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[11px] text-slate-500 uppercase tracking-widest font-bold">Model</span>
+                    <span className="text-sm text-white font-mono bg-white/5 px-3 py-1 rounded-lg">{tokenLimitModal.model}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-[11px] text-slate-500 uppercase tracking-widest font-bold">Provider</span>
+                    <span className="text-sm text-[#46B1FF] font-bold">{tokenLimitModal.provider}</span>
+                  </div>
+                </div>
+
+                <p className="text-sm text-slate-400 leading-relaxed mb-6">
+                  The input sent to this model exceeded its maximum context window. The pipeline has been paused at this node. You can shorten your prompt, switch to a model with a larger context window, or dismiss and continue.
+                </p>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={onDismissTokenLimit}
+                    className="flex-1 py-3.5 rounded-2xl bg-white/5 border border-white/10 text-sm font-bold text-slate-300 hover:bg-white/10 hover:text-white transition-all uppercase tracking-widest pointer-events-auto"
+                  >
+                    Dismiss
+                  </button>
+                  <button
+                    onClick={onSwitchApiKey}
+                    className="flex-[1.5] py-3.5 rounded-2xl bg-gradient-to-r from-[#F6E27F] to-[#DEF767] text-black text-sm font-black uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all shadow-[0_8px_30px_rgba(246,226,127,0.3)] pointer-events-auto"
+                  >
+                    Switch API Key
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showKeyModal && (
+          <ApiKeyModal
+            type={keyModalType}
+            onClose={onCloseKeyModal}
+            onSaved={onSavedKeyModal}
+          />
+        )}
+      </AnimatePresence>
+    </>
+  );
+}
+
+```
+
+---
+
+## `src\components\Engine\EngineStatusView.tsx`
+
+```tsx
+import React from 'react';
+import { AlertTriangle } from 'lucide-react';
+import type { GraphStatus } from '../../types/engine';
+
+interface EngineStatusViewProps {
+  graphStatus: GraphStatus;
+  initError: string | null;
+  layout: Record<string, any> | null;
+}
+
+export default function EngineStatusView({ graphStatus, initError, layout }: EngineStatusViewProps) {
+  if (graphStatus === 'error') {
+    return (
+      <div className="h-screen w-screen flex flex-col items-center justify-center bg-[#0a0a10] text-slate-200 relative p-6">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,106,106,0.03)_0%,transparent_70%)] pointer-events-none" />
+
+        <div className="relative flex flex-col items-center bg-[#0d0d15] border border-[#ff6a6a]/20 p-10 rounded-[32px] shadow-[0_40px_100px_rgba(0,0,0,0.8)] overflow-hidden max-w-md w-full text-center">
+          <div className="absolute -top-24 -right-24 w-48 h-48 bg-[#ff6a6a]/10 blur-[60px] rounded-full pointer-events-none" />
+
+          <div className="w-16 h-16 rounded-2xl bg-[#ff6a6a]/10 border border-[#ff6a6a]/20 flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(255,106,106,0.15)] pointer-events-none">
+            <AlertTriangle className="text-[#ff6a6a]" size={28} />
+          </div>
+
+          <div className="text-[#ff6a6a] font-black tracking-[0.25em] text-[10px] uppercase mb-2">
+            CRITICAL SYSTEM HALT
+          </div>
+
+          <h2 className="text-2xl font-black text-white uppercase tracking-wider font-display mb-4">
+            Graph Validation Failed
+          </h2>
+
+          <div className="w-12 h-0.5 bg-white/10 my-4" />
+
+          <p className="text-slate-400 text-xs font-mono bg-white/[0.02] border border-white/5 p-4 rounded-xl w-full break-all leading-relaxed">
+            {initError}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!layout) {
+    return (
+      <div className="h-screen w-screen bg-[#0a0a10] flex flex-col items-center justify-center relative p-6">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(162,89,255,0.03)_0%,transparent_70%)] pointer-events-none" />
+
+        <div className="relative flex flex-col items-center bg-[#0d0d15] border border-white/10 p-10 rounded-[32px] shadow-[0_40px_100px_rgba(0,0,0,0.8)] overflow-hidden max-w-sm w-full text-center">
+          <div className="relative w-16 h-16 mb-6">
+            <div className="absolute inset-0 rounded-full border-4 border-white/5" />
+            <div className="absolute inset-0 rounded-full border-4 border-[#A259FF] border-t-transparent animate-spin" />
+          </div>
+
+          <div className="text-[#A259FF] font-black tracking-[0.25em] text-[10px] uppercase mb-2">
+            INITIALIZING CANVAS
+          </div>
+
+          <h2 className="text-xl font-black text-white uppercase tracking-wider font-display mb-4">
+            Loading Neural Pipeline
+          </h2>
+
+          <div className="w-12 h-0.5 bg-white/10 my-2" />
+
+          <p className="text-slate-500 text-xs mt-2">
+            Connecting node matrices and building visual canvas layers...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return null;
+}
+
+```
+
+---
+
+## `src\components\Engine\PhaseTransitionOverlay.tsx`
+
+```tsx
+import React from 'react';
+import { Sparkles } from 'lucide-react';
+import type { PhaseOverlayState } from '../../types/engine';
+
+interface PhaseTransitionOverlayProps {
+  phaseOverlay: PhaseOverlayState | null;
+}
+
+export default function PhaseTransitionOverlay({ phaseOverlay }: PhaseTransitionOverlayProps) {
+  if (!phaseOverlay) return null;
+
+  return (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-md pointer-events-auto">
+      <div className="relative flex flex-col items-center bg-[#0a0a0f] border border-white/10 p-10 rounded-[32px] shadow-[0_40px_100px_rgba(0,0,0,0.8)] overflow-hidden max-w-md w-full animate-fade-in-up text-center">
+        <div className="absolute -top-24 -right-24 w-48 h-48 bg-[#DEF767]/10 blur-[60px] rounded-full pointer-events-none" />
+
+        <div className="w-16 h-16 rounded-2xl bg-[#DEF767]/10 border border-[#DEF767]/20 flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(222,247,103,0.15)] pointer-events-none">
+          <Sparkles className="text-[#DEF767]" size={28} />
+        </div>
+
+        <div className="text-[#DEF767] font-black tracking-[0.25em] text-[10px] uppercase mb-2">
+          PHASE {phaseOverlay.phase} COMPLETE
+        </div>
+
+        <h2 className="text-2xl font-black text-white uppercase tracking-wider font-display mb-4">
+          {phaseOverlay.phaseName}
+        </h2>
+
+        <div className="w-12 h-0.5 bg-white/10 my-4" />
+
+        <div className="text-slate-400 text-xs tracking-widest uppercase font-bold">
+          Initializing {phaseOverlay.nextPhaseName}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+```
+
+---
+
+## `src\components\Engine\PipelineSidebar.tsx`
+
+```tsx
+import React from 'react';
+import { TOOL_REGISTRY } from '../../data/schema';
+import type { WorkflowNodeResults } from '../../types/engine';
+
+interface PipelineSidebarProps {
+  selectedNodeId: string | null;
+  layout: Record<string, any>;
+  nodeResults: WorkflowNodeResults;
+  onClose: () => void;
+}
+
+export default function PipelineSidebar({ selectedNodeId, layout, nodeResults, onClose }: PipelineSidebarProps) {
+  if (!selectedNodeId) return null;
+
+  const selectedNode = layout[selectedNodeId];
+  const nodeDetails = selectedNode?.category || {};
+
+  const renderPipelineSidebarContent = () => {
+    if (nodeResults && nodeResults[selectedNodeId]?.ui) {
+      const safeHtml = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <style>
+              body { margin: 0; padding: 0; background: transparent; color-scheme: dark; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+              ::-webkit-scrollbar { width: 6px; height: 6px; }
+              ::-webkit-scrollbar-track { background: transparent; }
+              ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+              ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+            </style>
+          </head>
+          <body>
+            ${nodeResults[selectedNodeId].ui}
+          </body>
+        </html>
+      `;
+
+      return (
+        <div className="flex-1 w-full relative h-[600px]">
+          <iframe
+            srcDoc={safeHtml}
+            className="w-full h-full border-0 bg-transparent rounded-2xl"
+            sandbox="allow-scripts"
+            title="Agent Output"
+          />
+        </div>
+      );
+    }
+
+    return (
+      <div className="flex-1 mt-4">
+        <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.05] mb-8 shadow-inner">
+          <p className="text-sm text-slate-400 leading-relaxed font-light">{nodeDetails.description}</p>
+        </div>
+
+        <span className="text-[10px] text-[#A259FF] uppercase font-bold tracking-widest mb-4 block">Recommended External APIs</span>
+        <div className="flex flex-col gap-3">
+          {nodeDetails.tools?.map((tid: string) => {
+            const toolInfo = (TOOL_REGISTRY as any)[tid];
+            return (
+              <div key={tid} className="bg-gradient-to-r from-white/[0.03] to-transparent border border-white/[0.05] p-4 rounded-xl cursor-default transition-all group">
+                <div className="flex justify-between items-start mb-1">
+                  <strong className="text-slate-200 text-sm tracking-wide group-hover:text-[#46B1FF] transition-colors">{toolInfo?.name || tid.toUpperCase()}</strong>
+                  {toolInfo?.pricing && (
+                    <span className="text-[9px] bg-black/40 border border-white/10 text-slate-400 px-2.5 py-0.5 rounded-md uppercase tracking-wider">{toolInfo.pricing}</span>
+                  )}
+                </div>
+                <p className="text-xs text-slate-500 line-clamp-2 mt-2 leading-relaxed">{toolInfo?.description}</p>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="mt-12 flex justify-center pb-8 border-b border-white/[0.02]">
+          <p className="text-[9px] text-slate-600 uppercase tracking-widest text-center px-4">Execute AI Pipeline Phase to generate dynamic output for this node.</p>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className={`absolute right-0 top-0 h-full w-[460px] bg-[#0c0c14]/60 backdrop-blur-2xl border-l border-white/5 p-0 shadow-2xl transition-transform duration-500 z-50 flex flex-col ${selectedNodeId ? 'translate-x-0' : 'translate-x-full'}`}>
+      <div className="flex justify-between items-center p-6 border-b border-white/[0.04] bg-black/40">
+        <div>
+          <h2 className="font-bold text-[10px] uppercase tracking-widest text-[#46B1FF] mb-1">Delivered Asset Output</h2>
+          <span className="text-white font-black tracking-wide font-display text-lg">
+            {selectedNodeId.startsWith('sticky-') ? 'Sticky Note insight' : nodeDetails.name}
+          </span>
+        </div>
+        <button onClick={onClose} className="p-2 bg-white/5 rounded-full text-slate-500 hover:text-white hover:bg-white/10 transition-colors">✕</button>
+      </div>
+
+      <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
+        {selectedNodeId ? (
+          <div className="animate-fade-in flex flex-col h-full">
+            {renderPipelineSidebarContent()}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+```
+
+---
+
+## `src\components\Engine\PromptBar.tsx`
+
+```tsx
+import React from 'react';
+import { Activity, Paperclip, Folder, X, Play, FileText, Key } from 'lucide-react';
+import type { ApiKeyModalType, KeyInfoState, SequenceAttachment, GraphStatus, TokenLimitModalState } from '../../types/engine';
+import { WORKFLOW_PHASES } from '../../data/schema';
+import { useBuilderStore } from '../../lib/builderStore';
+
+interface PromptBarProps {
+  projectPrompt: string;
+  setProjectPrompt: (prompt: string) => void;
+  projectAttachment: SequenceAttachment | null;
+  setProjectAttachment: (attachment: SequenceAttachment | null) => void;
+  graphStatus: GraphStatus;
+  addToast: (type: 'info' | 'success' | 'warning' | 'error', message: string) => void;
+  runFullPipeline: () => void;
+  showKeyModal: boolean;
+  setShowKeyModal: (show: boolean) => void;
+  setKeyModalType: (type: ApiKeyModalType) => void;
+  keyInfo: KeyInfoState;
+  fileInputRef: React.RefObject<HTMLInputElement | null>;
+  completedPhases: string[];
+  runningPhaseId: string | null;
+  setPhaseOutputModal: (phaseId: string | null) => void;
+  runPhase?: (phaseId: string) => void;
+  tokenLimitModal: TokenLimitModalState | null;
+}
+
+export default function PromptBar({
+  projectPrompt,
+  setProjectPrompt,
+  projectAttachment,
+  setProjectAttachment,
+  graphStatus,
+  addToast,
+  runFullPipeline,
+  setShowKeyModal,
+  setKeyModalType,
+  keyInfo,
+  fileInputRef,
+  completedPhases,
+  runningPhaseId,
+  setPhaseOutputModal,
+  runPhase = () => {},
+  tokenLimitModal,
+}: PromptBarProps) {
+  const { groups, runningGroupId, completedGroupIds } = useBuilderStore();
+  return (
+    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[60] w-full max-w-5xl px-8 pointer-events-none">
+      <div className="flex flex-col items-center gap-2 pointer-events-auto bg-[#0a0a0f]/80 backdrop-blur-3xl border border-white/10 rounded-[32px] p-5 shadow-[0_30px_60px_rgba(0,0,0,0.8)]">
+        <div className="flex items-center gap-4 w-full">
+          <div className="flex-1 relative group">
+            <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-slate-500 group-focus-within:text-[#46B1FF] transition-colors">
+              <Activity size={18} />
+            </div>
+            <input
+              value={projectPrompt}
+              onChange={(e) => setProjectPrompt(e.target.value)}
+              placeholder="Orchestrate your objective... (e.g. Design a technical whitepaper for a DeFi protocol)"
+              className="w-full bg-black/60 border border-white/5 rounded-[20px] py-4 pl-12 pr-6 outline-none focus:border-[#46B1FF]/40 transition-all text-white text-sm shadow-inner placeholder:text-slate-600 font-secondary"
+              disabled={graphStatus === 'running'}
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".txt,.md,.json,.pdf"
+              className="hidden"
+              title="Upload attachment"
+              aria-label="Upload attachment"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (ev: any) => {
+                  const content = ev.target.result as string;
+                  setProjectAttachment({ name: file.name, content, type: file.type });
+
+                  let extractedPrompt = '';
+                  if (file.type === 'application/json' || file.name.endsWith('.json')) {
+                    try {
+                      const json = JSON.parse(content);
+                      extractedPrompt = json.title || json.description || json.prompt || json.name || '';
+                      if (!extractedPrompt && typeof json === 'object') {
+                        extractedPrompt = JSON.stringify(json).substring(0, 200);
+                      }
+                    } catch {
+                      extractedPrompt = content.split('\n').find((l: string) => l.trim().length > 0) || '';
+                    }
+                  } else {
+                    const lines = content
+                      .split('\n')
+                      .map((l: string) => l.replace(/^#+\s*/, '').trim())
+                      .filter((l: string) => l.length > 0);
+                    extractedPrompt = lines[0] || '';
+                  }
+
+                  if (extractedPrompt) {
+                    setProjectPrompt(extractedPrompt.substring(0, 200));
+                  }
+
+                  addToast('success', `File "${file.name}" loaded — prompt auto-filled from content`);
+                };
+                reader.readAsText(file);
+                e.target.value = '';
+              }}
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={graphStatus === 'running'}
+              className="w-14 h-14 rounded-[20px] bg-white/[0.03] border border-white/5 text-slate-400 hover:text-[#46B1FF] hover:border-[#46B1FF]/30 transition-all flex items-center justify-center group"
+              title="Attach context (.txt, .md, .pdf)"
+              aria-label="Attach context file"
+            >
+              <Paperclip size={20} className="group-hover:rotate-12 transition-transform" />
+            </button>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-4 w-full mt-3 px-1 justify-between">
+          <div className="flex items-center gap-4">
+            <div
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-[10px] font-bold uppercase tracking-wider cursor-pointer transition-all ${keyInfo.activeSource === 'project'
+                ? 'bg-[#A259FF]/10 border-[#A259FF]/30 text-[#A259FF] shadow-[0_0_15px_rgba(162,89,255,0.1)]'
+                : keyInfo.activeSource === 'global'
+                  ? 'bg-[#46B1FF]/10 border-[#46B1FF]/30 text-[#46B1FF]'
+                  : 'bg-white/5 border-white/10 text-slate-500'
+              }`}
+              onClick={() => {
+                setKeyModalType('NO_KEY');
+                setShowKeyModal(true);
+              }}
+            >
+              <Key size={12} />
+              {keyInfo.activeSource === 'project'
+                ? `Project Key (••••${keyInfo.project.lastFour ?? '----'})`
+                : keyInfo.activeSource === 'global'
+                  ? `Global Key (••••${keyInfo.global.lastFour ?? '----'})`
+                  : 'No API Key Configured'}
+            </div>
+            <div className="text-[10px] text-slate-600 font-medium">
+              Priority: Project Key &gt; Global Key
+            </div>
+          </div>
+
+          {projectAttachment && (
+            <div className="flex items-center gap-3 bg-[#46B1FF]/10 border-[#46B1FF]/20 text-[#46B1FF] px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider animate-fade-in">
+              <Folder size={14} />
+              {projectAttachment.name}
+              <button
+                onClick={() => setProjectAttachment(null)}
+                className="ml-2 hover:text-white transition-colors"
+                title="Remove attachment"
+                aria-label="Remove attachment"
+              >
+                <X size={12} />
+              </button>
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center justify-between mt-3 w-full px-1 mb-2">
+          <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Pipeline Execution</h3>
+          <button
+            onClick={() => {
+              runFullPipeline();
+            }}
+            disabled={graphStatus === 'running' || !projectPrompt || groups.length === 0}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-white hover:bg-[#A259FF] hover:border-[#A259FF] transition-all text-[9px] font-black uppercase tracking-widest shadow-lg active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed pointer-events-auto"
+            title="Run all phases automatically"
+          >
+            {graphStatus === 'running' ? (
+              <><div className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" /> Orchestrating...</>
+            ) : (
+              <><Play size={12} fill="currentColor" /> Run</>
+            )}
+          </button>
+        </div>
+
+        {groups.length === 0 ? (
+          <div className="w-full py-6 border border-dashed border-white/10 rounded-2xl flex flex-col items-center justify-center bg-white/[0.01]">
+            <p className="text-xs text-slate-500 font-bold uppercase tracking-wider text-center">
+              No groups configured
+            </p>
+            <p className="text-[10px] text-slate-600 mt-1 text-center font-medium">
+              Select multiple agents on the canvas (Shift + Click) and click "Create Group" to enable phase execution.
+            </p>
+          </div>
+        ) : (
+          <div 
+            className="w-full grid gap-2"
+            style={{ gridTemplateColumns: `repeat(${groups.length}, minmax(0, 1fr))` }}
+          >
+            {[...groups].sort((a, b) => a.order - b.order).map((group, idx) => {
+              const isCompleted = completedGroupIds.includes(group.id);
+              const isRunning = runningGroupId === group.id;
+
+              const groupColors = [
+                { accent: '#A259FF', glow: 'rgba(162,89,255,0.15)' },
+                { accent: '#DEF767', glow: 'rgba(222,247,103,0.15)' },
+                { accent: '#46B1FF', glow: 'rgba(70,177,255,0.15)' },
+                { accent: '#CEA3FF', glow: 'rgba(206,163,255,0.15)' }
+              ];
+              const color = groupColors[idx % groupColors.length]!;
+
+              return (
+                <div
+                  key={group.id}
+                  className="flex flex-col gap-1.5 rounded-2xl border p-3 transition-all duration-300 relative group-phase-box"
+                  style={{
+                    borderColor: isCompleted ? color.accent + '60' : isRunning ? color.accent + '40' : 'rgba(255,255,255,0.05)',
+                    background: isCompleted ? color.glow : isRunning ? color.glow : 'rgba(255,255,255,0.02)',
+                    boxShadow: isRunning ? `0 0 20px ${color.glow}` : 'none'
+                  }}
+                >
+                  <div className="flex items-center justify-between mb-0.5">
+                    <span className="text-[9px] font-black uppercase tracking-widest truncate max-w-[120px]" style={{ color: color.accent }} title={group.name}>
+                      {group.name}
+                    </span>
+                    {isCompleted && <span className="text-[10px] text-green-400 font-bold">✓</span>}
+                    {isRunning && <div className="w-2 h-2 rounded-full animate-ping" style={{ background: color.accent }} />}
+                  </div>
+                  {isCompleted ? (
+                    <button
+                      onClick={() => setPhaseOutputModal(group.outputBlockId)}
+                      className="w-full py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1 hover:opacity-85 pointer-events-auto"
+                      style={{
+                        background: `${color.accent}10`,
+                        color: color.accent,
+                        border: `1px solid ${color.accent}30`
+                      }}
+                    >
+                      <FileText size={9} /> View Report
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => runPhase(group.id)}
+                      disabled={isRunning || graphStatus === 'running' || !projectPrompt}
+                      className="w-full py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1 pointer-events-auto"
+                      style={{
+                        background: !projectPrompt ? 'rgba(255,255,255,0.03)' : `${color.accent}20`,
+                        color: !projectPrompt ? '#475569' : color.accent,
+                        border: `1px solid ${color.accent}30`
+                      }}
+                    >
+                      {isRunning ? (
+                        <><div className="w-2.5 h-2.5 border border-current border-t-transparent rounded-full animate-spin" /> Running</>
+                      ) : (
+                        <><Play size={9} fill="currentColor" /> Run</>
+                      )}
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+```
+
+---
+
+## `src\components\FlowHeader\FlowHeaderValidationModal.tsx`
+
+```tsx
+import React from 'react';
+import { AlertTriangle, X } from 'lucide-react';
+
+interface FlowHeaderValidationModalProps {
+  validationErrors: string[];
+  onClose: () => void;
+}
+
+export default function FlowHeaderValidationModal({ validationErrors, onClose }: FlowHeaderValidationModalProps) {
+  return (
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-md pointer-events-auto"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-lg rounded-[32px] overflow-hidden flex flex-col border border-[#ff6a6a]/20 bg-[#0a0a0f] shadow-[0_40px_100px_rgba(0,0,0,0.8)] relative"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between px-6 py-4 border-b border-white/5 bg-[#ff6a6a]/5">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-[#ff6a6a]/10 border border-[#ff6a6a]/20">
+              <AlertTriangle size={18} className="text-[#ff6a6a]" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-white font-display uppercase tracking-wide">Pipeline Setup Incomplete</h2>
+              <p className="text-[10px] text-slate-500 uppercase tracking-widest font-mono font-bold mt-0.5">Please resolve before compiling</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 rounded-xl hover:bg-white/5 transition-all text-slate-500 hover:text-white"
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="px-6 py-5 max-h-[50vh] overflow-y-auto custom-scrollbar space-y-2">
+          {validationErrors.map((err, i) => (
+            <div
+              key={i}
+              className="flex items-start gap-3 px-4 py-3 rounded-xl bg-white/[0.02] border border-white/5"
+            >
+              <span className="text-[#ff6a6a] text-xs font-mono font-bold mt-0.5 shrink-0">{i + 1}.</span>
+              <span className="text-sm text-slate-300 leading-relaxed font-sans">{err}</span>
+            </div>
+          ))}
+        </div>
+
+        <div className="px-6 py-4 border-t border-white/5 bg-black/20">
+          <button
+            onClick={onClose}
+            className="w-full py-3 rounded-xl bg-[#ff6a6a] text-black font-black uppercase tracking-widest hover:opacity-90 transition-opacity text-xs"
+          >
+            Got it — I'll fix it
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+```
+
+---
+
+## `src\components\FlowHeader\FlowHeaderViewToggle.tsx`
+
+```tsx
+import React from 'react';
+import { GitMerge, LayoutGrid } from 'lucide-react';
+
+type FlowHeaderViewMode = 'pipeline' | 'builder';
+
+interface FlowHeaderViewToggleProps {
+  viewMode: FlowHeaderViewMode;
+  onChange: (mode: FlowHeaderViewMode) => void;
+}
+
+export default function FlowHeaderViewToggle({ viewMode, onChange }: FlowHeaderViewToggleProps) {
+  return (
+    <div className="flex items-center justify-center gap-[4rem] bg-white/[0.02] border border-white/[0.05] py-2 px-8 rounded-3xl shadow-xl backdrop-blur-xl flex-shrink-0 mx-4">
+      <button
+        data-tour="pipeline-toggle"
+        onClick={() => onChange('pipeline')}
+        className={`flex items-center gap-2.5 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-300 ${viewMode === 'pipeline'
+          ? 'bg-[#242424] text-white '
+          : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
+          }`}
+      >
+        <GitMerge size={14} className={viewMode === 'pipeline' ? 'animate-pulse' : ''} /> Pipeline
+      </button>
+      <button
+        onClick={() => onChange('builder')}
+        className={`flex items-center gap-2.5 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-300 ${viewMode === 'builder'
+          ? 'bg-[#A259FF] text-white shadow-[0_5px_20px_rgba(162,89,255,0.3)]'
+          : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
+          }`}
+      >
+        <LayoutGrid size={14} /> Builder
+      </button>
+    </div>
+  );
+}
 
 ```
 
@@ -12708,32 +13347,45 @@ interface FeatureCardProps {
   image?: string;
 }
 
-// eslint-disable-next-line no-unused-vars
 const FeatureCard = ({ icon: Icon, title, description, image }: FeatureCardProps) => (
-  <div className="bg-[#0A0A0A] border border-white/5 rounded-3xl hover:bg-zinc-900/50 hover:border-white/10 transition-all duration-500 group relative overflow-hidden flex flex-col">
+  <div className="bg-[#171717] border border-[#2e2e2e] hover:border-[#DEF767] transition-colors duration-100 relative flex flex-col select-none group">
+    {/* Corner technical crosshairs */}
+    <div className="absolute -top-[5px] -left-[5px] text-[#5b5b5b] font-mono text-[10px] select-none pointer-events-none">+</div>
+    <div className="absolute -top-[5px] -right-[5px] text-[#5b5b5b] font-mono text-[10px] select-none pointer-events-none">+</div>
+    <div className="absolute -bottom-[5px] -left-[5px] text-[#5b5b5b] font-mono text-[10px] select-none pointer-events-none">+</div>
+    <div className="absolute -bottom-[5px] -right-[5px] text-[#5b5b5b] font-mono text-[10px] select-none pointer-events-none">+</div>
+
     {image && (
-      <div className="w-full h-48 overflow-hidden border-b border-white/5 relative">
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#0A0A0A] z-10"></div>
-        <img src={image} alt={title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 opacity-60 group-hover:opacity-100 mix-blend-luminosity" />
+      <div className="w-full h-44 overflow-hidden border-b border-[#2e2e2e] relative">
+        <img 
+          src={image} 
+          alt={title} 
+          className="w-full h-full object-cover grayscale opacity-40 group-hover:opacity-60 transition-opacity duration-150" 
+        />
       </div>
     )}
-    <div className="p-8 flex-1 relative z-20">
-      <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-[50px] opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-      <div className="w-12 h-12 rounded-xl bg-zinc-800/50 border border-white/10 flex items-center justify-center mb-8 group-hover:scale-105 transition-transform duration-500 shadow-lg">
-        <Icon className="w-5 h-5 text-zinc-300" />
+    
+    <div className="p-6 flex-1 flex flex-col justify-between">
+      <div>
+        <div className="w-10 h-10 border border-[#2e2e2e] bg-[#181818] flex items-center justify-center mb-6 group-hover:border-[#DEF767] transition-colors duration-100">
+          <Icon className="w-4 h-4 text-[#929292] group-hover:text-white" />
+        </div>
+        <h3 className="text-sm font-grozen font-bold text-white mb-2 uppercase tracking-[0.04em]">{title}</h3>
       </div>
-      <h3 className="text-xl font-medium text-zinc-100 mb-3 tracking-tight">{title}</h3>
-      <p className="text-zinc-500 text-sm leading-relaxed font-light">{description}</p>
+      <p className="text-[13px] font-onest text-[#929292] leading-normal">{description}</p>
     </div>
   </div>
 );
 
 export const Features = () => (
-  <section id="features" className="pt-40 pb-40 px-6 bg-[#030303] border-y border-white/5 relative z-20 w-full flex flex-col">
-    <div className="max-w-7xl mx-auto w-full">
-      <div className="text-center mb-24">
-        <h2 className="text-3xl font-medium text-zinc-100 mb-5 tracking-tight">Precision at every node</h2>
-        <p className="text-zinc-500 max-w-2xl mx-auto font-light text-lg">Build sophisticated reasoning structures from Discovery to Delivery without the overhead of scaffolding code.</p>
+  <section id="features" className="pt-24 pb-24 px-6 bg-[#181818] border-y border-[#2e2e2e] relative z-20 w-full flex flex-col select-none">
+    <div className="w-full">
+      <div className="mb-16 border-l-2 border-[#ff6a6a] pl-6">
+        <h2 className="text-xl font-grozen font-bold text-white mb-3 uppercase tracking-[0.04em]">Precision at every node</h2>
+        <p className="text-[13px] font-onest text-[#929292] leading-normal max-w-xl">
+          Build sophisticated reasoning structures from Discovery to Delivery without the overhead of scaffolding code. 
+          Enforced strictly via granular technical parameters.
+        </p>
       </div>
 
       <div className="grid md:grid-cols-3 gap-6">
@@ -12767,26 +13419,57 @@ export const Features = () => (
 ## `src\components\landing\HeroPrompt.tsx`
 
 ```tsx
-import { Sparkles, Play } from 'lucide-react';
+import React from 'react';
+import { Mic, Paperclip, Send } from 'lucide-react';
 
 interface HeroPromptProps {
+  prompt: string;
+  onPromptChange: (value: string) => void;
   onInit: () => void;
 }
 
-export const HeroPrompt = ({ onInit }: HeroPromptProps) => (
-  <div className="w-full max-w-3xl mx-auto mb-16 relative group z-20">
-    <div className="absolute -inset-0.5 bg-gradient-to-r from-zinc-500/20 via-zinc-300/20 to-zinc-500/20 rounded-2xl blur opacity-30 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
-    <div className="relative flex items-center bg-[#0A0A0A]/80 backdrop-blur-md border border-white/10 rounded-2xl px-6 py-5 shadow-2xl transition-all duration-300 hover:border-white/20">
-      <Sparkles className="w-5 h-5 text-zinc-400 mr-4 flex-shrink-0" />
+export const HeroPrompt = ({ prompt, onPromptChange, onInit }: HeroPromptProps) => (
+  <div className="w-full max-w-2xl mx-auto mb-10 font-onest relative z-20 select-none">
+    {/* Brutalist prompt container: Deep BG, rounded corners, focus snaps to Lime */}
+    <div className="relative flex items-center bg-[#171717] border border-[#2e2e2e] focus-within:border-[#DEF767] px-4 py-4 rounded-none transition-colors duration-100">
+
+      {/* Left: Attach File Icon Button */}
+      <button
+        type="button"
+        aria-label="Attach File"
+        className="p-2 text-[#5b5b5b] hover:text-[#ff6a6a] transition-colors duration-100 mr-2 flex-shrink-0"
+      >
+        <Paperclip className="w-4 h-4" />
+      </button>
+
+      {/* Middle: Text Input Area */}
       <input
         type="text"
-        placeholder="Orchestrate your objective... (e.g. Design a technical whitepaper for a DeFi protocol)"
-        className="w-full bg-transparent border-none outline-none text-zinc-200 placeholder-zinc-600 text-sm md:text-base font-mono font-light tracking-wide"
+        value={prompt}
+        onChange={(e) => onPromptChange(e.target.value)}
+        placeholder="Ask anything or orchestrate your pipeline..."
+        className="w-full bg-transparent border-none outline-none text-white placeholder-[#5b5b5b] text-[14px] font-onest tracking-normal py-1"
       />
+
+      {/* Right: Action Buttons */}
       <div className="ml-4 flex items-center gap-2 flex-shrink-0">
-        <span className="text-xs font-mono text-zinc-500 hidden sm:inline-block border border-white/10 px-2 py-1 rounded bg-white/5">⌘ + K</span>
-        <button onClick={onInit} aria-label="Initialize Engine" title="Initialize Engine" className="bg-white/10 hover:bg-white/20 text-zinc-100 rounded-lg p-2 transition-colors">
-          <Play className="w-4 h-4 fill-current" />
+        {/* Voice Input Mic Button */}
+        <button
+          type="button"
+          aria-label="Voice Input"
+          className="p-2 text-[#5b5b5b] hover:text-[#DEF767] transition-colors duration-100 flex-shrink-0"
+        >
+          <Mic className="w-4 h-4" />
+        </button>
+
+        {/* Submit Arrow Button */}
+        <button
+          onClick={onInit}
+          aria-label="Submit Prompt"
+          title="Submit Prompt"
+          className="w-8 h-8 rounded-full border border-[#2e2e2e] hover:border-[#DEF767] hover:bg-[#DEF767] text-[#929292] hover:text-[#171717] flex items-center justify-center transition-all duration-100 bg-[#181818]"
+        >
+          <Send className="w-3.5 h-3.5 fill-current" />
         </button>
       </div>
     </div>
@@ -12802,23 +13485,14 @@ export const HeroPrompt = ({ onInit }: HeroPromptProps) => (
 ```tsx
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Activity, ChevronRight, Lock, Database, Network } from 'lucide-react';
+import { Crosshair, Compass, Plus } from 'lucide-react';
+import { ROUTES } from '../../lib/routes';
 import { Navbar } from './Navbar';
-import { HeroPrompt } from './HeroPrompt';
-import { Features } from './Features';
-import { Pricing } from './Pricing';
 import { LivePipelinePreview } from './LivePipelinePreview';
 import { RegisterView } from './RegisterView';
 import { ProfileView } from './ProfileView';
 import { DocumentationView } from './DocumentationView';
 import { useAuth } from '../../lib/auth';
-
-// Helper icon
-const StarIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-600 hover:text-zinc-300 cursor-pointer transition-colors">
-    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
-  </svg>
-);
 
 export default function LandingPage() {
   const navigate = useNavigate();
@@ -12829,14 +13503,14 @@ export default function LandingPage() {
 
   const handleInit = () => {
     if (user) {
-      navigate('/dashboard');
+      navigate(ROUTES.dashboard);
     } else {
       setView('register');
     }
   };
 
   const handleRegister = () => {
-    navigate('/dashboard'); // Go to dashboard directly after register
+    navigate(ROUTES.dashboard); // Go to dashboard directly after register
   };
 
   const handleLogout = async () => {
@@ -12861,211 +13535,127 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="h-screen w-full bg-[#030303] text-zinc-300 font-sans selection:bg-zinc-800 selection:text-white overflow-y-auto overflow-x-hidden relative">
+    <div className="h-screen w-full bg-[#181818] text-[#929292] font-onest selection:bg-[#ff6a6a] selection:text-[#171717] overflow-y-auto overflow-x-hidden relative">
       <style dangerouslySetInnerHTML={{
         __html: `
-        @keyframes float {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-8px); }
+        @import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@300;400;500;600&family=Onest:wght@300;400;500;600&display=swap');
+
+        .font-grozen {
+          font-family: 'Onest', 'Cygre', system-ui, -apple-system, sans-serif;
         }
-        @keyframes dash {
-          to { stroke-dashoffset: -1000; }
+        .font-onest {
+          font-family: 'Onest', 'Cygre', system-ui, -apple-system, sans-serif;
+        }
+        .font-geist {
+          font-family: 'Geist Mono', monospace;
+        }
+        .dot-grid {
+          background-image: radial-gradient(rgba(91, 91, 91, 0.15) 1px, transparent 1px);
+          background-size: 20px 20px;
         }
         html { scroll-behavior: smooth; }
       `}} />
 
-      <Navbar user={user} onNavigate={handleNav} onInit={handleInit} />
+      {/* 1. Dot Grid Structural Underlay */}
+      <div className="absolute inset-0 dot-grid pointer-events-none z-0 opacity-25"></div>
 
-      {view === 'landing' && (
-        <div className="flex flex-col w-full">
-          <section className="pt-48 pb-32 px-6 relative overflow-hidden flex flex-col justify-center min-h-screen w-full">
-            <div className="absolute inset-0 z-0 opacity-[0.12] pointer-events-none mix-blend-screen">
-              <img src="https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=2000&q=80" alt="Neural Network Background" className="w-full h-full object-cover" />
-              <div className="absolute inset-0 bg-gradient-to-b from-[#030303] via-transparent to-[#030303]"></div>
-            </div>
+      {/* 2. The Spectral Blob - The exactly ONE radial gradient deep background layer */}
+      <div className="absolute top-[35%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80vw] h-[80vw] max-w-[800px] max-h-[800px] rounded-full blur-[150px] opacity-[0.08] pointer-events-none z-0" style={{
+        background: 'radial-gradient(circle, #46B1FF 0%, #A259FF 35%, #FF6A6A 70%, #DEF767 100%)'
+      }}></div>
 
-            <div className="absolute top-[-10%] left-1/2 -translate-x-1/2 w-[1000px] h-[500px] bg-zinc-800/20 rounded-full blur-[150px] pointer-events-none z-0"></div>
+      {/* 3. Main full-width content container */}
+      <div className="w-full min-h-screen relative z-10 flex flex-col bg-transparent">
+        <Navbar user={user} onNavigate={handleNav} onInit={handleInit} currentView={view} />
 
-            <div className="max-w-7xl mx-auto text-center relative z-10 flex flex-col items-center mt-12 w-full">
-              <h1 className="text-5xl md:text-7xl font-bold text-transparent bg-clip-text bg-gradient-to-b from-white via-zinc-200 to-zinc-500 tracking-tight mb-8 leading-[1.1] mt-8">
-                Design Multi-Agent <br />
-                Pipelines Visually.
-              </h1>
+        {view === 'landing' && (
+          <div className="flex flex-col w-full">
 
-              <p className="text-lg md:text-xl text-zinc-500 max-w-2xl mx-auto leading-relaxed font-light mb-12">
-                The premium neuro-orchestration platform. Connect, configure, and execute complex autonomous agent architectures with unprecedented control.
-              </p>
+            {/* Centered Hero Section */}
+            <section className="pt-32 pb-24 px-6 md:px-10 relative overflow-hidden flex flex-col items-center justify-center min-h-screen w-full">
 
-              <div className="w-full mb-20 z-20">
-                <HeroPrompt onInit={handleInit} />
-              </div>
+              {/* Corner crosshairs inside the hero viewport */}
+              <div className="absolute top-[120px] left-[20px] text-[#5b5b5b] font-mono text-[10px] select-none pointer-events-none">+</div>
+              <div className="absolute top-[120px] right-[20px] text-[#5b5b5b] font-mono text-[10px] select-none pointer-events-none">+</div>
 
-              <div className="w-full mt-12 mb-10 z-10">
-                <LivePipelinePreview />
-              </div>
-            </div>
-          </section>
+              <div className="max-w-4xl mx-auto text-center relative z-10 flex flex-col items-center justify-center w-full">
 
-          <div className="w-full py-12">
-            <Features />
-          </div>
+                {/* <div className="inline-flex items-center gap-2 border border-[#2e2e2e] bg-[#171717] px-3 py-1 mb-8 font-geist font-mono text-[10px] uppercase text-[#5b5b5b]">
+                  <span>SYSTEM // ACTIVE</span>
+                </div> */}
 
-          {/* UI Showcase / Details */}
-          <section id="builder" className="py-40 px-6 relative overflow-hidden bg-[#050505] w-full flex flex-col">
-            <div className="max-w-7xl mx-auto flex flex-col lg:flex-row items-center gap-20">
-              <div className="lg:w-1/2">
-                <div className="inline-flex items-center gap-2 text-zinc-500 text-xs font-mono font-medium mb-6 tracking-widest uppercase">
-                  <Lock className="w-3.5 h-3.5" />
-                  <span>Secure State Management</span>
-                </div>
-                <h2 className="text-4xl md:text-5xl font-medium text-zinc-100 mb-8 leading-tight tracking-tight">
-                  Maintain absolute context <br /> across workflows.
-                </h2>
-                <p className="text-zinc-400 text-lg mb-10 leading-relaxed font-light">
-                  Observe active orchestrations in real-time. AgenticFlow meticulously logs system states, computes resource allocation, and tracks synthesis outputs securely in-memory.
+                <h1 className="text-4xl md:text-6xl font-onest font-bold text-white uppercase tracking-[0.04em] mb-6 leading-[1.15] text-center w-full">
+                  Design Multi-Agent <br />
+                  Pipelines Visually.
+                </h1>
+
+                <p className="text-[13px] font-onest text-[#929292] leading-relaxed max-w-xl mb-12 text-center">
+                  The premium neuro-orchestration platform. Connect, configure, and execute complex autonomous agent architectures with unprecedented control. Designed for technical drawing precision.
                 </p>
 
-                <ul className="space-y-5">
-                  {['Real-time telemetry and compute metrics', 'Cryptographically secure in-memory key storage', 'Immutable activity and artifact logging'].map((item, i) => (
-                    <li key={i} className="flex items-center text-zinc-300 font-light">
-                      <div className="w-5 h-5 rounded-full bg-white/5 border border-white/10 flex items-center justify-center mr-4">
-                        <ChevronRight className="w-3 h-3 text-zinc-400" />
-                      </div>
-                      {item}
-                    </li>
-                  ))}
-                </ul>
+                {/* CTA Button */}
+                <div className="w-full max-w-2xl z-20 flex justify-center">
+                  <button
+                    onClick={handleInit}
+                    className="px-8 py-3 bg-[#DEF767] text-[#171717] font-onest font-semibold text-[14px] uppercase tracking-[0.04em] border border-[#DEF767] hover:bg-transparent hover:text-[#DEF767] transition-all duration-150"
+                  >
+                    Start Building
+                  </button>
+                </div>
+
+                {/* Central Pipeline Preview */}
+                {/* <div className="w-full mt-8 z-10">
+                  <LivePipelinePreview />
+                </div> */}
               </div>
+            </section>
 
-              <div className="lg:w-1/2 w-full relative group">
-                <div className="absolute -inset-6 bg-gradient-to-tr from-zinc-800/30 to-zinc-600/30 rounded-[2.5rem] blur-xl opacity-50 group-hover:opacity-70 transition-opacity duration-700"></div>
-                <img
-                  src="https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=1200&q=80"
-                  alt="Data Streams"
-                  className="absolute -inset-4 w-[calc(100%+2rem)] h-[calc(100%+2rem)] object-cover rounded-[2rem] opacity-20 grayscale mix-blend-overlay group-hover:opacity-40 transition-opacity duration-700"
-                />
-
-                <div className="bg-[#0A0A0A]/80 backdrop-blur-2xl border border-white/10 rounded-2xl p-2 shadow-2xl relative overflow-hidden z-10">
-                  <div className="flex items-center px-4 py-3 border-b border-white/5 mb-2 gap-2">
-                    <div className="w-2.5 h-2.5 rounded-full bg-zinc-800 border border-zinc-700"></div>
-                    <div className="w-2.5 h-2.5 rounded-full bg-zinc-800 border border-zinc-700"></div>
-                    <div className="w-2.5 h-2.5 rounded-full bg-zinc-800 border border-zinc-700"></div>
-                  </div>
-
-                  <div className="flex gap-6 p-4">
-                    <div className="w-1/3 border-r border-white/5 pr-4 hidden sm:block">
-                      <div className="text-[0.6rem] text-zinc-600 font-bold tracking-widest mb-6 uppercase">Spaces</div>
-                      <div className="space-y-1">
-                        {['Marketing Pipeline', 'Dev-Ops Automation', 'Neural Sandbox'].map((space, i) => (
-                          <div key={i} className={`text-[0.8rem] px-3 py-2 rounded-lg flex items-center gap-3 transition-colors ${i === 2 ? 'bg-white/5 text-zinc-200 font-medium' : 'text-zinc-500 hover:text-zinc-300'}`}>
-                            <Database className="w-3.5 h-3.5" />
-                            {space}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between mb-6">
-                        <div className="text-sm font-medium text-zinc-200">Active Sequences</div>
-                        <div className="text-xs text-zinc-500 font-mono">2 RUNNING</div>
-                      </div>
-                      <div className="grid gap-3">
-                        {[1, 2].map((card) => (
-                          <div key={card} className="bg-[#111] border border-white/[0.05] rounded-xl p-5 hover:bg-[#141414] transition-colors group">
-                            <div className="flex justify-between items-start mb-5">
-                              <h4 className="text-zinc-200 font-medium text-sm tracking-tight">Algorithmic Trade <br /> Analysis v2</h4>
-                              <StarIcon />
-                            </div>
-                            <div className="flex justify-between items-center text-[0.65rem] font-mono text-zinc-500">
-                              <span className="text-zinc-300 flex items-center gap-1.5 bg-white/5 px-2 py-1 rounded-md">
-                                <div className="w-1.5 h-1.5 rounded-full bg-zinc-300 shadow-[0_0_5px_rgba(255,255,255,0.8)] animate-pulse"></div>
-                                EXECUTING
-                              </span>
-                              <span>T - 12 SEC</span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
+            {/* Footer */}
+            <footer className="border-t border-[#2e2e2e] pt-16 pb-24 bg-[#181818] relative z-20 w-full flex items-center justify-center">
+              <div className="w-full max-w-6xl mx-auto px-6 md:px-10 flex flex-col md:flex-row justify-between items-center gap-8">
+                <div className="flex items-center gap-4">
+                  <span className="text-base font-onest font-bold text-white tracking-[0.04em] uppercase">
+                    Agentic<span className="text-[#5b5b5b]">Flow</span>
+                  </span>
+                </div>
+                <div className="flex flex-wrap justify-center gap-8 text-[11px] font-onest uppercase tracking-[0.04em] text-[#929292]">
+                  <button onClick={handleInit} className="hover:text-white transition-colors duration-100 border border-transparent hover:border-[#DEF767] px-2 py-1">Platform</button>
+                  <button onClick={handleInit} className="hover:text-white transition-colors duration-100 border border-transparent hover:border-[#DEF767] px-2 py-1">Enterprise</button>
+                  <button onClick={() => handleNav('documentation')} className="hover:text-white transition-colors duration-100 border border-transparent hover:border-[#DEF767] px-2 py-1">Docs</button>
+                  <button className="hover:text-white transition-colors duration-100 cursor-not-allowed border border-transparent px-2 py-1">Legal</button>
                 </div>
               </div>
-            </div>
-          </section>
-
-          <div className="w-full">
-            <Pricing onInit={handleInit} />
+            </footer>
           </div>
+        )}
 
-          {/* CTA Section */}
-          <section className="py-48 px-6 relative bg-[#030303] border-t border-white/5 flex flex-col items-center w-full">
-            <div className="max-w-7xl mx-auto w-full relative z-10">
-              <div className="bg-[#0A0A0A] border border-white/10 rounded-[2.5rem] p-10 lg:p-24 overflow-hidden relative flex flex-col lg:flex-row items-center justify-between gap-16 lg:gap-24 shadow-2xl w-full">
-                <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-zinc-500/10 rounded-full blur-[120px] pointer-events-none"></div>
-                <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-zinc-700/10 rounded-full blur-[100px] pointer-events-none"></div>
+        {view === 'register' && <div className="w-full pt-[90px]"><RegisterView onRegister={handleRegister} /></div>}
+        {view === 'profile' && <div className="w-full pt-[90px]"><ProfileView user={user} onLogout={handleLogout} /></div>}
+        {view === 'documentation' && <div className="w-full pt-[90px]"><DocumentationView onInit={handleInit} /></div>}
+      </div>
 
-                <div className="lg:w-1/2 relative z-10 text-center lg:text-left flex flex-col">
-                  <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-zinc-100 mb-8 tracking-tight leading-tight">Ready to <br />deploy?</h2>
-                  <p className="text-zinc-400 mb-12 text-lg font-light max-w-xl mx-auto lg:mx-0 leading-relaxed">
-                    Elevate your operational capacity. Architect intelligent, autonomous systems with AgenticFlow today.
-                  </p>
-                  <div>
-                    <button onClick={handleInit} className="bg-zinc-100 hover:bg-white text-zinc-950 font-bold px-8 py-4 rounded-full transition-all inline-flex items-center gap-2 shadow-[0_0_30px_rgba(255,255,255,0.1)] hover:shadow-[0_0_40px_rgba(255,255,255,0.2)] hover:scale-105">
-                      Initialize Workspace
-                      <ChevronRight className="w-5 h-5" />
-                    </button>
-                  </div>
-                </div>
+      {/* 4. Bottom-Right Fixed FABs */}
+      <div className="fixed bottom-8 right-8 z-50 flex flex-col gap-4 pointer-events-auto select-none">
+        {/* Top FAB: Recenter */}
+        <button
+          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          className="w-[40px] h-[40px] rounded-full border border-[#5b5b5b] hover:border-[#DEF767] bg-[#181818] flex items-center justify-center text-[#929292] hover:text-[#DEF767] transition-all duration-100"
+          title="Recenter Viewport"
+          aria-label="Recenter"
+        >
+          <Crosshair className="w-4 h-4" />
+        </button>
 
-                <div className="lg:w-1/2 relative z-10 w-full group mt-16 lg:mt-0">
-                  <div className="absolute -inset-4 bg-gradient-to-tr from-zinc-600/20 to-zinc-400/20 rounded-[2rem] blur-xl opacity-50 group-hover:opacity-80 transition-opacity duration-700"></div>
-                  <div className="relative rounded-2xl overflow-hidden border border-white/10 shadow-2xl transform lg:rotate-2 group-hover:rotate-0 transition-transform duration-700 bg-[#111]">
-                    <img
-                      src="https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1200&q=80"
-                      alt="Abstract Deployment Visualization"
-                      className="w-full h-[300px] lg:h-[400px] object-cover opacity-100 group-hover:scale-105 transition-transform duration-700"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] via-[#0A0A0A]/40 to-transparent opacity-90"></div>
-
-                    <div className="absolute bottom-6 left-6 right-6 flex items-center justify-between">
-                      <div className="flex items-center gap-3 bg-black/80 backdrop-blur-md border border-white/20 px-4 py-2.5 rounded-lg shadow-lg">
-                        <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse shadow-[0_0_10px_rgba(34,197,94,0.6)]"></div>
-                        <span className="text-[0.65rem] font-mono text-zinc-100 tracking-widest font-bold">SYSTEM READY</span>
-                      </div>
-                      <div className="bg-black/80 backdrop-blur-md border border-white/20 p-2.5 rounded-lg shadow-lg">
-                        <Activity className="w-4 h-4 text-zinc-300" />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* Footer */}
-          <footer className="border-t border-white/5 pt-20 pb-32 px-6 bg-[#030303] relative z-20 mt-20 w-full">
-            <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-8">
-              <div className="flex items-center gap-4">
-                <div className="flex items-center justify-center">
-                  <img src="/logo.png" alt="AgenticFlow Logo" className="w-10 h-10 object-contain grayscale opacity-70" />
-                </div>
-                <span className="text-lg font-medium text-zinc-200 tracking-tight">Agentic<span className="text-zinc-600">Flow</span></span>
-              </div>
-              <div className="flex flex-wrap justify-center gap-10 text-sm text-zinc-500 font-light">
-                <button onClick={() => handleNav('#features')} className="hover:text-zinc-200 transition-colors">Platform</button>
-                <button onClick={() => handleNav('#pricing')} className="hover:text-zinc-200 transition-colors">Enterprise</button>
-                <button onClick={() => handleNav('documentation')} className="hover:text-zinc-200 transition-colors">Documentation</button>
-                <button className="hover:text-zinc-200 transition-colors cursor-not-allowed">Legal</button>
-              </div>
-            </div>
-          </footer>
-        </div>
-      )}
-
-      {view === 'register' && <RegisterView onRegister={handleRegister} />}
-      {view === 'profile' && <ProfileView user={user} onLogout={handleLogout} />}
-      {view === 'documentation' && <DocumentationView onInit={handleInit} />}
+        {/* Bottom FAB: Explore (Triggers docs navigation as Pricing is gone) */}
+        <button
+          onClick={() => handleNav('documentation')}
+          className="w-[40px] h-[40px] rounded-full border border-[#5b5b5b] hover:border-[#DEF767] bg-[#181818] flex items-center justify-center text-[#929292] hover:text-[#DEF767] transition-all duration-100"
+          title="Explore Documentation"
+          aria-label="Explore"
+        >
+          <Compass className="w-4 h-4" />
+        </button>
+      </div>
     </div>
   );
 }
@@ -13083,87 +13673,103 @@ import { Search, Eye, Star, BarChart, Layout, Target, Satellite, Map, Smartphone
 interface PipelineCardProps {
   title: string;
   icon: LucideIcon;
-  iconColor: string;
   isHighlighted?: boolean;
 }
 
-// eslint-disable-next-line no-unused-vars
-const PipelineCard = ({ title, icon: Icon, iconColor, isHighlighted }: PipelineCardProps) => (
-  <div className="bg-[#111116]/80 border border-white/[0.03] rounded-xl p-3.5 flex items-center gap-4 hover:bg-white/[0.05] hover:border-white/10 transition-all duration-300 group cursor-default">
-    <div className={`relative w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 bg-[#1A1A24] border border-white/5 shadow-inner`}>
-      {isHighlighted && (
-        <div className="absolute inset-0 bg-indigo-500/30 rounded-lg blur-md animate-pulse"></div>
-      )}
-      <Icon className={`w-4 h-4 relative z-10 ${iconColor}`} />
+const PipelineCard = ({ title, icon: Icon, isHighlighted }: PipelineCardProps) => (
+  <div className="bg-[#181818] border border-[#2e2e2e] hover:border-[#DEF767] p-4 flex items-center gap-4 transition-colors duration-100 group cursor-default select-none relative">
+    {/* Corner technical crosshairs for individual nodes */}
+    <div className="absolute -top-[4px] -left-[4px] text-[#5b5b5b] font-mono text-[8px] select-none pointer-events-none">+</div>
+    <div className="absolute -top-[4px] -right-[4px] text-[#5b5b5b] font-mono text-[8px] select-none pointer-events-none">+</div>
+    <div className="absolute -bottom-[4px] -left-[4px] text-[#5b5b5b] font-mono text-[8px] select-none pointer-events-none">+</div>
+    <div className="absolute -bottom-[4px] -right-[4px] text-[#5b5b5b] font-mono text-[8px] select-none pointer-events-none">+</div>
+
+    <div className={`w-8 h-8 border border-[#2e2e2e] bg-[#171717] flex items-center justify-center flex-shrink-0 group-hover:border-[#DEF767] transition-colors duration-100`}>
+      <Icon className="w-4 h-4 text-[#929292] group-hover:text-white" />
     </div>
+    
     <div>
-      <h4 className="text-[0.65rem] font-bold text-zinc-200 tracking-widest uppercase mb-1">{title}</h4>
+      <h4 className="text-[11px] font-onest font-bold text-white tracking-[0.04em] uppercase mb-1">{title}</h4>
       <div className="flex items-center gap-1.5">
-        <div className="w-1.5 h-1.5 rounded-full bg-zinc-600"></div>
-        <span className="text-[0.6rem] font-mono text-zinc-500 uppercase tracking-widest">Standby</span>
+        <div className={`w-1.5 h-1.5 ${isHighlighted ? 'bg-[#DEF767]' : 'bg-[#5b5b5b]'}`}></div>
+        <span className="text-[9px] font-geist font-mono text-[#5b5b5b] uppercase tracking-widest">
+          {isHighlighted ? 'Processing' : 'Standby'}
+        </span>
       </div>
     </div>
   </div>
 );
 
 export const LivePipelinePreview = () => (
-  <div className="w-full max-w-5xl mx-auto mt-12 relative z-10">
-    <div className="absolute -top-6 left-2 text-[0.65rem] font-bold tracking-[0.3em] text-indigo-400 uppercase">
-      Live Pipeline Preview
-    </div>
-    
-    <div className="bg-[#08080B]/90 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden relative">
-      <div className="flex items-center justify-between px-6 py-4 bg-[#050507] border-b border-white/5">
+  <div className="w-full max-w-5xl mx-auto mt-8 relative z-10 select-none">
+    {/* Outer Wrapper: Deep BG surface, sharp border */}
+    <div className="bg-[#171717] border border-[#2e2e2e] relative">
+      
+      {/* Corner structural crosshairs */}
+      <div className="absolute -top-[5px] -left-[5px] text-[#5b5b5b] font-mono text-[10px] select-none pointer-events-none">+</div>
+      <div className="absolute -top-[5px] -right-[5px] text-[#5b5b5b] font-mono text-[10px] select-none pointer-events-none">+</div>
+      <div className="absolute -bottom-[5px] -left-[5px] text-[#5b5b5b] font-mono text-[10px] select-none pointer-events-none">+</div>
+      <div className="absolute -bottom-[5px] -right-[5px] text-[#5b5b5b] font-mono text-[10px] select-none pointer-events-none">+</div>
+
+      {/* Top technical bar */}
+      <div className="flex items-center justify-between px-6 py-4 border-b border-[#2e2e2e] bg-[#181818]">
         <div className="flex items-center gap-6">
-          <div className="flex gap-2">
-            <div className="w-3 h-3 rounded-full bg-[#FF5F56]"></div>
-            <div className="w-3 h-3 rounded-full bg-[#FFBD2E]"></div>
-            <div className="w-3 h-3 rounded-full bg-[#27C93F]"></div>
-          </div>
-          <div className="hidden sm:block text-[0.65rem] font-mono text-zinc-500 tracking-widest uppercase">
-            Pipeline • Discover → Define → Develop → Deliver
+          <div className="font-geist font-mono text-[10px] text-[#5b5b5b] tracking-wider uppercase">
+            SEC: P_SYS_01 • 75% RAIL BOUNDARY ENGAGED
           </div>
         </div>
-        <div className="flex items-center gap-2 bg-green-500/10 px-3 py-1 rounded-full border border-green-500/20">
-          <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
-          <div className="text-[0.6rem] font-mono font-bold text-green-400 tracking-widest uppercase">
-            Sync: 0/16 Agents Active
+        <div className="flex items-center gap-2 border border-[#2e2e2e] bg-[#171717] px-3 py-1">
+          <div className="w-1.5 h-1.5 bg-[#DEF767] animate-pulse"></div>
+          <div className="text-[9px] font-geist font-mono font-bold text-[#DEF767] tracking-widest uppercase">
+            Active Nodes: 16/16 Connected
           </div>
         </div>
       </div>
 
-      <div className="p-8 overflow-x-auto">
+      <div className="p-6 overflow-x-auto">
         <div className="min-w-[800px] grid grid-cols-4 gap-6">
+          {/* Column 1 */}
           <div className="space-y-4">
-            <h3 className="text-[0.7rem] font-bold text-zinc-400 tracking-[0.2em] uppercase mb-6 pb-3 border-b border-white/5">Discover</h3>
-            <PipelineCard title="Secondary Research" icon={Search} iconColor="text-blue-400" />
-            <PipelineCard title="Observations" icon={Eye} iconColor="text-purple-400" />
-            <PipelineCard title="Reviews" icon={Star} iconColor="text-yellow-400" />
-            <PipelineCard title="Primary Research" icon={BarChart} iconColor="text-pink-400" />
+            <h3 className="text-[11px] font-onest font-bold text-[#929292] tracking-[0.04em] uppercase mb-4 pb-2 border-b border-[#2e2e2e]">
+              01 // Discover
+            </h3>
+            <PipelineCard title="Secondary Research" icon={Search} />
+            <PipelineCard title="Observations" icon={Eye} />
+            <PipelineCard title="Reviews" icon={Star} />
+            <PipelineCard title="Primary Research" icon={BarChart} />
           </div>
 
+          {/* Column 2 */}
           <div className="space-y-4">
-            <h3 className="text-[0.7rem] font-bold text-zinc-400 tracking-[0.2em] uppercase mb-6 pb-3 border-b border-white/5">Define</h3>
-            <PipelineCard title="Architecture" icon={Layout} iconColor="text-slate-300" />
-            <PipelineCard title="Persuasion Tools" icon={Target} iconColor="text-rose-400" />
-            <PipelineCard title="Tech & Channels" icon={Satellite} iconColor="text-indigo-400" />
-            <PipelineCard title="UX Flow Mapping" icon={Map} iconColor="text-cyan-400" />
+            <h3 className="text-[11px] font-onest font-bold text-[#929292] tracking-[0.04em] uppercase mb-4 pb-2 border-b border-[#2e2e2e]">
+              02 // Define
+            </h3>
+            <PipelineCard title="Architecture" icon={Layout} />
+            <PipelineCard title="Persuasion Tools" icon={Target} />
+            <PipelineCard title="Tech & Channels" icon={Satellite} />
+            <PipelineCard title="UX Flow Mapping" icon={Map} />
           </div>
 
+          {/* Column 3 */}
           <div className="space-y-4">
-            <h3 className="text-[0.7rem] font-bold text-zinc-400 tracking-[0.2em] uppercase mb-6 pb-3 border-b border-white/5">Develop</h3>
-            <PipelineCard title="Screens" icon={Smartphone} iconColor="text-slate-400" />
-            <PipelineCard title="Images & Texts" icon={ImageIcon} iconColor="text-purple-300" />
-            <PipelineCard title="Interactions" icon={Link} iconColor="text-zinc-400" />
-            <PipelineCard title="Navigations" icon={Compass} iconColor="text-amber-400" />
+            <h3 className="text-[11px] font-onest font-bold text-[#929292] tracking-[0.04em] uppercase mb-4 pb-2 border-b border-[#2e2e2e]">
+              03 // Develop
+            </h3>
+            <PipelineCard title="Screens" icon={Smartphone} />
+            <PipelineCard title="Images & Texts" icon={ImageIcon} />
+            <PipelineCard title="Interactions" icon={Link} />
+            <PipelineCard title="Navigations" icon={Compass} />
           </div>
 
+          {/* Column 4 */}
           <div className="space-y-4">
-            <h3 className="text-[0.7rem] font-bold text-zinc-400 tracking-[0.2em] uppercase mb-6 pb-3 border-b border-white/5">Deliver</h3>
-            <PipelineCard title="Brand Test" icon={FlaskConical} iconColor="text-indigo-400" isHighlighted={true} />
-            <PipelineCard title="Expert Review" icon={CheckSquare} iconColor="text-emerald-400" />
-            <PipelineCard title="UX Test" icon={Microscope} iconColor="text-violet-400" />
-            <PipelineCard title="Usability Test" icon={ClipboardList} iconColor="text-blue-500" />
+            <h3 className="text-[11px] font-onest font-bold text-[#929292] tracking-[0.04em] uppercase mb-4 pb-2 border-b border-[#2e2e2e]">
+              04 // Deliver
+            </h3>
+            <PipelineCard title="Brand Test" icon={FlaskConical} isHighlighted={true} />
+            <PipelineCard title="Expert Review" icon={CheckSquare} />
+            <PipelineCard title="UX Test" icon={Microscope} />
+            <PipelineCard title="Usability Test" icon={ClipboardList} />
           </div>
         </div>
       </div>
@@ -13178,51 +13784,135 @@ export const LivePipelinePreview = () => (
 ## `src\components\landing\Navbar.tsx`
 
 ```tsx
-import React from 'react';
-import { Network, User, ChevronRight } from 'lucide-react';
+import React, { useState } from 'react';
+import { User, Menu, X, Plus } from 'lucide-react';
 
 interface NavbarProps {
   user: any;
   onNavigate: (target: string) => void;
   onInit: () => void;
+  currentView?: string;
 }
 
-export const Navbar = ({ user, onNavigate, onInit }: NavbarProps) => (
-  <nav className="fixed w-full top-0 z-50 bg-[#030303]/70 backdrop-blur-xl border-b border-white/[0.05]">
-    <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-      <div className="flex items-center gap-4">
-        <div className="flex items-center justify-center">
-          <img src="/logo.png" alt="AgenticFlow Logo" className="w-10 h-10 object-contain" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-100 cursor-pointer" onClick={() => onNavigate('landing')}>Agentic<span className="text-zinc-500 font-medium">Flow</span></h1>
-        </div>
-      </div>
-      
-      <div className="hidden md:flex items-center gap-8 text-sm font-medium text-zinc-400">
-        <button onClick={() => onNavigate('#features')} className="hover:text-zinc-100 transition-colors">Platform</button>
-        <button onClick={() => onNavigate('#builder')} className="hover:text-zinc-100 transition-colors">Architecture</button>
-        <button onClick={() => onNavigate('#pricing')} className="hover:text-zinc-100 transition-colors">Pricing</button>
-      </div>
+export const Navbar = ({ user, onNavigate, onInit, currentView = 'landing' }: NavbarProps) => {
+  const [isAccordionOpen, setIsAccordionOpen] = useState(false);
 
-      <div className="flex items-center gap-6">
-        <button onClick={() => onNavigate('documentation')} className="hidden md:block text-sm font-medium text-zinc-400 hover:text-zinc-100 transition-colors">
-          Documentation
-        </button>
-        {user ? (
-          <button onClick={() => onNavigate('profile')} aria-label="User Profile" title="User Profile" className="w-10 h-10 rounded-full bg-zinc-800 border border-white/10 flex items-center justify-center hover:bg-zinc-700 transition-colors shadow-lg group">
-            <User className="w-5 h-5 text-zinc-300 group-hover:text-white transition-colors" />
+  const navItems = [
+    { label: 'Platform', onClick: onInit, isActive: false },
+    { label: 'Architecture', onClick: () => onNavigate('documentation'), isActive: currentView === 'documentation' },
+    { label: 'Docs', onClick: () => onNavigate('documentation'), isActive: currentView === 'documentation' },
+  ];
+
+  const handleItemClick = (target: string) => {
+    onNavigate(target);
+    setIsAccordionOpen(false);
+  };
+
+  return (
+    <>
+      <nav className="fixed top-0 left-0 w-full h-[90px] bg-[#181818] border-b border-[#2e2e2e] z-50 flex items-center justify-between font-onest px-8 select-none">
+
+        {/* Far Left: Brand Logo & Name */}
+        <div
+          onClick={() => handleItemClick('landing')}
+          className="flex items-center cursor-pointer py-2 px-4 border border-transparent hover:border-[#DEF767] transition-colors duration-100"
+        >
+          <span className="text-xl font-onest font-bold tracking-[0.04em] text-white uppercase">
+            Agentic<span className="text-[#929292]">Flow</span>
+          </span>
+        </div>
+
+        {/* Centered: Navigation Links (Desktop) */}
+        {/* <div className="hidden md:flex items-center gap-8">
+          {navItems.map((item) => {
+            return (
+              <button
+                key={item.label}
+                onClick={item.onClick}
+                className={`py-2 px-4 text-xs uppercase tracking-[0.04em] font-onest font-medium transition-colors duration-100 border border-transparent hover:border-[#DEF767]
+                  ${item.isActive
+                    ? 'text-[#ff6a6a]'
+                    : 'text-[#929292] hover:text-white'
+                  }
+                `}
+              >
+                {item.label}
+              </button>
+            );
+          })}
+        </div> */}
+
+        {/* Far Right: Auth / Action / Mobile Toggle */}
+        <div className="flex items-center gap-4">
+          {user ? (
+            <button
+              onClick={() => handleItemClick('profile')}
+              className="w-10 h-10 border border-[#2e2e2e] hover:border-[#ff6a6a] hover:text-[#ff6a6a] flex items-center justify-center text-[#929292] transition-colors duration-100"
+              aria-label="User Profile"
+            >
+              <User className="w-4 h-4" />
+            </button>
+          ) : (
+            <button
+              onClick={onInit}
+              className="hidden sm:flex items-center justify-center px-6 h-10 bg-[#181818] border border-[#DEF767] text-[#DEF767] hover:bg-[#DEF767] hover:text-[#171717] font-onest text-xs uppercase tracking-[0.04em] transition-colors duration-100"
+            >
+              Initialize
+            </button>
+          )}
+
+          {/* Hamburger Accordion Toggle (Mobile) */}
+          <button
+            onClick={() => setIsAccordionOpen(!isAccordionOpen)}
+            className="md:hidden w-10 h-10 border border-[#2e2e2e] hover:border-[#ff6a6a] hover:text-[#ff6a6a] flex items-center justify-center text-[#929292] transition-colors duration-100"
+            aria-label="Toggle Menu"
+          >
+            {isAccordionOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
           </button>
-        ) : (
-          <button onClick={onInit} className="group flex items-center gap-2 bg-zinc-100 hover:bg-white text-zinc-950 rounded-full px-6 py-2.5 transition-all duration-300 shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:shadow-[0_0_25px_rgba(255,255,255,0.2)]">
-            <span className="text-sm font-bold tracking-wide">Initialize Engine</span>
-            <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-zinc-900 transition-colors" />
-          </button>
-        )}
-      </div>
-    </div>
-  </nav>
-);
+        </div>
+      </nav>
+
+      {/* Accordion Menu (Mobile) */}
+      {isAccordionOpen && (
+        <div className="fixed top-[90px] left-0 w-full h-[calc(100vh-90px)] bg-[#181818] border-b border-[#2e2e2e] z-40 flex flex-col justify-start select-none font-onest overflow-y-auto">
+          <div className="flex flex-col w-full">
+            {navItems.map((item) => {
+              return (
+                <button
+                  key={item.label}
+                  onClick={() => {
+                    item.onClick();
+                    setIsAccordionOpen(false);
+                  }}
+                  className={`w-full h-[90px] px-8 text-left text-base uppercase tracking-[0.04em] border-b border-[#2e2e2e] font-onest font-medium transition-colors duration-100 flex items-center justify-between
+                    ${item.isActive
+                      ? 'bg-[#ff6a6a] text-[#171717]'
+                      : 'text-[#929292] hover:bg-[#ff6a6a] hover:text-[#171717]'
+                    }
+                  `}
+                >
+                  <span>{item.label}</span>
+                  <Plus className={`w-5 h-5 transition-transform duration-200 ${item.isActive ? 'rotate-45' : ''}`} />
+                </button>
+              );
+            })}
+            {!user && (
+              <button
+                onClick={() => {
+                  handleItemClick('register');
+                }}
+                className="w-full h-[90px] px-8 text-left text-base uppercase tracking-[0.04em] border-b border-[#2e2e2e] font-onest font-medium text-[#DEF767] hover:bg-[#DEF767] hover:text-[#171717] transition-colors duration-100 flex items-center justify-between"
+              >
+                <span>Initialize Engine</span>
+                <Plus className="w-5 h-5" />
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </>
+  );
+};
 
 ```
 
@@ -13245,32 +13935,50 @@ interface PricingCardProps {
 }
 
 const PricingCard = ({ title, price, description, features, isPremium, buttonText, onAction }: PricingCardProps) => (
-  <div className={`relative p-8 rounded-3xl bg-[#0A0A0A] border ${isPremium ? 'border-zinc-400 shadow-[0_0_30px_rgba(255,255,255,0.05)] mt-4 md:mt-0' : 'border-white/5'} flex flex-col h-full group hover:border-white/20 transition-colors duration-500`}>
+  <div className={`relative p-6 bg-[#171717] border ${isPremium ? 'border-[#ff6a6a]' : 'border-[#2e2e2e]'} hover:border-[#DEF767] flex flex-col h-full select-none group transition-colors duration-100`}>
+    
+    {/* Corner technical crosshairs */}
+    <div className="absolute -top-[5px] -left-[5px] text-[#5b5b5b] font-mono text-[10px] select-none pointer-events-none">+</div>
+    <div className="absolute -top-[5px] -right-[5px] text-[#5b5b5b] font-mono text-[10px] select-none pointer-events-none">+</div>
+    <div className="absolute -bottom-[5px] -left-[5px] text-[#5b5b5b] font-mono text-[10px] select-none pointer-events-none">+</div>
+    <div className="absolute -bottom-[5px] -right-[5px] text-[#5b5b5b] font-mono text-[10px] select-none pointer-events-none">+</div>
+
     {isPremium && (
-      <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-zinc-100 text-zinc-900 text-[0.65rem] font-bold px-4 py-1.5 rounded-full uppercase tracking-widest shadow-lg z-10 whitespace-nowrap">
+      <div className="absolute -top-3 left-6 bg-[#ff6a6a] text-[#171717] text-[10px] font-grozen font-bold px-3 py-1 uppercase tracking-widest z-10">
         Enterprise Standard
       </div>
     )}
-    <div className="mb-8 mt-2">
-      <h3 className="text-xl font-medium text-zinc-100 mb-2">{title}</h3>
-      <p className="text-zinc-500 text-sm font-light h-10">{description}</p>
+    
+    <div className="mb-6 mt-4">
+      <h3 className="text-base font-grozen font-bold text-white mb-2 uppercase tracking-[0.04em]">{title}</h3>
+      <p className="text-[13px] font-onest text-[#929292] leading-normal h-10">{description}</p>
     </div>
-    <div className="mb-8 flex items-baseline gap-2">
-      <span className="text-4xl font-bold text-zinc-100 tracking-tight">{price}</span>
-      {price !== 'Free' && <span className="text-zinc-500 text-sm">/ month</span>}
+    
+    <div className="mb-6 flex items-baseline gap-1">
+      <span className="text-3xl font-geist font-mono font-bold text-white tracking-tight">{price}</span>
+      {price !== 'Free' && <span className="text-[#5b5b5b] font-geist font-mono text-xs">/ month</span>}
     </div>
-    <ul className="space-y-4 mb-10 flex-1">
+    
+    <ul className="space-y-3 mb-8 flex-1">
       {features.map((feature, i) => (
         <li key={i} className="flex items-start gap-3">
-          <div className="mt-0.5 w-5 h-5 rounded-full bg-white/5 border border-white/10 flex items-center justify-center flex-shrink-0 group-hover:bg-zinc-800 transition-colors">
-            <Check className="w-3 h-3 text-zinc-300" />
+          <div className="mt-1 w-4 h-4 border border-[#2e2e2e] bg-[#181818] flex items-center justify-center flex-shrink-0 group-hover:border-[#DEF767] transition-colors duration-100">
+            <Check className="w-2.5 h-2.5 text-[#929292] group-hover:text-white" />
           </div>
-          <span className="text-zinc-400 text-sm font-light leading-relaxed">{feature}</span>
+          <span className="text-[13px] font-onest text-[#929292] leading-normal">{feature}</span>
         </li>
       ))}
     </ul>
+    
     <div className="mt-auto">
-      <button onClick={onAction} className={`w-full py-3.5 rounded-xl text-sm font-bold tracking-wide transition-all ${isPremium ? 'bg-zinc-100 text-zinc-900 hover:bg-white hover:scale-[1.02]' : 'bg-white/5 text-zinc-100 border border-white/10 hover:bg-white/10'}`}>
+      <button 
+        onClick={onAction} 
+        className={`w-full py-3 text-xs uppercase tracking-[0.04em] font-grozen transition-colors duration-100 border
+          ${isPremium 
+            ? 'bg-[#ff6a6a] border-[#ff6a6a] text-[#171717] hover:bg-transparent hover:text-white hover:border-[#DEF767]' 
+            : 'bg-[#181818] border-[#2e2e2e] text-[#929292] hover:border-[#DEF767] hover:text-[#DEF767]'
+          }`}
+      >
         {buttonText}
       </button>
     </div>
@@ -13282,26 +13990,39 @@ interface PricingProps {
 }
 
 export const Pricing = ({ onInit }: PricingProps) => (
-  <section id="pricing" className="pt-48 pb-48 px-6 bg-[#030303] relative z-20 border-t border-white/5 w-full flex flex-col">
-    <div className="max-w-7xl mx-auto w-full">
-      <div className="text-center mb-24">
-        <h2 className="text-3xl font-medium text-zinc-100 mb-5 tracking-tight">Scale your neural infrastructure</h2>
-        <p className="text-zinc-500 max-w-2xl mx-auto font-light text-lg">Predictable pricing designed for ambitious engineering teams. No hidden compute fees.</p>
+  <section id="pricing" className="pt-24 pb-24 px-6 bg-[#181818] relative z-20 border-t border-[#2e2e2e] w-full flex flex-col select-none">
+    <div className="w-full">
+      
+      <div className="mb-16 border-l-2 border-[#ff6a6a] pl-6">
+        <h2 className="text-xl font-grozen font-bold text-white mb-3 uppercase tracking-[0.04em]">Scale your neural infrastructure</h2>
+        <p className="text-[13px] font-onest text-[#929292] leading-normal max-w-xl">
+          Predictable pricing designed for ambitious engineering teams. No hidden compute fees. Fully transparent telemetry.
+        </p>
       </div>
 
       {/* Trial Banner */}
-      <div className="max-w-4xl mx-auto mb-32 bg-gradient-to-r from-zinc-900/50 to-[#0A0A0A] border border-white/10 rounded-2xl p-10 flex flex-col md:flex-row items-center justify-between shadow-2xl relative overflow-hidden group hover:border-white/20 transition-all duration-500">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-zinc-400/5 rounded-full blur-[60px] pointer-events-none"></div>
-        <div className="flex flex-col md:flex-row items-center gap-6 mb-8 md:mb-0 relative z-10 w-full text-center md:text-left">
-          <div className="w-12 h-12 rounded-full bg-zinc-100/10 border border-zinc-100/20 flex items-center justify-center flex-shrink-0">
-            <Zap className="w-5 h-5 text-zinc-100 fill-zinc-100/20" />
+      <div className="w-full mb-16 bg-[#171717] border border-[#2e2e2e] p-8 flex flex-col md:flex-row items-center justify-between relative group transition-colors duration-100 hover:border-[#DEF767]">
+        {/* Corner technical crosshairs */}
+        <div className="absolute -top-[5px] -left-[5px] text-[#5b5b5b] font-mono text-[10px] select-none pointer-events-none">+</div>
+        <div className="absolute -top-[5px] -right-[5px] text-[#5b5b5b] font-mono text-[10px] select-none pointer-events-none">+</div>
+        <div className="absolute -bottom-[5px] -left-[5px] text-[#5b5b5b] font-mono text-[10px] select-none pointer-events-none">+</div>
+        <div className="absolute -bottom-[5px] -right-[5px] text-[#5b5b5b] font-mono text-[10px] select-none pointer-events-none">+</div>
+
+        <div className="flex flex-col md:flex-row items-center gap-6 relative z-10 w-full text-center md:text-left">
+          <div className="w-10 h-10 border border-[#2e2e2e] bg-[#181818] flex items-center justify-center flex-shrink-0">
+            <Zap className="w-4 h-4 text-[#DEF767]" />
           </div>
           <div className="flex-1">
-            <h3 className="text-xl font-bold text-zinc-100 mb-1 tracking-tight">Be a Trial User</h3>
-            <p className="text-zinc-400 font-light text-sm max-w-md mx-auto md:mx-0">Get full premium access completely free for two months. Just register your account and start orchestrating immediately.</p>
+            <h3 className="text-sm font-grozen font-bold text-white mb-1 uppercase tracking-[0.04em]">Be a Trial User</h3>
+            <p className="text-[13px] font-onest text-[#929292] leading-normal max-w-xl">
+              Get full premium access completely free for two months. Just register your account and start orchestrating immediately.
+            </p>
           </div>
-          <div className="mt-8 md:mt-0 flex-shrink-0">
-            <button onClick={onInit} className="whitespace-nowrap bg-zinc-100 hover:bg-white text-zinc-950 font-bold px-6 py-3 rounded-xl transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:scale-105">
+          <div className="mt-6 md:mt-0 flex-shrink-0">
+            <button 
+              onClick={onInit} 
+              className="bg-[#181818] border border-[#DEF767] text-[#DEF767] hover:bg-[#DEF767] hover:text-[#171717] font-grozen text-xs uppercase tracking-[0.04em] px-6 py-3 transition-colors duration-100"
+            >
               Start 2-Month Free Trial
             </button>
           </div>
@@ -13309,7 +14030,7 @@ export const Pricing = ({ onInit }: PricingProps) => (
       </div>
 
       {/* Pricing Grid */}
-      <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto mt-12 items-stretch">
+      <div className="grid md:grid-cols-3 gap-6 mt-12 items-stretch">
         <PricingCard 
           title="Free"
           price="Free"
@@ -13371,6 +14092,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { User, LogOut, Workflow, ArrowLeft, Key, Eye, EyeOff, Shield, Trash2, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../lib/auth';
+import { ROUTES } from '../../lib/routes';
 import { supabase } from '../../lib/supabaseClient';
 
 const API_BASE = import.meta.env.PROD ? '' : 'http://localhost:3001';
@@ -13428,7 +14150,7 @@ export const ProfileView = ({ user: propUser, onLogout }: ProfileViewProps) => {
         
         if (!error) setWorkflowCount(count || 0);
       } else {
-        navigate('/');
+        navigate(ROUTES.landing);
       }
     };
     fetchUserAndStats();
@@ -13556,7 +14278,7 @@ export const ProfileView = ({ user: propUser, onLogout }: ProfileViewProps) => {
     if (onLogout) {
       onLogout();
     } else {
-      navigate('/');
+      navigate(ROUTES.landing);
     }
   };
 
@@ -13565,7 +14287,7 @@ export const ProfileView = ({ user: propUser, onLogout }: ProfileViewProps) => {
   return (
     <div 
       className="min-h-screen pt-32 px-6 pb-24 relative overflow-hidden bg-[#030303] cursor-pointer"
-      onClick={() => navigate('/dashboard')}
+      onClick={() => navigate(ROUTES.dashboard)}
     >
       <div 
         className="max-w-4xl mx-auto relative z-10 cursor-default"
@@ -13575,7 +14297,7 @@ export const ProfileView = ({ user: propUser, onLogout }: ProfileViewProps) => {
         <div className="flex items-center justify-between mb-12">
           <div className="flex items-center gap-4">
             <button 
-              onClick={() => navigate('/dashboard')}
+              onClick={() => navigate(ROUTES.dashboard)}
               aria-label="Back to Dashboard"
               title="Back to Dashboard"
               className="w-10 h-10 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 text-zinc-400 hover:text-white transition-all hover:bg-white/10"
@@ -13753,7 +14475,7 @@ export const ProfileView = ({ user: propUser, onLogout }: ProfileViewProps) => {
 
 ```tsx
 import React, { useState } from 'react';
-import { User, Mail, Building2, UserPlus, ChevronRight, Lock, Loader2, LogIn } from 'lucide-react';
+import { User, Mail, Building2, UserPlus, Lock, Loader2, Plus } from 'lucide-react';
 import { useAuth } from '../../lib/auth';
 
 interface RegisterViewProps {
@@ -13765,20 +14487,7 @@ export const RegisterView = ({ onRegister }: RegisterViewProps) => {
   const [formData, setFormData] = useState({ name: '', email: '', password: '', company: '' });
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
-  const { signUp, signIn, signInWithProvider } = useAuth();
-
-  const handleGoogleSignIn = async () => {
-    setLoading(true);
-    setErrorMsg('');
-    try {
-      const { error } = await signInWithProvider('google');
-      if (error) throw new Error(error);
-      // Note: OAuth typically redirects, so execution might not reach here immediately.
-    } catch (err: any) {
-      setErrorMsg(err.message);
-      setLoading(false);
-    }
-  };
+  const { signUp, signIn } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -13815,95 +14524,117 @@ export const RegisterView = ({ onRegister }: RegisterViewProps) => {
   };
 
   return (
-    <div className="min-h-screen pt-32 px-6 flex items-center justify-center relative overflow-hidden bg-[#030303]">
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-zinc-600/10 rounded-full blur-[120px] pointer-events-none"></div>
-      
-      <div className="w-full max-w-md bg-[#0A0A0A]/80 backdrop-blur-xl border border-white/10 rounded-3xl p-8 relative z-10 shadow-2xl">
+    <div className="w-full flex items-center justify-center py-32 px-6 bg-[#181818] select-none min-h-screen">
+      <div className="w-full max-w-md bg-[#171717] border border-[#2e2e2e] p-8 relative">
+        
+        {/* Corner technical crosshairs */}
+        <div className="absolute -top-[5px] -left-[5px] text-[#5b5b5b] font-mono text-[10px] select-none pointer-events-none">+</div>
+        <div className="absolute -top-[5px] -right-[5px] text-[#5b5b5b] font-mono text-[10px] select-none pointer-events-none">+</div>
+        <div className="absolute -bottom-[5px] -left-[5px] text-[#5b5b5b] font-mono text-[10px] select-none pointer-events-none">+</div>
+        <div className="absolute -bottom-[5px] -right-[5px] text-[#5b5b5b] font-mono text-[10px] select-none pointer-events-none">+</div>
+
         <div className="flex items-center justify-center mb-6">
-          <img src="/logo.png" alt="AgenticFlow Logo" className="w-16 h-16 object-contain drop-shadow-[0_0_15px_rgba(162,89,255,0.3)]" />
+          <div className="w-12 h-12 border border-[#2e2e2e] bg-[#181818] flex items-center justify-center">
+            <UserPlus className="w-5 h-5 text-[#929292]" />
+          </div>
         </div>
-        <h2 className="text-3xl font-bold text-zinc-100 mb-2 tracking-tight">
+        
+        <h2 className="text-xl font-grozen font-bold text-white mb-2 uppercase tracking-[0.04em]">
           {isLogin ? 'Welcome Back' : 'Create Profile'}
         </h2>
-        <p className="text-zinc-500 font-light text-sm mb-8">
-          {isLogin ? 'Sign in to access your workspaces.' : 'Register to initialize your neuro-orchestration workspace.'}
+        <p className="text-[13px] font-onest text-[#929292] leading-normal mb-8">
+          {isLogin ? 'Sign in to access your orchestrations.' : 'Register to initialize your neuro-orchestration workspace.'}
         </p>
         
         {errorMsg && (
-          <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 text-red-400 text-xs rounded-xl">
-            {errorMsg}
+          <div className="mb-6 p-4 bg-[#171717] border border-[#ff6a6a] text-[#ff6a6a] text-xs font-mono">
+            ERR // {errorMsg.toUpperCase()}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-6">
           {!isLogin && (
             <div>
-              <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">Full Name</label>
-              <div className="flex items-center w-full bg-[#111] border border-white/10 rounded-xl px-4 py-3 focus-within:border-white/30 transition-colors">
-                <User className="w-4 h-4 text-zinc-500 shrink-0 mr-3" />
-                <input type="text" required={!isLogin} value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="w-full bg-transparent text-zinc-200 outline-none placeholder-zinc-600" placeholder="Jane Doe" />
+              <label className="block text-[10px] font-geist font-mono text-[#5b5b5b] mb-2 uppercase tracking-wider">01 // Full Name</label>
+              <div className="flex items-center w-full bg-[#181818] border border-[#2e2e2e] focus-within:border-[#DEF767] px-4 py-3 transition-colors duration-100">
+                <User className="w-4 h-4 text-[#5b5b5b] shrink-0 mr-3" />
+                <input 
+                  type="text" 
+                  required={!isLogin} 
+                  value={formData.name} 
+                  onChange={(e) => setFormData({...formData, name: e.target.value})} 
+                  className="w-full bg-transparent text-white outline-none placeholder-[#5b5b5b] font-onest text-[13px]" 
+                  placeholder="Jane Doe" 
+                />
               </div>
             </div>
           )}
           
           <div>
-            <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">Email Address</label>
-            <div className="flex items-center w-full bg-[#111] border border-white/10 rounded-xl px-4 py-3 focus-within:border-white/30 transition-colors">
-              <Mail className="w-4 h-4 text-zinc-500 shrink-0 mr-3" />
-              <input type="email" required value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} className="w-full bg-transparent text-zinc-200 outline-none placeholder-zinc-600" placeholder="jane@company.com" />
+            <label className="block text-[10px] font-geist font-mono text-[#5b5b5b] mb-2 uppercase tracking-wider">
+              {isLogin ? '01 // Email Address' : '02 // Email Address'}
+            </label>
+            <div className="flex items-center w-full bg-[#181818] border border-[#2e2e2e] focus-within:border-[#DEF767] px-4 py-3 transition-colors duration-100">
+              <Mail className="w-4 h-4 text-[#5b5b5b] shrink-0 mr-3" />
+              <input 
+                type="email" 
+                required 
+                value={formData.email} 
+                onChange={(e) => setFormData({...formData, email: e.target.value})} 
+                className="w-full bg-transparent text-white outline-none placeholder-[#5b5b5b] font-onest text-[13px]" 
+                placeholder="jane@company.com" 
+              />
             </div>
           </div>
           
           <div>
-            <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">Password</label>
-            <div className="flex items-center w-full bg-[#111] border border-white/10 rounded-xl px-4 py-3 focus-within:border-white/30 transition-colors">
-              <Lock className="w-4 h-4 text-zinc-500 shrink-0 mr-3" />
-              <input type="password" required value={formData.password} onChange={(e) => setFormData({...formData, password: e.target.value})} className="w-full bg-transparent text-zinc-200 outline-none placeholder-zinc-600" placeholder="••••••••" />
+            <label className="block text-[10px] font-geist font-mono text-[#5b5b5b] mb-2 uppercase tracking-wider">
+              {isLogin ? '02 // Password' : '03 // Password'}
+            </label>
+            <div className="flex items-center w-full bg-[#181818] border border-[#2e2e2e] focus-within:border-[#DEF767] px-4 py-3 transition-colors duration-100">
+              <Lock className="w-4 h-4 text-[#5b5b5b] shrink-0 mr-3" />
+              <input 
+                type="password" 
+                required 
+                value={formData.password} 
+                onChange={(e) => setFormData({...formData, password: e.target.value})} 
+                className="w-full bg-transparent text-white outline-none placeholder-[#5b5b5b] font-onest text-[13px]" 
+                placeholder="••••••••" 
+              />
             </div>
           </div>
 
           {!isLogin && (
             <div>
-              <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">Company / Team (Optional)</label>
-              <div className="flex items-center w-full bg-[#111] border border-white/10 rounded-xl px-4 py-3 focus-within:border-white/30 transition-colors">
-                <Building2 className="w-4 h-4 text-zinc-500 shrink-0 mr-3" />
-                <input type="text" value={formData.company} onChange={(e) => setFormData({...formData, company: e.target.value})} className="w-full bg-transparent text-zinc-200 outline-none placeholder-zinc-600" placeholder="Acme Corp" />
+              <label className="block text-[10px] font-geist font-mono text-[#5b5b5b] mb-2 uppercase tracking-wider">04 // Company (Optional)</label>
+              <div className="flex items-center w-full bg-[#181818] border border-[#2e2e2e] focus-within:border-[#DEF767] px-4 py-3 transition-colors duration-100">
+                <Building2 className="w-4 h-4 text-[#5b5b5b] shrink-0 mr-3" />
+                <input 
+                  type="text" 
+                  value={formData.company} 
+                  onChange={(e) => setFormData({...formData, company: e.target.value})} 
+                  className="w-full bg-transparent text-white outline-none placeholder-[#5b5b5b] font-onest text-[13px]" 
+                  placeholder="Acme Corp" 
+                />
               </div>
             </div>
           )}
           
-          <button disabled={loading} type="submit" className="w-full mt-6 bg-zinc-100 hover:bg-white text-zinc-950 font-bold py-3.5 rounded-xl transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)] flex items-center justify-center gap-2 hover:scale-[1.02] disabled:opacity-50 disabled:hover:scale-100">
+          <button 
+            disabled={loading} 
+            type="submit" 
+            className="w-full mt-6 bg-[#181818] border border-[#ff6a6a] text-[#ff6a6a] hover:bg-[#ff6a6a] hover:text-[#171717] font-grozen text-xs uppercase tracking-[0.04em] py-3.5 transition-colors duration-100 flex items-center justify-center gap-2 disabled:opacity-50"
+          >
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : (isLogin ? 'Access Workspace' : 'Establish Profile')} 
-            {!loading && <ChevronRight className="w-4 h-4" />}
+            {!loading && <Plus className="w-4 h-4" />}
           </button>
         </form>
 
-        <div className="relative mt-6 mb-6">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-zinc-800"></div>
-          </div>
-          <div className="relative flex justify-center text-sm">
-            <span className="px-2 bg-[#0A0A0A] text-zinc-500 text-xs tracking-widest uppercase">Or</span>
-          </div>
-        </div>
-
-        <button
-          type="button"
-          onClick={handleGoogleSignIn}
-          disabled={loading}
-          className="w-full bg-zinc-900 border border-white/10 hover:bg-zinc-800 text-zinc-300 font-medium py-3 rounded-xl transition-all flex items-center justify-center gap-3 disabled:opacity-50 hover:scale-[1.02] shadow-inner"
-        >
-          <svg className="w-5 h-5" viewBox="0 0 24 24">
-            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-          </svg>
-          Continue with Google
-        </button>
-
         <div className="mt-6 text-center">
-          <button onClick={() => setIsLogin(!isLogin)} className="text-zinc-500 hover:text-zinc-300 text-xs transition-colors">
+          <button 
+            onClick={() => setIsLogin(!isLogin)} 
+            className="text-[#929292] hover:text-[#ff6a6a] font-grozen text-xs uppercase tracking-[0.04em] transition-colors duration-100"
+          >
             {isLogin ? "Don't have an account? Register" : "Already have an account? Sign in"}
           </button>
         </div>
@@ -14189,11 +14920,402 @@ export const EDGES = [
 
 ---
 
+## `src\data\templates\doubleDiamond.ts`
+
+```typescript
+const generateId = () => `dd_${Math.random().toString(36).substr(2, 9)}`;
+
+export function buildDoubleDiamondBlocks() {
+  return [
+    // DISCOVER
+    { id: 'dd_reviews',            phase: 'discover', name: 'Reviews',            type: 'agent' as const, isOutputNode: false, position: { x: 160, y: 80  }, description: 'Analyze user reviews and feedback to identify pain points and patterns.', apiKey: '', useCustomKey: false, waitConfig: { type: 'none', delay: 0 }, triggerConfig: { type: 'manual' } },
+    { id: 'dd_observations',       phase: 'discover', name: 'Observations',        type: 'agent' as const, isOutputNode: false, position: { x: 160, y: 230 }, description: 'Document field observations and contextual research findings.', apiKey: '', useCustomKey: false, waitConfig: { type: 'none', delay: 0 }, triggerConfig: { type: 'manual' } },
+    { id: 'dd_primary_research',   phase: 'discover', name: 'Primary Research',    type: 'agent' as const, isOutputNode: false, position: { x: 160, y: 380 }, description: 'Conduct primary research including interviews and surveys.', apiKey: '', useCustomKey: false, waitConfig: { type: 'none', delay: 0 }, triggerConfig: { type: 'manual' } },
+    { id: 'dd_secondary_research', phase: 'discover', name: 'Secondary Research',  type: 'agent' as const, isOutputNode: false, position: { x: 160, y: 530 }, description: 'Gather and synthesize secondary research, market data and competitor analysis.', apiKey: '', useCustomKey: false, waitConfig: { type: 'none', delay: 0 }, triggerConfig: { type: 'manual' } },
+    { id: 'dd_tech_channels',      phase: 'discover', name: 'Tech & Channels',     type: 'agent' as const, isOutputNode: false, position: { x: 160, y: 680 }, description: 'Audit existing technology stack and distribution channels.', apiKey: '', useCustomKey: false, waitConfig: { type: 'none', delay: 0 }, triggerConfig: { type: 'manual' } },
+    { id: 'dd_discover_output',    phase: 'discover', name: 'Discover Output',     type: 'agent' as const, isOutputNode: true,  position: { x: 160, y: 830 }, description: 'Synthesize all Discover phase findings into a comprehensive summary.', apiKey: '', useCustomKey: false, waitConfig: { type: 'none', delay: 0 }, triggerConfig: { type: 'manual' } },
+
+    // DEFINE
+    { id: 'dd_architecture',       phase: 'define', name: 'Architecture',       type: 'agent' as const, isOutputNode: false, position: { x: 620, y: 80  }, description: 'Define the information architecture and structural framework.', apiKey: '', useCustomKey: false, waitConfig: { type: 'none', delay: 0 }, triggerConfig: { type: 'manual' } },
+    { id: 'dd_ux_flow',            phase: 'define', name: 'UX Flow Mapping',    type: 'agent' as const, isOutputNode: false, position: { x: 620, y: 230 }, description: 'Map user flows and journey paths through the system.', apiKey: '', useCustomKey: false, waitConfig: { type: 'none', delay: 0 }, triggerConfig: { type: 'manual' } },
+    { id: 'dd_persuasion',         phase: 'define', name: 'Persuasion Tools',   type: 'agent' as const, isOutputNode: false, position: { x: 620, y: 380 }, description: 'Identify persuasion patterns and behavioral design opportunities.', apiKey: '', useCustomKey: false, waitConfig: { type: 'none', delay: 0 }, triggerConfig: { type: 'manual' } },
+    { id: 'dd_define_output',      phase: 'define', name: 'Define Output',      type: 'agent' as const, isOutputNode: true,  position: { x: 620, y: 530 }, description: 'Synthesize all Define phase outputs into actionable design specifications.', apiKey: '', useCustomKey: false, waitConfig: { type: 'none', delay: 0 }, triggerConfig: { type: 'manual' } },
+
+    // DEVELOP
+    { id: 'dd_screens',            phase: 'develop', name: 'Screens',            type: 'agent' as const, isOutputNode: false, position: { x: 1080, y: 80  }, description: 'Design and specify key screens and interface components.', apiKey: '', useCustomKey: false, waitConfig: { type: 'none', delay: 0 }, triggerConfig: { type: 'manual' } },
+    { id: 'dd_interactions',       phase: 'develop', name: 'Interactions',       type: 'agent' as const, isOutputNode: false, position: { x: 1080, y: 230 }, description: 'Define interaction patterns, animations and micro-interactions.', apiKey: '', useCustomKey: false, waitConfig: { type: 'none', delay: 0 }, triggerConfig: { type: 'manual' } },
+    { id: 'dd_images_texts',       phase: 'develop', name: 'Images & Texts',     type: 'agent' as const, isOutputNode: false, position: { x: 1080, y: 380 }, description: 'Develop visual content strategy, copy and imagery guidelines.', apiKey: '', useCustomKey: false, waitConfig: { type: 'none', delay: 0 }, triggerConfig: { type: 'manual' } },
+    { id: 'dd_navigations',        phase: 'develop', name: 'Navigations',        type: 'agent' as const, isOutputNode: false, position: { x: 1080, y: 530 }, description: 'Design navigation systems and wayfinding patterns.', apiKey: '', useCustomKey: false, waitConfig: { type: 'none', delay: 0 }, triggerConfig: { type: 'manual' } },
+    { id: 'dd_develop_output',     phase: 'develop', name: 'Develop Output',     type: 'agent' as const, isOutputNode: true,  position: { x: 1080, y: 680 }, description: 'Synthesize all Develop phase outputs into a complete design solution.', apiKey: '', useCustomKey: false, waitConfig: { type: 'none', delay: 0 }, triggerConfig: { type: 'manual' } },
+
+    // DELIVER
+    { id: 'dd_brand_test',         phase: 'deliver', name: 'Brand Test',         type: 'agent' as const, isOutputNode: false, position: { x: 1540, y: 80  }, description: 'Validate brand consistency and identity alignment across deliverables.', apiKey: '', useCustomKey: false, waitConfig: { type: 'none', delay: 0 }, triggerConfig: { type: 'manual' } },
+    { id: 'dd_ux_test',            phase: 'deliver', name: 'UX Test',            type: 'agent' as const, isOutputNode: false, position: { x: 1540, y: 230 }, description: 'Conduct usability testing and gather user feedback on prototypes.', apiKey: '', useCustomKey: false, waitConfig: { type: 'none', delay: 0 }, triggerConfig: { type: 'manual' } },
+    { id: 'dd_expert_review',      phase: 'deliver', name: 'Expert Review',      type: 'agent' as const, isOutputNode: false, position: { x: 1540, y: 380 }, description: 'Perform expert heuristic evaluation and accessibility audit.', apiKey: '', useCustomKey: false, waitConfig: { type: 'none', delay: 0 }, triggerConfig: { type: 'manual' } },
+    { id: 'dd_usability_test',     phase: 'deliver', name: 'Usability Test',     type: 'agent' as const, isOutputNode: false, position: { x: 1540, y: 530 }, description: 'Run structured usability tests with target users.', apiKey: '', useCustomKey: false, waitConfig: { type: 'none', delay: 0 }, triggerConfig: { type: 'manual' } },
+    { id: 'dd_deliver_output',     phase: 'deliver', name: 'Deliver Output',     type: 'agent' as const, isOutputNode: true,  position: { x: 1540, y: 680 }, description: 'Produce the final delivery report with all validated recommendations.', apiKey: '', useCustomKey: false, waitConfig: { type: 'none', delay: 0 }, triggerConfig: { type: 'manual' } },
+  ];
+}
+
+export function buildDoubleDiamondConnections() {
+  return [
+    // DISCOVER → Discover Output
+    { id: generateId(), sourceBlockId: 'dd_reviews',            targetBlockId: 'dd_discover_output', sourcePort: 'right', targetPort: 'left' },
+    { id: generateId(), sourceBlockId: 'dd_observations',       targetBlockId: 'dd_discover_output', sourcePort: 'right', targetPort: 'left' },
+    { id: generateId(), sourceBlockId: 'dd_primary_research',   targetBlockId: 'dd_discover_output', sourcePort: 'right', targetPort: 'left' },
+    { id: generateId(), sourceBlockId: 'dd_secondary_research', targetBlockId: 'dd_discover_output', sourcePort: 'right', targetPort: 'left' },
+    { id: generateId(), sourceBlockId: 'dd_tech_channels',      targetBlockId: 'dd_discover_output', sourcePort: 'right', targetPort: 'left' },
+    // Discover Output → DEFINE
+    { id: generateId(), sourceBlockId: 'dd_discover_output', targetBlockId: 'dd_architecture', sourcePort: 'right', targetPort: 'left' },
+    { id: generateId(), sourceBlockId: 'dd_discover_output', targetBlockId: 'dd_ux_flow',      sourcePort: 'right', targetPort: 'left' },
+    { id: generateId(), sourceBlockId: 'dd_discover_output', targetBlockId: 'dd_persuasion',   sourcePort: 'right', targetPort: 'left' },
+    // DEFINE → Define Output
+    { id: generateId(), sourceBlockId: 'dd_architecture', targetBlockId: 'dd_define_output', sourcePort: 'right', targetPort: 'left' },
+    { id: generateId(), sourceBlockId: 'dd_ux_flow',      targetBlockId: 'dd_define_output', sourcePort: 'right', targetPort: 'left' },
+    { id: generateId(), sourceBlockId: 'dd_persuasion',   targetBlockId: 'dd_define_output', sourcePort: 'right', targetPort: 'left' },
+    // Define Output → DEVELOP
+    { id: generateId(), sourceBlockId: 'dd_define_output', targetBlockId: 'dd_screens',       sourcePort: 'right', targetPort: 'left' },
+    { id: generateId(), sourceBlockId: 'dd_define_output', targetBlockId: 'dd_interactions',  sourcePort: 'right', targetPort: 'left' },
+    { id: generateId(), sourceBlockId: 'dd_define_output', targetBlockId: 'dd_images_texts',  sourcePort: 'right', targetPort: 'left' },
+    { id: generateId(), sourceBlockId: 'dd_define_output', targetBlockId: 'dd_navigations',   sourcePort: 'right', targetPort: 'left' },
+    // DEVELOP → Develop Output
+    { id: generateId(), sourceBlockId: 'dd_screens',      targetBlockId: 'dd_develop_output', sourcePort: 'right', targetPort: 'left' },
+    { id: generateId(), sourceBlockId: 'dd_interactions', targetBlockId: 'dd_develop_output', sourcePort: 'right', targetPort: 'left' },
+    { id: generateId(), sourceBlockId: 'dd_images_texts', targetBlockId: 'dd_develop_output', sourcePort: 'right', targetPort: 'left' },
+    { id: generateId(), sourceBlockId: 'dd_navigations',  targetBlockId: 'dd_develop_output', sourcePort: 'right', targetPort: 'left' },
+    // Develop Output → DELIVER
+    { id: generateId(), sourceBlockId: 'dd_develop_output', targetBlockId: 'dd_brand_test',     sourcePort: 'right', targetPort: 'left' },
+    { id: generateId(), sourceBlockId: 'dd_develop_output', targetBlockId: 'dd_ux_test',        sourcePort: 'right', targetPort: 'left' },
+    { id: generateId(), sourceBlockId: 'dd_develop_output', targetBlockId: 'dd_expert_review',  sourcePort: 'right', targetPort: 'left' },
+    { id: generateId(), sourceBlockId: 'dd_develop_output', targetBlockId: 'dd_usability_test', sourcePort: 'right', targetPort: 'left' },
+    // DELIVER → Deliver Output
+    { id: generateId(), sourceBlockId: 'dd_brand_test',     targetBlockId: 'dd_deliver_output', sourcePort: 'right', targetPort: 'left' },
+    { id: generateId(), sourceBlockId: 'dd_ux_test',        targetBlockId: 'dd_deliver_output', sourcePort: 'right', targetPort: 'left' },
+    { id: generateId(), sourceBlockId: 'dd_expert_review',  targetBlockId: 'dd_deliver_output', sourcePort: 'right', targetPort: 'left' },
+    { id: generateId(), sourceBlockId: 'dd_usability_test', targetBlockId: 'dd_deliver_output', sourcePort: 'right', targetPort: 'left' },
+  ];
+}
+```
+
+---
+
+## `src\hooks\engineHooks.ts`
+
+```typescript
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useToastStore } from '../lib/toastStore';
+import { useWorkflowStore } from '../lib/store';
+import { checkKeyAvailability } from '../lib/llm';
+import type {
+  ApiKeyModalType,
+  CameraState,
+  DraggingAppElement,
+  ResizingAppElement,
+  StickyNote,
+  TextLabel,
+  TokenLimitModalState,
+  WorkflowStoreState,
+  ToolType,
+  KeyInfoState,
+  PhaseOverlayState,
+} from '../types/engine';
+
+export function usePromptInput() {
+  const projectPrompt = useWorkflowStore((state: WorkflowStoreState) => state.projectPrompt);
+  const setProjectPrompt = useWorkflowStore((state: WorkflowStoreState) => state.setProjectPrompt);
+  const projectAttachment = useWorkflowStore((state: WorkflowStoreState) => state.projectAttachment);
+  const setProjectAttachment = useWorkflowStore((state: WorkflowStoreState) => state.setProjectAttachment);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  return {
+    projectPrompt,
+    setProjectPrompt,
+    projectAttachment,
+    setProjectAttachment,
+    fileInputRef,
+  };
+}
+
+export function useModalState() {
+  const addToast = useToastStore((state) => state.addToast);
+  const [showKeyModal, setShowKeyModal] = useState(false);
+  const [keyModalType, setKeyModalType] = useState<ApiKeyModalType>('NO_KEY');
+  const [keyInfo, setKeyInfo] = useState<KeyInfoState>({
+    activeSource: 'none',
+    project: { hasKey: false },
+    global: { any: false },
+  });
+  const [tokenLimitModal, setTokenLimitModal] = useState<TokenLimitModalState | null>(null);
+  const [phaseOutputModal, setPhaseOutputModal] = useState<string | null>(null);
+  const [showOutputScreen, setShowOutputScreen] = useState(false);
+
+  useEffect(() => {
+    const handleKeyError = (e: any) => {
+      const { type } = e.detail || {};
+      if (type === 'RATE_LIMIT') {
+        addToast('warning', 'Rate limited. Please wait or switch keys.');
+      } else {
+        setKeyModalType(type);
+        setShowKeyModal(true);
+      }
+    };
+
+    const handleTokenLimit = (e: any) => {
+      const { model, provider, message } = e.detail || {};
+      setTokenLimitModal({ show: true, model, provider, message });
+    };
+
+    window.addEventListener('agentic:key-error', handleKeyError);
+    window.addEventListener('agentic:token-limit', handleTokenLimit);
+
+    const seqId = localStorage.getItem('active_sequence_id');
+    if (seqId) {
+      checkKeyAvailability(seqId).then(setKeyInfo);
+    }
+
+    return () => {
+      window.removeEventListener('agentic:key-error', handleKeyError);
+      window.removeEventListener('agentic:token-limit', handleTokenLimit);
+    };
+  }, [addToast]);
+
+  return {
+    showKeyModal,
+    setShowKeyModal,
+    keyModalType,
+    setKeyModalType,
+    keyInfo,
+    setKeyInfo,
+    tokenLimitModal,
+    setTokenLimitModal,
+    phaseOutputModal,
+    setPhaseOutputModal,
+    showOutputScreen,
+    setShowOutputScreen,
+  };
+}
+
+export function usePhaseOverlay() {
+  const [phaseOverlay, setPhaseOverlay] = useState<PhaseOverlayState | null>(null);
+  const [completedPhases, setCompletedPhases] = useState<string[]>([]);
+  const [runningPhaseId, setRunningPhaseId] = useState<string | null>(null);
+
+  return {
+    phaseOverlay,
+    setPhaseOverlay,
+    completedPhases,
+    setCompletedPhases,
+    runningPhaseId,
+    setRunningPhaseId,
+  };
+}
+
+export function useCanvasControls() {
+  const [camera, setCamera] = useState<CameraState>({ x: 100, y: 60, zoom: 0.55 });
+  const [isPanning, setIsPanning] = useState(false);
+  const canvasRef = useRef<HTMLDivElement | null>(null);
+  const lastMousePos = useRef({ x: 0, y: 0 });
+
+  const [activeTool, setActiveTool] = useState<ToolType>('cursor');
+  const [stickyNotes, setStickyNotes] = useState<StickyNote[]>([]);
+  const [strokes, setStrokes] = useState<{ id: number; points: Array<{ x: number; y: number }> }[]>([]);
+  const [currentStroke, setCurrentStroke] = useState<Array<{ x: number; y: number }> | null>(null);
+  const currentStrokeRef = useRef<Array<{ x: number; y: number }>>([]);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const isDrawingRef = useRef(false);
+  const [canvasLocked, setCanvasLocked] = useState(false);
+  const [textLabels, setTextLabels] = useState<TextLabel[]>([]);
+  const [draggingAppElement, setDraggingAppElement] = useState<DraggingAppElement | null>(null);
+  const [resizingAppElement, setResizingAppElement] = useState<ResizingAppElement | null>(null);
+  const [editingStickyId, setEditingStickyId] = useState<number | null>(null);
+  const [editingLabelId, setEditingLabelId] = useState<number | null>(null);
+  const preFocusCamera = useRef<CameraState | null>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const onWheel = (e: WheelEvent) => {
+      if (canvasLocked) {
+        e.preventDefault();
+        return;
+      }
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+      }
+
+      requestAnimationFrame(() => {
+        if (e.ctrlKey || e.metaKey) {
+          setCamera((prev) => {
+            const zoomMultiplier = Math.exp(-e.deltaY * 0.005);
+            const newZoom = Math.min(Math.max(prev.zoom * zoomMultiplier, 0.05), 4);
+            const zoomRatio = newZoom / prev.zoom;
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            return {
+              zoom: newZoom,
+              x: mouseX - (mouseX - prev.x) * zoomRatio,
+              y: mouseY - (mouseY - prev.y) * zoomRatio,
+            };
+          });
+        } else {
+          setCamera((prev) => ({
+            ...prev,
+            x: prev.x - e.deltaX * 1.5,
+            y: prev.y - e.deltaY * 1.5,
+          }));
+        }
+      });
+    };
+
+    canvas.addEventListener('wheel', onWheel, { passive: false });
+    return () => canvas.removeEventListener('wheel', onWheel);
+  }, [canvasLocked]);
+
+  const getCanvasCoords = useCallback(
+    (clientX: number, clientY: number) => ({
+      x: (clientX - camera.x) / camera.zoom,
+      y: (clientY - camera.y) / camera.zoom,
+    }),
+    [camera]
+  );
+
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if (canvasLocked) return;
+      if (e.target instanceof Element && (e.target.closest('.n8n-node') || e.target.closest('.sticky-note'))) return;
+
+      if (activeTool === 'cursor') {
+        if (e.button === 1 || (e.button === 0 && e.altKey) || (e.target as HTMLElement).id === 'canvas-bg') {
+          setIsPanning(true);
+          lastMousePos.current = { x: e.clientX, y: e.clientY };
+        }
+      } else if (activeTool === 'sticky') {
+        const coords = getCanvasCoords(e.clientX, e.clientY);
+        const newId = Date.now();
+        setStickyNotes((prev) => [...prev, { id: newId, x: coords.x - 120, y: coords.y - 90, text: '', color: '#A259FF', width: 240, height: 180 }]);
+        setActiveTool('cursor');
+      } else if (activeTool === 'text') {
+        const coords = getCanvasCoords(e.clientX, e.clientY);
+        setTextLabels((prev) => [...prev, { id: Date.now(), x: coords.x, y: coords.y, text: '' }]);
+        setActiveTool('cursor');
+      } else if (activeTool === 'highlighter') {
+        isDrawingRef.current = true;
+        setIsDrawing(true);
+        const coords = getCanvasCoords(e.clientX, e.clientY);
+        currentStrokeRef.current = [coords];
+        setCurrentStroke([coords]);
+      }
+    },
+    [activeTool, canvasLocked, getCanvasCoords]
+  );
+
+  const handleMouseMove = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if (canvasRef.current) {
+        const rect = canvasRef.current.getBoundingClientRect();
+        canvasRef.current.style.setProperty('--mouse-x', `${e.clientX - rect.left}px`);
+        canvasRef.current.style.setProperty('--mouse-y', `${e.clientY - rect.top}px`);
+      }
+
+      if (draggingAppElement) {
+        const coords = getCanvasCoords(e.clientX, e.clientY);
+        const dx = coords.x - draggingAppElement.startMouseX;
+        const dy = coords.y - draggingAppElement.startMouseY;
+        if (draggingAppElement.type === 'sticky') {
+          setStickyNotes((prev) => prev.map((n) => (n.id === draggingAppElement.id ? { ...n, x: draggingAppElement.startX + dx, y: draggingAppElement.startY + dy } : n)));
+        } else if (draggingAppElement.type === 'label') {
+          setTextLabels((prev) => prev.map((l) => (l.id === draggingAppElement.id ? { ...l, x: draggingAppElement.startX + dx, y: draggingAppElement.startY + dy } : l)));
+        }
+      }
+
+      if (resizingAppElement) {
+        const coords = getCanvasCoords(e.clientX, e.clientY);
+        const newWidth = Math.max(120, coords.x - resizingAppElement.elemX);
+        const newHeight = Math.max(120, coords.y - resizingAppElement.elemY);
+        if (resizingAppElement.type === 'sticky') {
+          setStickyNotes((prev) => prev.map((n) => (n.id === resizingAppElement.id ? { ...n, width: newWidth, height: newHeight } : n)));
+        }
+      }
+
+      if (isPanning) {
+        requestAnimationFrame(() => {
+          const dx = e.clientX - lastMousePos.current.x;
+          const dy = e.clientY - lastMousePos.current.y;
+          setCamera((prev) => ({ ...prev, x: prev.x + dx * 1.5, y: prev.y + dy * 1.5 }));
+          lastMousePos.current = { x: e.clientX, y: e.clientY };
+        });
+      } else if (isDrawingRef.current && activeTool === 'highlighter') {
+        const coords = getCanvasCoords(e.clientX, e.clientY);
+        currentStrokeRef.current.push(coords);
+        if (currentStrokeRef.current.length % 2 === 0) {
+          setCurrentStroke([...currentStrokeRef.current]);
+        }
+      }
+    },
+    [activeTool, draggingAppElement, getCanvasCoords, isPanning, resizingAppElement]
+  );
+
+  const handleMouseUp = useCallback(() => {
+    if (draggingAppElement) setDraggingAppElement(null);
+    if (resizingAppElement) setResizingAppElement(null);
+    if (isPanning) setIsPanning(false);
+    if (isDrawingRef.current) {
+      isDrawingRef.current = false;
+      setIsDrawing(false);
+      if (currentStrokeRef.current.length > 1) {
+        setStrokes((prev) => [...prev, { id: Date.now(), points: [...currentStrokeRef.current] }]);
+      }
+      currentStrokeRef.current = [];
+      setCurrentStroke(null);
+    }
+  }, [draggingAppElement, isPanning, resizingAppElement]);
+
+  return {
+    canvasRef,
+    camera,
+    setCamera,
+    isPanning,
+    activeTool,
+    setActiveTool,
+    stickyNotes,
+    setStickyNotes,
+    strokes,
+    setStrokes,
+    currentStroke,
+    setCurrentStroke,
+    textLabels,
+    setTextLabels,
+    canvasLocked,
+    setCanvasLocked,
+    draggingAppElement,
+    setDraggingAppElement,
+    resizingAppElement,
+    setResizingAppElement,
+    editingStickyId,
+    setEditingStickyId,
+    editingLabelId,
+    setEditingLabelId,
+    preFocusCamera,
+    getCanvasCoords,
+    handleMouseDown,
+    handleMouseMove,
+    handleMouseUp,
+  };
+}
+
+```
+
+---
+
 ## `src\lib\builderStore.ts`
 
 ```typescript
 import { create } from 'zustand';
 import { supabase } from './supabaseClient';
+import type { Group } from '../types/groupTypes';
 
 const generateId = () => `id_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
 
@@ -14226,6 +15348,24 @@ export interface BuilderStore {
   deleteStickyNote: (id: string) => void;
   clearAnnotations: () => void;
   deployedTemplateId: string | null;
+
+  isTopologyLocked: boolean;
+  setIsTopologyLocked: (locked: boolean) => void;
+
+  groups: Group[];
+  selectedBlockIds: Set<string>;
+  runningGroupId: string | null;
+  completedGroupIds: string[];
+  toggleBlockSelection: (blockId: string) => void;
+  clearBlockSelection: () => void;
+  createGroup: (name: string) => Group | null;
+  deleteGroup: (groupId: string) => void;
+  renameGroup: (groupId: string, name: string) => void;
+  setRunningGroupId: (groupId: string | null) => void;
+  addCompletedGroupId: (groupId: string) => void;
+  resetGroupExecution: () => void;
+  setGroups: (groups: Group[]) => void;
+
   setTemplates: (templates: any[]) => void;
   deployProject: (name?: string) => Promise<string | null>;
   saveAsTemplate: (name?: string) => Promise<void>;
@@ -14236,7 +15376,7 @@ export interface BuilderStore {
 }
 
 export const useBuilderStore = create<BuilderStore>((set, get) => ({
-  viewMode: 'pipeline', // 'pipeline' | 'builder' | 'templates'
+  viewMode: 'builder', // 'builder' | 'templates'
   setViewMode: (mode: any) => set({ viewMode: mode, selectedElementId: null }),
 
   blocks: [],
@@ -14258,6 +15398,137 @@ export const useBuilderStore = create<BuilderStore>((set, get) => ({
 
   selectedElementId: null,
   setSelectedElementId: (id: any) => set({ selectedElementId: id }),
+
+  groups: [],
+  selectedBlockIds: new Set(),
+  runningGroupId: null,
+  completedGroupIds: [],
+
+  toggleBlockSelection: (blockId: string) => set((state) => {
+    const next = new Set(state.selectedBlockIds);
+    if (next.has(blockId)) {
+      next.delete(blockId);
+    } else {
+      next.add(blockId);
+    }
+    return { selectedBlockIds: next };
+  }),
+
+  clearBlockSelection: () => set({ selectedBlockIds: new Set() }),
+
+  createGroup: (name: string) => {
+    const state = get();
+    const selectedIds = Array.from(state.selectedBlockIds);
+    if (selectedIds.length === 0) return null;
+    
+    const selectedBlocks = state.blocks.filter(b => selectedIds.includes(b.id));
+    if (selectedBlocks.length === 0) return null;
+
+    const rightmost = selectedBlocks.reduce((max: any, b: any) => {
+      const bRight = b.position.x + (b.size?.width || 260);
+      const mRight = max.position.x + (max.size?.width || 260);
+      return bRight > mRight ? b : max;
+    }, selectedBlocks[0]);
+
+    const outputPos = {
+      x: rightmost.position.x + (rightmost.size?.width || 260) + 120,
+      y: selectedBlocks.reduce((sum: number, b: any) => sum + b.position.y, 0) / selectedBlocks.length
+    };
+
+    const outputBlockId = generateId();
+    const outputBlockName = `${name} Output`;
+    
+    const outputNodeBlock = {
+      id: outputBlockId,
+      type: 'agent',
+      name: outputBlockName,
+      description: `Synthesized summary for group: ${name}`,
+      apiKey: '',
+      isGroupOutput: true,
+      phase: 'synthesis',
+      waitConfig: { type: 'none', delay: 0 },
+      triggerConfig: { type: 'manual' },
+      position: outputPos,
+    };
+
+    const newGroupId = generateId();
+    const order = state.groups.length;
+    const newGroup: Group = {
+      id: newGroupId,
+      name,
+      blockIds: selectedIds,
+      outputBlockId,
+      order,
+    };
+
+    const newConnections = selectedIds.map(blockId => ({
+      id: generateId(),
+      sourceBlockId: blockId,
+      targetBlockId: outputBlockId,
+      sourcePort: 'output',
+      targetPort: 'input'
+    }));
+
+    set({
+      blocks: [...state.blocks, outputNodeBlock],
+      connections: [...state.connections, ...newConnections],
+      groups: [...state.groups, newGroup],
+      selectedBlockIds: new Set()
+    });
+
+    state.saveBuilderState();
+    return newGroup;
+  },
+
+  deleteGroup: (groupId: string) => set((state) => {
+    const group = state.groups.find(g => g.id === groupId);
+    if (!group) return state;
+    
+    const nextGroups = state.groups.filter(g => g.id !== groupId)
+      .map((g, index) => ({ ...g, order: index }));
+
+    const outputId = group.outputBlockId;
+    const nextBlocks = state.blocks.filter(b => b.id !== outputId);
+    const nextConns = state.connections.filter(c => c.sourceBlockId !== outputId && c.targetBlockId !== outputId);
+
+    setTimeout(() => {
+      get().saveBuilderState();
+    }, 0);
+
+    return {
+      groups: nextGroups,
+      blocks: nextBlocks,
+      connections: nextConns
+    };
+  }),
+
+  renameGroup: (groupId: string, name: string) => set((state) => {
+    const group = state.groups.find(g => g.id === groupId);
+    if (!group) return state;
+
+    const nextBlocks = state.blocks.map(b => 
+      b.id === group.outputBlockId ? { ...b, name: `${name} Output`, description: `Synthesized summary for group: ${name}` } : b
+    );
+
+    const nextGroups = state.groups.map(g => g.id === groupId ? { ...g, name } : g);
+
+    setTimeout(() => {
+      get().saveBuilderState();
+    }, 0);
+
+    return {
+      groups: nextGroups,
+      blocks: nextBlocks
+    };
+  }),
+
+  setRunningGroupId: (groupId: string | null) => set({ runningGroupId: groupId }),
+  addCompletedGroupId: (groupId: string) => set((state) => {
+    if (state.completedGroupIds.includes(groupId)) return state;
+    return { completedGroupIds: [...state.completedGroupIds, groupId] };
+  }),
+  resetGroupExecution: () => set({ runningGroupId: null, completedGroupIds: [] }),
+  setGroups: (groups: Group[]) => set({ groups }),
 
   // --- TEXT LABELS ---
   addTextLabel: (position: any) => set((state) => ({
@@ -14346,11 +15617,42 @@ export const useBuilderStore = create<BuilderStore>((set, get) => ({
     blocks: state.blocks.map(b => b.id === id ? { ...b, ...updates } : b)
   })),
 
-  deleteBlock: (id: any) => set((state) => ({
-    blocks: state.blocks.filter(b => b.id !== id),
-    connections: state.connections.filter(c => c.sourceBlockId !== id && c.targetBlockId !== id),
-    selectedElementId: state.selectedElementId === id ? null : state.selectedElementId
-  })),
+  deleteBlock: (id: any) => set((state) => {
+    const groupWithOutput = state.groups.find(g => g.outputBlockId === id);
+    let nextGroups = state.groups;
+    let nextBlocks = state.blocks.filter(b => b.id !== id);
+    let nextConns = state.connections.filter(c => c.sourceBlockId !== id && c.targetBlockId !== id);
+
+    if (groupWithOutput) {
+      nextGroups = nextGroups.filter(g => g.id !== groupWithOutput.id)
+        .map((g, index) => ({ ...g, order: index }));
+    } else {
+      nextGroups = nextGroups.map(g => {
+        if (g.blockIds.includes(id)) {
+          return {
+            ...g,
+            blockIds: g.blockIds.filter(bid => bid !== id)
+          };
+        }
+        return g;
+      });
+    }
+
+    setTimeout(() => {
+      get().saveBuilderState();
+    }, 0);
+
+    const nextSel = new Set(state.selectedBlockIds);
+    nextSel.delete(id);
+
+    return {
+      blocks: nextBlocks,
+      connections: nextConns,
+      groups: nextGroups,
+      selectedElementId: state.selectedElementId === id ? null : state.selectedElementId,
+      selectedBlockIds: nextSel
+    };
+  }),
 
   // --- CONNECTIONS ---
   connectBlocks: (sourceId: any, targetId: any, sourcePort: any, targetPort: any) => set((state) => {
@@ -14408,12 +15710,16 @@ export const useBuilderStore = create<BuilderStore>((set, get) => ({
       connections: JSON.parse(JSON.stringify(state.connections)),
       stickyNotes: JSON.parse(JSON.stringify(state.stickyNotes)),
       textLabels: JSON.parse(JSON.stringify(state.textLabels)),
+      groups: JSON.parse(JSON.stringify(state.groups)),
     };
     await supabase.from('sequences').update({ canvas_state, updated_at: new Date().toISOString() }).eq('id', seqId);
   },
 
   // --- TEMPLATES & PIPELINE DEPLOYMENT ---
   deployedTemplateId: null,
+
+  isTopologyLocked: false,
+  setIsTopologyLocked: (locked) => set({ isTopologyLocked: locked }),
 
   setTemplates: (templates: any) => set({ templates }),
 
@@ -14523,28 +15829,7 @@ export const useBuilderStore = create<BuilderStore>((set, get) => ({
       targetPort: c.targetPort
     }));
 
-    // Create a NEW sequence in Supabase so we don't overwrite the old one
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session) {
-      const newSeq = {
-        user_id: session.user.id,
-        title: template.name || 'From Template',
-        status: 'Idle',
-        status_color: '#46B1FF',
-        agents_active: 0,
-        total_agents: newBlocks.length,
-        canvas_state: {
-          blocks: newBlocks,
-          connections: newConns,
-          stickyNotes: [],
-          textLabels: [],
-        }
-      };
-      const { data } = await supabase.from('sequences').insert([newSeq]).select().single();
-      if (data) {
-        localStorage.setItem('active_sequence_id', data.id);
-      }
-    }
+
 
     set({
       blocks: newBlocks,
@@ -14552,11 +15837,11 @@ export const useBuilderStore = create<BuilderStore>((set, get) => ({
       stickyNotes: [],
       textLabels: [],
       selectedElementId: null,
-      viewMode: 'builder'
+      viewMode: 'builder',
+      groups: [],
+      selectedBlockIds: new Set()
     });
-    
-    // Hard reload to completely reboot the Engine state for the new pipeline
-    window.location.reload();
+
   },
   
   updateTemplate: async (id: any, updates: any) => {
@@ -14582,32 +15867,81 @@ export const useBuilderStore = create<BuilderStore>((set, get) => ({
 
 ```typescript
 /**
- * Computes a smooth Bezier curve between two coordinates.
- * Includes support for edge bundling offsets to avoid overlapping SVG wires.
+ * Computes a smooth Cubic Bezier (C) curve between two coordinates.
+ * Supports source (sPort) and target (tPort) exit directions and parallel wire bundling offsets.
  */
-export const computeEdgePath = (fromPos: any, toPos: any, routeConfig: any = { type: 'curve', offsetIndex: 0 }) => {
-  const { x: x1, y: y1 } = fromPos;
-  const { x: x2, y: y2 } = toPos;
+export const computeEdgePath = (
+  fromPos: { x: number; y: number },
+  toPos: { x: number; y: number },
+  routeConfig: {
+    sPort?: 'top' | 'bottom' | 'left' | 'right';
+    tPort?: 'top' | 'bottom' | 'left' | 'right';
+    offsetIndex?: number;
+  } = {}
+) => {
+  const offsetIndex = routeConfig.offsetIndex || 0;
+  const bundleOffset = offsetIndex * 6; // 6px spacer step per parallel/bundled edge
 
-  // The horizontal distance
-  const deltaX = x2 - x1;
+  let x1 = fromPos.x;
+  let y1 = fromPos.y;
+  let x2 = toPos.x;
+  let y2 = toPos.y;
 
-  // Base control point tension
-  let tension = deltaX * 0.45;
+  // Infer default ports if not specified (pipeline left-to-right flow fallback)
+  let sPort = routeConfig.sPort;
+  let tPort = routeConfig.tPort;
 
-  // Apply visual offset for bundles (pushing control points vertically)
-  // This physically separates bezier curves that travel similar distances
-  const bundleOffset = routeConfig.offsetIndex * 15; // 15px step per bundled edge
-  const directedOffset = (routeConfig.offsetIndex % 2 === 0 ? 1 : -1) * bundleOffset;
+  if (!sPort) {
+    sPort = x1 < x2 ? 'right' : 'left';
+  }
+  if (!tPort) {
+    tPort = x1 < x2 ? 'left' : 'right';
+  }
 
-  // Control points
-  const cp1x = x1 + tension;
-  const cp1y = y1 + directedOffset;
-  
-  const cp2x = x2 - tension;
-  const cp2y = y2 + directedOffset;
+  // Adjust wire offsets for parallel flows to prevent overlaps
+  if (sPort === 'right' || sPort === 'left') {
+    y1 += (offsetIndex % 2 === 0 ? 1 : -1) * bundleOffset;
+  } else {
+    x1 += (offsetIndex % 2 === 0 ? 1 : -1) * bundleOffset;
+  }
+  if (tPort === 'right' || tPort === 'left') {
+    y2 += (offsetIndex % 2 === 0 ? 1 : -1) * bundleOffset;
+  } else {
+    x2 += (offsetIndex % 2 === 0 ? 1 : -1) * bundleOffset;
+  }
 
-  return `M ${x1},${y1} C ${cp1x},${cp1y} ${cp2x},${cp2y} ${x2},${y2}`;
+  // Compute dynamic control point distance based on coordinates
+  const dx = Math.abs(x2 - x1);
+  const dy = Math.abs(y2 - y1);
+  const controlDist = Math.max(5, Math.min(150, Math.max(dx, dy) * 0.5));
+
+  // Calculate control points based on port directions
+  let cp1x = x1;
+  let cp1y = y1;
+  if (sPort === 'right') {
+    cp1x += controlDist;
+  } else if (sPort === 'left') {
+    cp1x -= controlDist;
+  } else if (sPort === 'bottom') {
+    cp1y += controlDist;
+  } else if (sPort === 'top') {
+    cp1y -= controlDist;
+  }
+
+  let cp2x = x2;
+  let cp2y = y2;
+  if (tPort === 'right') {
+    cp2x += controlDist;
+  } else if (tPort === 'left') {
+    cp2x -= controlDist;
+  } else if (tPort === 'bottom') {
+    cp2y += controlDist;
+  } else if (tPort === 'top') {
+    cp2y -= controlDist;
+  }
+
+  // Cubic Bezier curve path definition
+  return `M ${x1} ${y1} C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${x2} ${y2}`;
 };
 
 /**
@@ -14615,9 +15949,8 @@ export const computeEdgePath = (fromPos: any, toPos: any, routeConfig: any = { t
  */
 export const bundleEdges = (edges: any) => {
   const bundles: Record<string, number> = {};
-  
+
   const processedEdges = edges.map((edge: any) => {
-    // A bundle is defined by the Phase transition: e.g. "discover->define"
     const fromPhase = edge.from.split('::')[0];
     const toPhase = edge.to.split('::')[0];
     const bundleId = `${fromPhase}->${toPhase}`;
@@ -14627,11 +15960,11 @@ export const bundleEdges = (edges: any) => {
     }
 
     const offsetIndex = bundles[bundleId]++;
-    
+
     return {
       ...edge,
       routeConfig: {
-        type: 'curve',
+        type: 'curved',
         offsetIndex
       }
     };
@@ -14851,7 +16184,14 @@ export async function getProjectKeyStatus(sequenceId: string) {
 /**
  * High-level pre-check for key availability.
  */
-export async function checkKeyAvailability(sequenceId: string) {
+interface KeyCheckResult {
+  any: boolean;
+  project: { hasKey: boolean; lastFour?: string };
+  global: { any: boolean; lastFour?: string };
+  activeSource: 'none' | 'project' | 'global';
+}
+
+export async function checkKeyAvailability(sequenceId: string): Promise<KeyCheckResult> {
   const [projectStatus, globalStatus] = await Promise.all([
     getProjectKeyStatus(sequenceId),
     getKeyStatus()
@@ -14981,13 +16321,74 @@ export async function callLLM(userTask: any, agent: any, neuralContext: any = ''
 
 ---
 
+## `src\lib\routes.ts`
+
+```typescript
+export const ROUTES = {
+  landing: '/',
+  dashboard: '/dashboard',
+  canvas: '/canvas',
+  profile: '/profile',
+} as const;
+
+export type RouteKey = keyof typeof ROUTES;
+export type RoutePath = typeof ROUTES[RouteKey];
+
+```
+
+---
+
 ## `src\lib\store.ts`
 
 ```typescript
 import { create } from 'zustand';
+import type { GraphStatus } from '../types/engine';
 import { WORKFLOW_PHASES } from '../data/schema';
 
-export const useWorkflowStore = create<any>((set, get) => ({
+export interface WorkflowStoreState {
+  graphStatus: GraphStatus;
+  setGraphStatus: (status: GraphStatus) => void;
+  animationState: {
+    phase: string;
+    activeNodes: string[];
+    queuedTransitions: any[];
+  };
+  setAnimationState: (newState: any) => void;
+  projectPrompt: string;
+  setProjectPrompt: (prompt: string) => void;
+  flowTitle: string;
+  setFlowTitle: (title: string) => void;
+  projectAttachment: any;
+  setProjectAttachment: (attachment: any) => void;
+  currentPhaseIndex: number;
+  setCurrentPhaseIndex: (idx: any) => void;
+  nodeStates: Record<string, any>;
+  nodeResults: Record<string, any>;
+  setNodeState: (nodeId: any, state: any) => void;
+  setNodeResult: (nodeId: any, result: any) => void;
+  resetExecution: (nodes: any) => void;
+  layoutMode: string;
+  setLayoutMode: (mode: any) => void;
+  activeMode: string;
+  setActiveMode: (mode: any) => void;
+  selectedNodeId: string | null;
+  selectedToolId: string | null;
+  userContext: {
+    role: string;
+    budget: string;
+    weights: {
+      audience: number;
+      pricing: number;
+      tags: number;
+    };
+  };
+  selectNode: (nodeId: any, _source?: any) => void;
+  selectTool: (toolId: any) => void;
+  revealedPhases: string[];
+  revealNextPhase: () => void;
+}
+
+export const useWorkflowStore = create<WorkflowStoreState>((set, get) => ({
   // Core Graph State
   graphStatus: 'idle', // idle, loading, ready, error
   setGraphStatus: (status: any) => set({ graphStatus: status }),
@@ -15023,7 +16424,7 @@ export const useWorkflowStore = create<any>((set, get) => ({
   resetExecution: (nodes: any) => {
     const freshStates: Record<string, any> = {};
     nodes.forEach((n: any) => { freshStates[n] = 'idle'; });
-    set({ nodeStates: freshStates, nodeResults: {}, currentPhaseIndex: 0, revealedPhases: [], graphStatus: 'ready', flowStatus: 'idle', animationState: { phase: 'idle', activeNodes: [], queuedTransitions: [] } });
+    set({ nodeStates: freshStates, nodeResults: {}, currentPhaseIndex: 0, revealedPhases: [], graphStatus: 'ready', animationState: { phase: 'idle', activeNodes: [], queuedTransitions: [] } });
   },
 
   // Layout Constraints
@@ -15067,16 +16468,19 @@ export const useWorkflowStore = create<any>((set, get) => ({
     const current = get().revealedPhases;
     const all = WORKFLOW_PHASES.map(p => p.id);
     if (current.length < all.length) {
-      set({ revealedPhases: [...current, all[current.length]] });
+      const nextPhaseId = all[current.length];
+      if (nextPhaseId) {
+        set({ revealedPhases: [...current, nextPhaseId] });
+      }
     }
   }
 }));
 
 // Selectors for specific Memoized updates in React
-export const selectActiveNodeId = (state: any) => state.selectedNodeId;
-export const selectActiveToolId = (state: any) => state.selectedToolId;
-export const selectRevealedPhases = (state: any) => state.revealedPhases;
-export const selectLayoutMode = (state: any) => state.layoutMode;
+export const selectActiveNodeId = (state: WorkflowStoreState) => state.selectedNodeId;
+export const selectActiveToolId = (state: WorkflowStoreState) => state.selectedToolId;
+export const selectRevealedPhases = (state: WorkflowStoreState) => state.revealedPhases;
+export const selectLayoutMode = (state: WorkflowStoreState) => state.layoutMode;
 
 ```
 
@@ -15279,6 +16683,7 @@ export class AuthAdapter {
 ```tsx
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { Navigate } from 'react-router-dom';
+import { ROUTES } from '../routes';
 
 // ─── Context ────────────────────────────────────────────────
 export interface AuthContextType {
@@ -15287,7 +16692,6 @@ export interface AuthContextType {
   isAuthenticated: boolean;
   signUp: (data: any) => Promise<any>;
   signIn: (credentials: any) => Promise<any>;
-  signInWithProvider: (provider: any) => Promise<any>;
   signOut: () => Promise<any>;
   getProfile: (userId: any) => Promise<any>;
   updateProfile: (userId: any, data: any) => Promise<any>;
@@ -15350,10 +16754,6 @@ export const AuthProvider = ({ children, adapter }: any) => {
     return result;
   }, [adapter]);
 
-  const signInWithProvider = useCallback(async (provider: any) => {
-    return adapter.signInWithProvider(provider);
-  }, [adapter]);
-
   const signOut = useCallback(async () => {
     const result = await adapter.signOut();
     if (!result.error) {
@@ -15380,7 +16780,6 @@ export const AuthProvider = ({ children, adapter }: any) => {
     isAuthenticated: !!user,
     signUp,
     signIn,
-    signInWithProvider,
     signOut,
     getProfile,
     updateProfile,
@@ -15422,7 +16821,7 @@ export const ProtectedRoute = ({ children }: any) => {
   }
 
   if (!user) {
-    return <Navigate to="/" replace />;
+    return <Navigate to={ROUTES.landing} replace />;
   }
 
   return children;
@@ -15563,12 +16962,6 @@ export class LocalServerAuthAdapter extends AuthAdapter {
     return { user, error: null };
   }
 
-  async signInWithProvider(provider: any) {
-    // For local server, this typically redirects to a passport.js /auth/google endpoint
-    window.location.href = `${this.baseUrl}/auth/${provider}`;
-    return { error: null }; // Redirects
-  }
-
   async signOut() {
     try {
       await this._fetch('/auth/logout', { method: 'POST' });
@@ -15701,16 +17094,6 @@ export class SupabaseAuthAdapter extends AuthAdapter {
     };
   }
 
-  async signInWithProvider(provider: any) {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider,
-      options: {
-        redirectTo: `${window.location.origin}/dashboard`
-      }
-    });
-    return { error: normalizeError(error) };
-  }
-
   async signOut() {
     const { error } = await supabase.auth.signOut();
     return { error: normalizeError(error) };
@@ -15779,6 +17162,154 @@ export class SupabaseAuthAdapter extends AuthAdapter {
 
     return { unsubscribe: () => subscription.unsubscribe() };
   }
+}
+
+```
+
+---
+
+## `src\types\engine.ts`
+
+```typescript
+export type ApiKeyModalType = 'NO_KEY' | 'INVALID_KEY' | 'RATE_LIMIT';
+
+export interface KeyInfoState {
+  activeSource: 'none' | 'project' | 'global';
+  project: {
+    hasKey: boolean;
+    lastFour?: string;
+  };
+  global: {
+    any: boolean;
+    lastFour?: string;
+  };
+}
+
+export interface SequenceAttachment {
+  name: string;
+  content: string;
+  type: string;
+}
+
+export interface CameraState {
+  x: number;
+  y: number;
+  zoom: number;
+}
+
+export interface PhaseOverlayState {
+  phase: number;
+  phaseName: string;
+  nextPhaseName: string;
+}
+
+export interface StickyNote {
+  id: number;
+  x: number;
+  y: number;
+  text: string;
+  color: string;
+  width: number;
+  height: number;
+}
+
+export interface TextLabel {
+  id: number;
+  x: number;
+  y: number;
+  text: string;
+}
+
+export interface DraggingAppElement {
+  type: 'sticky' | 'label';
+  id: number;
+  startX: number;
+  startY: number;
+  startMouseX: number;
+  startMouseY: number;
+}
+
+export interface ResizingAppElement {
+  type: 'sticky';
+  id: number;
+  elemX: number;
+  elemY: number;
+}
+
+export interface StrokePoint {
+  x: number;
+  y: number;
+}
+
+export interface TokenLimitModalState {
+  show: boolean;
+  model: string;
+  provider: string;
+  message: string;
+}
+
+export type ToolType = 'cursor' | 'sticky' | 'text' | 'highlighter'| 'connect';
+
+export type GraphStatus = 'idle' | 'loading' | 'ready' | 'running' | 'completed' | 'error';
+
+export interface WorkflowNodeResult {
+  content?: string;
+  ui?: string;
+  agentName?: string;
+  _errorType?: string;
+}
+
+export type WorkflowNodeResults = Record<string, WorkflowNodeResult>;
+
+export interface WorkflowStoreState {
+  graphStatus: GraphStatus;
+  setGraphStatus: (status: GraphStatus) => void;
+  animationState: {
+    phase: string;
+    activeNodes: string[];
+    queuedTransitions: any[];
+  };
+  setAnimationState: (newState: any) => void;
+  projectPrompt: string;
+  setProjectPrompt: (prompt: string) => void;
+  flowTitle: string;
+  setFlowTitle: (title: string) => void;
+  projectAttachment: SequenceAttachment | null;
+  setProjectAttachment: (attachment: SequenceAttachment | null) => void;
+  currentPhaseIndex: number;
+  setCurrentPhaseIndex: (idx: number) => void;
+  nodeStates: Record<string, string>;
+  nodeResults: WorkflowNodeResults;
+  setNodeState: (nodeId: string, state: string) => void;
+  setNodeResult: (nodeId: string, result: any) => void;
+  resetExecution: (nodes: string[]) => void;
+  selectedNodeId: string | null;
+  selectNode: (nodeId: string | null, source?: any) => void;
+}
+
+```
+
+---
+
+## `src\types\groupTypes.ts`
+
+```typescript
+/**
+ * Dynamic Group System — Type Definitions
+ * 
+ * Groups are execution phases. Each group:
+ * - Contains agent blocks
+ * - Has a synthesis output node
+ * - Has an execution order
+ * - Can execute independently or as part of a workflow
+ */
+
+export interface Group {
+  id: string;
+  name: string;
+  blockIds: string[];       // Agent block IDs in this group
+  outputBlockId: string;    // Auto-created synthesis output node
+  order: number;            // Workflow execution sequence (creation order)
 }
 
 ```

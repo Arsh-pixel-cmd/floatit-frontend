@@ -2,6 +2,7 @@ import React from 'react';
 import { Activity, Paperclip, Folder, X, Play, FileText, Key } from 'lucide-react';
 import type { ApiKeyModalType, KeyInfoState, SequenceAttachment, GraphStatus, TokenLimitModalState } from '../../types/engine';
 import { WORKFLOW_PHASES } from '../../data/schema';
+import { useBuilderStore } from '../../lib/builderStore';
 
 interface PromptBarProps {
   projectPrompt: string;
@@ -19,7 +20,7 @@ interface PromptBarProps {
   completedPhases: string[];
   runningPhaseId: string | null;
   setPhaseOutputModal: (phaseId: string | null) => void;
-  runPhase: (phaseId: string) => void;
+  runPhase?: (phaseId: string) => void;
   tokenLimitModal: TokenLimitModalState | null;
 }
 
@@ -38,9 +39,10 @@ export default function PromptBar({
   completedPhases,
   runningPhaseId,
   setPhaseOutputModal,
-  runPhase,
+  runPhase = () => {},
   tokenLimitModal,
 }: PromptBarProps) {
+  const { groups, runningGroupId, completedGroupIds } = useBuilderStore();
   return (
     <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[60] w-full max-w-5xl px-8 pointer-events-none">
       <div className="flex flex-col items-center gap-2 pointer-events-auto bg-[#0a0a0f]/80 backdrop-blur-3xl border border-white/10 rounded-[32px] p-5 shadow-[0_30px_60px_rgba(0,0,0,0.8)]">
@@ -163,8 +165,8 @@ export default function PromptBar({
             onClick={() => {
               runFullPipeline();
             }}
-            disabled={graphStatus === 'running' || !projectPrompt}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-white hover:bg-[#A259FF] hover:border-[#A259FF] transition-all text-[9px] font-black uppercase tracking-widest shadow-lg active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={graphStatus === 'running' || !projectPrompt || groups.length === 0}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-white hover:bg-[#A259FF] hover:border-[#A259FF] transition-all text-[9px] font-black uppercase tracking-widest shadow-lg active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed pointer-events-auto"
             title="Run all phases automatically"
           >
             {graphStatus === 'running' ? (
@@ -175,70 +177,84 @@ export default function PromptBar({
           </button>
         </div>
 
-        <div className="w-full grid grid-cols-4 gap-2">
-          {WORKFLOW_PHASES.map((phase, idx) => {
-            const isCompleted = completedPhases.includes(phase.id);
-            const isRunning = runningPhaseId === phase.id;
-            const prevDone = idx === 0 || completedPhases.includes(WORKFLOW_PHASES[idx - 1]!.id);
-            const isLocked = !prevDone && !isCompleted;
-            const phaseColors = [
-              { accent: '#FFFFFF', glow: 'rgba(70,177,255,0.15)' },
-              { accent: '#FFFFFF', glow: 'rgba(206,163,255,0.15)' },
-              { accent: '#FFFFFF', glow: 'rgba(162,89,255,0.15)' },
-              { accent: '#FFFFFF', glow: 'rgba(222,247,103,0.15)' },
-            ][idx]!;
+        {groups.length === 0 ? (
+          <div className="w-full py-6 border border-dashed border-white/10 rounded-2xl flex flex-col items-center justify-center bg-white/[0.01]">
+            <p className="text-xs text-slate-500 font-bold uppercase tracking-wider text-center">
+              No groups configured
+            </p>
+            <p className="text-[10px] text-slate-600 mt-1 text-center font-medium">
+              Select multiple agents on the canvas (Shift + Click) and click "Create Group" to enable phase execution.
+            </p>
+          </div>
+        ) : (
+          <div 
+            className="w-full grid gap-2"
+            style={{ gridTemplateColumns: `repeat(${groups.length}, minmax(0, 1fr))` }}
+          >
+            {[...groups].sort((a, b) => a.order - b.order).map((group, idx) => {
+              const isCompleted = completedGroupIds.includes(group.id);
+              const isRunning = runningGroupId === group.id;
 
-            return (
-              <div
-                key={phase.id}
-                className="flex flex-col gap-1.5 rounded-2xl border p-3 transition-all duration-300"
-                style={{
-                  borderColor: isCompleted ? phaseColors.accent + '60' : isRunning ? phaseColors.accent + '40' : 'rgba(255,255,255,0.05)',
-                  background: isCompleted ? phaseColors.glow : isRunning ? phaseColors.glow : 'rgba(255,255,255,0.02)',
-                  boxShadow: isRunning ? `0 0 20px ${phaseColors.glow}` : 'none'
-                }}
-              >
-                <div className="flex items-center justify-between mb-0.5">
-                  <span className="text-[9px] font-black uppercase tracking-widest" style={{ color: phaseColors.accent }}>
-                    {phase.label}
-                  </span>
-                  {isCompleted && <span className="text-[10px] text-green-400">✓</span>}
-                  {isRunning && <div className="w-2.5 h-2.5 rounded-full animate-pulse" style={{ background: phaseColors.accent }} />}
+              const groupColors = [
+                { accent: '#A259FF', glow: 'rgba(162,89,255,0.15)' },
+                { accent: '#DEF767', glow: 'rgba(222,247,103,0.15)' },
+                { accent: '#46B1FF', glow: 'rgba(70,177,255,0.15)' },
+                { accent: '#CEA3FF', glow: 'rgba(206,163,255,0.15)' }
+              ];
+              const color = groupColors[idx % groupColors.length]!;
+
+              return (
+                <div
+                  key={group.id}
+                  className="flex flex-col gap-1.5 rounded-2xl border p-3 transition-all duration-300 relative group-phase-box"
+                  style={{
+                    borderColor: isCompleted ? color.accent + '60' : isRunning ? color.accent + '40' : 'rgba(255,255,255,0.05)',
+                    background: isCompleted ? color.glow : isRunning ? color.glow : 'rgba(255,255,255,0.02)',
+                    boxShadow: isRunning ? `0 0 20px ${color.glow}` : 'none'
+                  }}
+                >
+                  <div className="flex items-center justify-between mb-0.5">
+                    <span className="text-[9px] font-black uppercase tracking-widest truncate max-w-[120px]" style={{ color: color.accent }} title={group.name}>
+                      {group.name}
+                    </span>
+                    {isCompleted && <span className="text-[10px] text-green-400 font-bold">✓</span>}
+                    {isRunning && <div className="w-2 h-2 rounded-full animate-ping" style={{ background: color.accent }} />}
+                  </div>
+                  {isCompleted ? (
+                    <button
+                      onClick={() => setPhaseOutputModal(group.outputBlockId)}
+                      className="w-full py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1 hover:opacity-85 pointer-events-auto"
+                      style={{
+                        background: `${color.accent}10`,
+                        color: color.accent,
+                        border: `1px solid ${color.accent}30`
+                      }}
+                    >
+                      <FileText size={9} /> View Report
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => runPhase(group.id)}
+                      disabled={isRunning || graphStatus === 'running' || !projectPrompt}
+                      className="w-full py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1 pointer-events-auto"
+                      style={{
+                        background: !projectPrompt ? 'rgba(255,255,255,0.03)' : `${color.accent}20`,
+                        color: !projectPrompt ? '#475569' : color.accent,
+                        border: `1px solid ${color.accent}30`
+                      }}
+                    >
+                      {isRunning ? (
+                        <><div className="w-2.5 h-2.5 border border-current border-t-transparent rounded-full animate-spin" /> Running</>
+                      ) : (
+                        <><Play size={9} fill="currentColor" /> Run</>
+                      )}
+                    </button>
+                  )}
                 </div>
-                {isCompleted ? (
-                  <button
-                    onClick={() => setPhaseOutputModal(phase.id)}
-                    className="w-full py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1 hover:opacity-80"
-                    style={{
-                      background: `${phaseColors.accent}10`,
-                      color: phaseColors.accent,
-                      border: `1px solid ${phaseColors.accent}30`
-                    }}
-                  >
-                    <FileText size={9} /> View Report
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => runPhase(phase.id)}
-                    disabled={isLocked || isRunning || graphStatus === 'running' || !projectPrompt}
-                    className="w-full py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1"
-                    style={{
-                      background: isLocked || !projectPrompt ? 'rgba(255,255,255,0.03)' : `${phaseColors.accent}20`,
-                      color: isLocked || !projectPrompt ? '#475569' : phaseColors.accent,
-                      border: `1px solid ${isLocked ? 'rgba(255,255,255,0.05)' : phaseColors.accent + '30'}`
-                    }}
-                  >
-                    {isRunning ? (
-                      <><div className="w-2.5 h-2.5 border border-current border-t-transparent rounded-full animate-spin" /> Running</>
-                    ) : (
-                      <><Play size={9} fill="currentColor" /> Run</>
-                    )}
-                  </button>
-                )}
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

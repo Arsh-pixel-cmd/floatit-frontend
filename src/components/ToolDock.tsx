@@ -14,7 +14,7 @@ interface ToolDockProps {
 }
 
 const ToolDock = ({ activeTool, setActiveTool, canvasLocked, setCanvasLocked, onScreenshot, onEraseAll, onLockToggle }: ToolDockProps) => {
-  const { viewMode, setViewMode, addBlock, addWebhookBlock } = useBuilderStore();
+  const { viewMode, setViewMode, addBlock, addWebhookBlock, isTopologyLocked } = useBuilderStore();
 
   // Apple-style persistent scaling state
   const [dockScale, setDockScale] = useState(1);
@@ -77,10 +77,14 @@ const ToolDock = ({ activeTool, setActiveTool, canvasLocked, setCanvasLocked, on
 
       {viewMode === 'builder' && (
         <>
-          <ToolButton data-tour="add-agent-btn" onClick={() => addBlock()} icon={<PlusSquare size={20} />} title="Add Agent Block" />
-          <ToolButton data-tour="add-webhook-btn" onClick={() => addWebhookBlock()} icon={<Webhook size={20} />} title="Add Webhook Bridge" />
-          <ToolButton active={activeTool === 'connect'} onClick={() => setActiveTool('connect')} icon={<Network size={20} />} title="Connect Blocks" />
-          <Separator />
+          {!isTopologyLocked && (
+            <>
+              <ToolButton data-tour="add-agent-btn" onClick={() => addBlock()} icon={<PlusSquare size={20} />} title="Add Agent Block" />
+              <ToolButton data-tour="add-webhook-btn" onClick={() => addWebhookBlock()} icon={<Webhook size={20} />} title="Add Webhook Bridge" />
+              <ToolButton active={activeTool === 'connect'} onClick={() => setActiveTool('connect')} icon={<Network size={20} />} title="Connect Blocks" />
+              <Separator />
+            </>
+          )}
         </>
       )}
 
@@ -129,8 +133,8 @@ const ToolButton = ({ active, onClick, icon, title, ...rest }: ToolButtonProps) 
     <button
       onClick={onClick}
       className={`p-3 rounded-xl transition-all duration-300 origin-left group-hover/btn:scale-[1.2] group-hover/btn:translate-x-2 active:scale-95 border ${active
-          ? 'bg-[#DEF767] text-black border-[#DEF767] shadow-[0_0_20px_rgba(222,247,103,0.3)]'
-          : 'text-slate-400 border-transparent group-hover/btn:text-white group-hover/btn:bg-white/5 group-hover/btn:border-white/10'
+        ? 'bg-[#DEF767] text-black border-[#DEF767] shadow-[0_0_20px_rgba(222,247,103,0.3)]'
+        : 'text-slate-400 border-transparent group-hover/btn:text-white group-hover/btn:bg-white/5 group-hover/btn:border-white/10'
         }`}
     >
       {icon}

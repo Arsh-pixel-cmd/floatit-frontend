@@ -5,6 +5,8 @@ import WebhookBlockNode from './WebhookBlockNode';
 import { Trash2 } from 'lucide-react';
 import { computeEdgePath } from '../lib/edgeRouter';
 import type { ToolType } from '../types/engine';
+import MultiSelectActionBar from './MultiSelectActionBar';
+import CreateGroupModal from './CreateGroupModal';
 
 interface Coords { x: number; y: number; }
 
@@ -43,8 +45,11 @@ const BuilderCanvas = ({ activeTool, setActiveTool, getCanvasCoords }: BuilderCa
     setSelectedElementId, connectBlocks,
     stickyNotes, addStickyNote, updateStickyNote, deleteStickyNote,
     textLabels, addTextLabel, updateTextLabel, deleteTextLabel,
-    nodeStatus
+    nodeStatus,  isTopologyLocked,
+    groups, selectedBlockIds, toggleBlockSelection, clearBlockSelection, createGroup
   } = useBuilderStore();
+
+  const [isCreateGroupModalOpen, setIsCreateGroupModalOpen] = useState(false);
 
   const [draggingElement, setDraggingElement] = useState<DraggingElement | null>(null);
   const [wiringState, setWiringState] = useState<WiringState | null>(null);
@@ -116,6 +121,7 @@ const BuilderCanvas = ({ activeTool, setActiveTool, getCanvasCoords }: BuilderCa
   const handleBlockMouseDown = (e: React.MouseEvent, block: any) => {
     const target = e.target as HTMLElement;
     if (target.classList.contains('resize-handle')) {
+      if (isTopologyLocked) return; // Prevent resizing when topology is locked
       e.stopPropagation();
       setResizingElement({
         type: 'block',
@@ -128,6 +134,7 @@ const BuilderCanvas = ({ activeTool, setActiveTool, getCanvasCoords }: BuilderCa
 
     // Check if clicked port
     if (target.classList.contains('connection-port')) {
+        if (isTopologyLocked) return; // Prevent wiring when topology is locked
        e.stopPropagation();
        const portPosition = target.getAttribute('data-port-position');
        const blockW = block.size?.width || 260;
@@ -155,7 +162,13 @@ const BuilderCanvas = ({ activeTool, setActiveTool, getCanvasCoords }: BuilderCa
 
     if (activeTool === 'cursor') {
       e.stopPropagation();
+      if (e.shiftKey || e.ctrlKey || e.metaKey) {
+        toggleBlockSelection(block.id);
+        return;
+      }
       setSelectedElementId(block.id);
+      clearBlockSelection();
+      if (isTopologyLocked) return; // Prevent dragging when topology is locked
       const coords = getCanvasCoords(e.clientX, e.clientY);
       setDraggingElement({
         type: 'block',
@@ -209,6 +222,52 @@ const BuilderCanvas = ({ activeTool, setActiveTool, getCanvasCoords }: BuilderCa
         setActiveTool('cursor');
       }
     }
+  };
+
+  const renderGroupBoundaries = () => {
+    return groups.map((group) => {
+      const groupBlockIds = [...group.blockIds, group.outputBlockId];
+      const groupBlocks = blocks.filter(b => groupBlockIds.includes(b.id));
+      if (groupBlocks.length === 0) return null;
+
+      let minX = Infinity;
+      let minY = Infinity;
+      let maxX = -Infinity;
+      let maxY = -Infinity;
+
+      groupBlocks.forEach(b => {
+        const w = b.size?.width || 260;
+        const h = b.size?.height || 150;
+        minX = Math.min(minX, b.position.x);
+        minY = Math.min(minY, b.position.y);
+        maxX = Math.max(maxX, b.position.x + w);
+        maxY = Math.max(maxY, b.position.y + h);
+      });
+
+      const padding = 24;
+      const x = minX - padding;
+      const y = minY - padding;
+      const width = (maxX - minX) + padding * 2;
+      const height = (maxY - minY) + padding * 2;
+
+      return (
+        <div
+          key={`group-boundary-${group.id}`}
+          className="absolute border border-dashed border-[#A259FF]/30 bg-[#A259FF]/3 rounded-[32px] pointer-events-none transition-all duration-300"
+          style={{
+            left: x,
+            top: y,
+            width,
+            height,
+            zIndex: 0,
+          }}
+        >
+          <div className="absolute -top-7 left-6 bg-[#0f0f15] border border-[#A259FF]/30 text-[#A259FF] text-[9px] font-black uppercase tracking-[0.15em] px-2.5 py-1 rounded-lg">
+            Phase: {group.name}
+          </div>
+        </div>
+      );
+    });
   };
 
   const renderConnections = () => {
@@ -313,6 +372,8 @@ const BuilderCanvas = ({ activeTool, setActiveTool, getCanvasCoords }: BuilderCa
          </g>
       </svg>
       
+      {renderGroupBoundaries()}
+
       {/* Agent & Webhook Blocks */}
       {blocks.map((block: any) => (
         <div key={block.id} className="pointer-events-auto absolute" onMouseDown={(e) => handleBlockMouseDown(e, block)}>
@@ -320,11 +381,15 @@ const BuilderCanvas = ({ activeTool, setActiveTool, getCanvasCoords }: BuilderCa
             <WebhookBlockNode
               block={block}
               isSelected={selectedElementId === block.id}
+              isTopologyLocked={isTopologyLocked}
+              isMultiSelected={selectedBlockIds.has(block.id)}
             />
           ) : (
             <AgentBlockNode
               block={block}
               isSelected={selectedElementId === block.id}
+              isTopologyLocked={isTopologyLocked}
+              isMultiSelected={selectedBlockIds.has(block.id)}
             />
           )}
         </div>
@@ -415,6 +480,22 @@ const BuilderCanvas = ({ activeTool, setActiveTool, getCanvasCoords }: BuilderCa
           </button>
         </div>
       ))}
+
+      <MultiSelectActionBar
+        selectedCount={selectedBlockIds.size}
+        onCreateGroup={() => setIsCreateGroupModalOpen(true)}
+        onClearSelection={clearBlockSelection}
+      />
+
+      <CreateGroupModal
+        isOpen={isCreateGroupModalOpen}
+        selectedAgentNames={blocks.filter(b => selectedBlockIds.has(b.id)).map(b => b.name || 'New Agent')}
+        onCreate={(name) => {
+          createGroup(name);
+          setIsCreateGroupModalOpen(false);
+        }}
+        onClose={() => setIsCreateGroupModalOpen(false)}
+      />
     </div>
   );
 };

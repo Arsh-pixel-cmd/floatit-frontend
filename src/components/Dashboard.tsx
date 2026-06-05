@@ -61,48 +61,32 @@ export default function Dashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-  // Actions
   const handleNewFlow = async () => {
-    if (!user) return;
+  if (!user) return;
 
-    let title = 'Untitled Flow';
-    try {
-      const landingPrompt = localStorage.getItem('landing_prompt') || '';
-      if (landingPrompt.trim()) {
-        title = landingPrompt.trim();
-      }
-    } catch {
-      // ignore
-    }
-
-    const newSeq = {
-      user_id: user.id,
-      title,
-      status: 'Idle',
-      status_color: '#8e8e8e',
-      agents_active: 0,
-      total_agents: 16,
-      is_starred: false,
-      space_id: activeFolderId || null,
-    };
-
-    const { data } = await supabase
-      .from('sequences')
-      .insert([newSeq])
-      .select()
-      .single();
-
-    if (data) {
-      setSequences([data, ...sequences]);
-      localStorage.setItem('active_sequence_id', data.id);
-      try {
-        window.localStorage.removeItem('landing_prompt');
-      } catch {
-        // ignore
-      }
-      navigate(ROUTES.canvas);
-    }
+  const newSeq = {
+    user_id: user.id,
+    title: 'Untitled Flow',
+    status: 'Idle',
+    status_color: '#8e8e8e',
+    agents_active: 0,
+    total_agents: 0,
+    is_starred: false,
+    space_id: activeFolderId || null,
   };
+
+  const { data } = await supabase
+    .from('sequences')
+    .insert([newSeq])
+    .select()
+    .single();
+
+  if (data) {
+    setSequences([data, ...sequences]);
+    localStorage.setItem('active_sequence_id', data.id);
+    navigate(ROUTES.canvas);
+  }
+};
 
   const handleDelete = async (id: string | number) => {
     setSequences(sequences.filter((seq: any) => seq.id !== id));

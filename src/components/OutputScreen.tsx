@@ -3,6 +3,7 @@ import { X, Download, Copy, FileText, CheckCircle2 } from 'lucide-react';
 import { useWorkflowStore } from '../lib/store';
 import { WORKFLOW_PHASES } from '../data/schema';
 import { callLLM } from '../lib/llm';
+import { useBuilderStore } from '../lib/builderStore';
 
 interface OutputScreenProps {
   isOpen: boolean;
@@ -22,8 +23,11 @@ const OutputScreen = ({ isOpen, onClose, phaseFilter }: OutputScreenProps) => {
     ? WORKFLOW_PHASES.filter(p => p.id === phaseFilter)
     : WORKFLOW_PHASES;
   
+  const blocks = useBuilderStore((state: any) => state.blocks);
+  const matchedBlock = blocks?.find((b: any) => b.id === phaseFilter);
+
   const phaseTitle = phaseFilter
-    ? (WORKFLOW_PHASES.find(p => p.id === phaseFilter)?.label || phaseFilter) + ' Phase Report'
+    ? (WORKFLOW_PHASES.find(p => p.id === phaseFilter)?.label || matchedBlock?.name || 'Synthesis Report')
     : 'Full Strategic Briefing';
 
   // ── Detect builder pipeline results (non-standard keys) ──
@@ -32,7 +36,13 @@ const OutputScreen = ({ isOpen, onClose, phaseFilter }: OutputScreenProps) => {
     phase.categories.forEach(c => standardKeys.add(`${phase.id}::${c}`));
   });
   const builderResults = Object.entries(nodeResults || {})
-    .filter(([key]) => !standardKeys.has(key))
+    .filter(([key]) => {
+      if (standardKeys.has(key)) return false;
+      if (phaseFilter) {
+        return key === phaseFilter;
+      }
+      return true;
+    })
     .map(([id, result]) => ({ id, result: result as any }));
   const hasBuilderResults = builderResults.length > 0;
 

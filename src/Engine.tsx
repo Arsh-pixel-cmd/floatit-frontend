@@ -5,11 +5,11 @@ import { ToastContainer } from './components/ToastContainer';
 import html2canvas from 'html2canvas';
 
 // Core Schema & Logic
-import { WORKFLOW_PHASES, EDGES, TOOL_REGISTRY } from './data/schema';
+import { WORKFLOW_PHASES } from './data/schema';
 import { validateGraph } from './lib/graphValidator';
 import { computeLayout } from './lib/layoutEngine';
-import { computeEdgePath, bundleEdges } from './lib/edgeRouter';
-import { useWorkflowStore, selectActiveNodeId, type WorkflowStoreState } from './lib/store';
+
+import { useWorkflowStore, type WorkflowStoreState } from './lib/store';
 import { callLLM, checkKeyAvailability } from './lib/llm';
 import { supabase } from './lib/supabaseClient';
 import { useToastStore } from './lib/toastStore';
@@ -20,13 +20,14 @@ import { useModalState, usePhaseOverlay, usePromptInput, useCanvasControls } fro
 // Components
 import FlowHeader from './components/FlowHeader';
 import PhaseTransitionOverlay from './components/Engine/PhaseTransitionOverlay';
+
+
 import PromptBar from './components/Engine/PromptBar';
 import EngineStatusView from './components/Engine/EngineStatusView';
 import EngineModalStack from './components/Engine/EngineModalStack';
-import PipelineSidebar from './components/Engine/PipelineSidebar';
-import FlowControls from './components/FlowControls';
-import NodeContainer from './components/NodeContainer';
-import PhaseSummaryBox from './components/PhaseSummaryBox';
+
+
+
 import ToolDock from './components/ToolDock';
 import BuilderCanvas from './components/BuilderCanvas';
 import BuilderSidebar from './components/BuilderSidebar';
@@ -39,11 +40,9 @@ const Engine = () => {
   // Zustand State
   const graphStatus = useWorkflowStore((state: WorkflowStoreState) => state.graphStatus);
   const setGraphStatus = useWorkflowStore((state: WorkflowStoreState) => state.setGraphStatus);
-  const selectedNodeId = useWorkflowStore(selectActiveNodeId);
-  const selectNode = useWorkflowStore((state: WorkflowStoreState) => state.selectNode);
-  const nodeStates = useWorkflowStore((state: WorkflowStoreState) => state.nodeStates);
+
   const nodeResults = useWorkflowStore((state: WorkflowStoreState) => state.nodeResults);
-  const currentPhaseIndex = useWorkflowStore((state: WorkflowStoreState) => state.currentPhaseIndex);
+
 
   const viewMode = useBuilderStore((state: BuilderStore) => state.viewMode);
   const deployedTemplateId = useBuilderStore((state: BuilderStore) => state.deployedTemplateId);
@@ -128,6 +127,10 @@ const Engine = () => {
           stickyNotes: [],
           textLabels: [],
           selectedElementId: null,
+          groups: [],
+          selectedBlockIds: new Set(),
+          runningGroupId: null,
+          completedGroupIds: []
         });
 
         const seqId = localStorage.getItem('active_sequence_id');
@@ -140,6 +143,7 @@ const Engine = () => {
               connections: state.connections || [],
               stickyNotes: state.stickyNotes || [],
               textLabels: state.textLabels || [],
+              groups: state.groups || [],
             });
 
             // Restore the agent outputs and progress!
@@ -194,7 +198,7 @@ const Engine = () => {
     };
     loadCanvasData();
 
-    return () => {};
+    return () => { };
   }, [setGraphStatus, addToast]);
 
   // --- AUTO-SAVE BACKGROUND ENGINE ---
@@ -221,6 +225,7 @@ const Engine = () => {
         stickyNotes: state.stickyNotes,
         textLabels: state.textLabels,
         deployedTemplateId: state.deployedTemplateId || null,
+        groups: state.groups,
         execution: {
           nodeStates: workflowState.nodeStates,
           nodeResults: workflowState.nodeResults,
@@ -259,7 +264,7 @@ const Engine = () => {
   // Compute Layout 
   const layout = useMemo(() => {
     if (graphStatus === 'error') return null;
-    if (deployedTemplateId && viewMode === 'pipeline') {
+    if (deployedTemplateId) {
       // First try to find in the loaded templates array
       let activeTemplate = templates.find((t: any) => t.id === deployedTemplateId);
 
@@ -343,42 +348,19 @@ const Engine = () => {
       }
     }
     return computeLayout('desktop', 2000, 1000);
-  }, [graphStatus, deployedTemplateId, viewMode, templates]);
+  }, [graphStatus, deployedTemplateId, templates]);
 
-  // Bundle Edges 
-  const bundledEdges = useMemo(() => {
-    if (graphStatus === 'error' || graphStatus === 'idle') return [];
-    if (deployedTemplateId && viewMode === 'pipeline') return []; // Use custom logic below
-    return bundleEdges(EDGES);
-  }, [graphStatus, deployedTemplateId, viewMode]);
 
-  const customEdges = useMemo(() => {
-    if (!deployedTemplateId || viewMode !== 'pipeline') return [];
-    const activeTemplate = templates.find((t: any) => t.id === deployedTemplateId);
-    if (!activeTemplate || !layout) return [];
-    return activeTemplate.connections.map((c: any) => {
-      const s = layout[c.sourceBlockId];
-      const t = layout[c.targetBlockId];
-      if (!s || !t) return null;
-      const p1 = { x: s.x + 140, y: s.y + 70 };
-      const p2 = { x: t.x, y: t.y + 70 };
-      return {
-        _coreId: c.id,
-        id: c.id,
-        from: c.sourceBlockId,
-        to: c.targetBlockId,
-        d: computeEdgePath(p1, p2, { sPort: 'right', tPort: 'left' })
-      };
-    }).filter(Boolean);
-  }, [deployedTemplateId, viewMode, templates, layout]);
 
-  const runFullPipeline = useCallback(async () => {
-    if (!layout || graphStatus === 'running') return;
+
+
+  const runSingleGroup = useCallback(async (groupId: string, prevGroupOutputContext = '') => {
     const store = useWorkflowStore.getState();
-
+    const builderStore = useBuilderStore.getState();
+    
     if (!projectPrompt || projectPrompt.trim() === '') {
       addToast('info', 'Please enter a project directive in the top bar.');
-      return;
+      return null;
     }
 
     // --- PRE-CHECK API KEY ---
@@ -389,348 +371,55 @@ const Engine = () => {
       if (!status.any) {
         setKeyModalType('NO_KEY');
         setShowKeyModal(true);
-        return;
+        return null;
       }
     }
 
-    // Update sequence title in Supabase to match the prompt (handled by autosave)
-    // No explicit call needed here anymore to avoid redundant writes
+    const group = builderStore.groups.find(g => g.id === groupId);
+    if (!group) return null;
 
-    store.setGraphStatus('running');
-    store.resetExecution(Object.keys(layout));
-
-    // Check if we're running a deployed template or default schema
-    const activeTemplate = deployedTemplateId ? templates.find((t: any) => t.id === deployedTemplateId) : null;
-
-    if (activeTemplate) {
-      // --- DEPLOYED TEMPLATE EXECUTION (topological order) ---
-      const depths: Record<string, number> = {};
-      const adj: Record<string, any[]> = {};
-      const inDegree: Record<string, number> = {};
-
-      activeTemplate.blocks.forEach((b: any) => {
-        adj[b.id] = [];
-        inDegree[b.id] = 0;
-        depths[b.id] = 0;
-      });
-
-      activeTemplate.connections.forEach((c: any) => {
-        if (adj[c.sourceBlockId] && inDegree[c.targetBlockId] !== undefined) {
-          adj[c.sourceBlockId]!.push(c.targetBlockId);
-          inDegree[c.targetBlockId]!++;
-        }
-      });
-
-      let queue: any[] = [];
-      Object.keys(inDegree).forEach(id => {
-        if (inDegree[id] === 0) queue.push(id);
-      });
-
-      while (queue.length > 0) {
-        const curr = queue.shift();
-        (adj[curr] || []).forEach((neighbor: any) => {
-          depths[neighbor] = Math.max(depths[neighbor]!, depths[curr]! + 1);
-          inDegree[neighbor]!--;
-          if (inDegree[neighbor] === 0) queue.push(neighbor);
-        });
-      }
-
-      const maxDepth = Math.max(0, ...Object.values(depths));
-      const phaseLabels = WORKFLOW_PHASES.map(p => p.label);
-
-      setCompletedPhases([]);
-      for (let d = 0; d <= maxDepth; d++) {
-        const phaseIndex = Math.min(d, WORKFLOW_PHASES.length - 1);
-        const currentPhaseObj = WORKFLOW_PHASES[phaseIndex];
-        if (currentPhaseObj) setRunningPhaseId(currentPhaseObj.id);
-        store.setCurrentPhaseIndex(phaseIndex);
-
-        const nodesAtDepth = activeTemplate.blocks.filter((b: any) => (depths[b.id] || 0) === d).map((b: any) => b.id);
-        const currentActive = store.animationState.activeNodes;
-        store.setAnimationState({ activeNodes: [...currentActive, ...nodesAtDepth] });
-
-        let neuralContext = '';
-        if (d > 0) {
-          const prevNodes = activeTemplate.blocks.filter((b: any) => (depths[b.id] || 0) === d - 1).map((b: any) => b.id);
-          const currentResults = store.nodeResults || {};
-          neuralContext = prevNodes
-            .map((id: any) => currentResults[id]?.content)
-            .filter(Boolean)
-            .join('\n\n---\n\n');
-        }
-
-        const CONCURRENCY_LIMIT = 2;
-        for (let batchIdx = 0; batchIdx < nodesAtDepth.length; batchIdx += CONCURRENCY_LIMIT) {
-          const batch = nodesAtDepth.slice(batchIdx, batchIdx + CONCURRENCY_LIMIT);
-          await Promise.all(batch.map(async (nId: any, idx: number) => {
-            // Stagger requests to avoid burst rate limits (1.5 seconds per node in batch)
-            if (idx > 0) await new Promise(resolve => setTimeout(resolve, idx * 1500));
-            const nodeInfo = (layout as any)[nId];
-            const agentData = {
-              id: nId,
-              phaseLabel: phaseLabels[phaseIndex] || `Phase ${d + 1}`,
-              categoryName: nodeInfo?.category?.name || 'Agent',
-              name: nodeInfo?.category?.name || 'Agent'
-            };
-
-            let resolved = false;
-            while (!resolved) {
-              store.setNodeState(nId, 'running');
-              try {
-                const taskObj = `Project directive: ${store.projectPrompt}\n\nExecute agentic objective for ${agentData.name} within the ${agentData.phaseLabel} architecture phase. Provide deep expert analysis based on the project directive.`;
-
-                const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT_STUCK')), 45000));
-                const result: any = await Promise.race([
-                  callLLM(taskObj, agentData, neuralContext, store.projectAttachment),
-                  timeoutPromise
-                ]);
-
-                if (result && result._errorType) {
-                  store.setNodeResult(nId, { ...result, agentName: agentData.name });
-                  store.setNodeState(nId, 'stuck_debugger');
-                } else {
-                  store.setNodeResult(nId, { ...result, agentName: agentData.name });
-                  store.setNodeState(nId, 'completed');
-                  resolved = true;
-                  break;
-                }
-              } catch (err: any) {
-                console.error(`[${nId}] Error:`, err);
-                store.setNodeState(nId, 'stuck_debugger');
-              }
-
-              if (!resolved) {
-                await new Promise<void>((resolve) => {
-                  const checkInterval = setInterval(() => {
-                    const currentState = useWorkflowStore.getState().nodeStates[nId];
-                    if (currentState === 'completed') {
-                      clearInterval(checkInterval);
-                      resolved = true;
-                      resolve();
-                    } else if (currentState === 'running') {
-                      clearInterval(checkInterval);
-                      resolve();
-                    }
-                  }, 500);
-                });
-              }
-            }
-          }));
-        }
-
-        if (currentPhaseObj) {
-          setCompletedPhases(prev => [...prev.filter(id => id !== currentPhaseObj.id), currentPhaseObj.id]);
-        }
-        setRunningPhaseId(null);
-
-        if (d < maxDepth) {
-          const nextPhaseIndex = Math.min(d + 1, WORKFLOW_PHASES.length - 1);
-          setPhaseOverlay({
-            phase: d + 1,
-            phaseName: phaseLabels[phaseIndex] || `Phase ${d + 1}`,
-            nextPhaseName: phaseLabels[nextPhaseIndex] || `Phase ${d + 2}`
-          });
-          await new Promise(r => setTimeout(r, 2000));
-          setPhaseOverlay(null);
-        }
-      }
-    } else {
-      // --- DEFAULT SCHEMA EXECUTION (original logic) ---
-      setCompletedPhases([]);
-      for (let i = 0; i < WORKFLOW_PHASES.length; i++) {
-        const phase = WORKFLOW_PHASES[i]!;
-        setRunningPhaseId(phase.id);
-        store.setCurrentPhaseIndex(i);
-
-        const phaseNodes = phase.categories.map((c: any) => `${phase.id}::${c}`);
-        const currentActive = store.animationState.activeNodes;
-        store.setAnimationState({ activeNodes: [...currentActive, ...phaseNodes] });
-
-        let neuralContext = '';
-        if (i > 0) {
-          const prevPhase = WORKFLOW_PHASES[i - 1]!;
-          const prevPhaseNodes = prevPhase.categories.map((c: any) => `${prevPhase.id}::${c}`);
-          const currentResults = store.nodeResults || {};
-          neuralContext = prevPhaseNodes
-            .map((id: any) => currentResults[id]?.content)
-            .filter(Boolean)
-            .join('\n\n---\n\n');
-        }
-
-        const CONCURRENCY_LIMIT = 2;
-        for (let batchIdx = 0; batchIdx < phaseNodes.length; batchIdx += CONCURRENCY_LIMIT) {
-          const batch = phaseNodes.slice(batchIdx, batchIdx + CONCURRENCY_LIMIT);
-          await Promise.all(batch.map(async (nId: any, idx: number) => {
-            // Stagger requests to avoid burst rate limits (1.5 seconds per node in batch)
-            if (idx > 0) await new Promise(resolve => setTimeout(resolve, idx * 1500));
-            const nodeCategory = nId.split('::')[1];
-            const agentData = {
-              id: nId,
-              phaseLabel: phase.label,
-              categoryName: nodeCategory,
-              name: (layout as any)[nId]?.category?.name || nodeCategory
-            };
-
-            let resolved = false;
-            while (!resolved) {
-              store.setNodeState(nId, 'running');
-              try {
-                const taskObj = `Project directive: ${store.projectPrompt}\n\nExecute agentic objective for ${agentData.name} within the ${agentData.phaseLabel} architecture phase. Provide deep expert analysis based on the project directive.`;
-
-                const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT_STUCK')), 45000));
-                const result: any = await Promise.race([
-                  callLLM(taskObj, agentData, neuralContext, store.projectAttachment),
-                  timeoutPromise
-                ]);
-
-                if (result && result._errorType) {
-                  store.setNodeResult(nId, result);
-                  store.setNodeState(nId, 'stuck_debugger');
-                } else {
-                  store.setNodeResult(nId, result);
-                  store.setNodeState(nId, 'completed');
-                  resolved = true;
-                  break;
-                }
-              } catch (err: any) {
-                console.error(`[${nId}] Error:`, err);
-                store.setNodeState(nId, 'stuck_debugger');
-              }
-
-              if (!resolved) {
-                await new Promise<void>((resolve) => {
-                  const checkInterval = setInterval(() => {
-                    const currentState = useWorkflowStore.getState().nodeStates[nId];
-                    if (currentState === 'completed') {
-                      clearInterval(checkInterval);
-                      resolved = true;
-                      resolve();
-                    } else if (currentState === 'running') {
-                      clearInterval(checkInterval);
-                      resolve();
-                    }
-                  }, 500);
-                });
-              }
-            }
-          }));
-        }
-
-        setCompletedPhases(prev => [...prev.filter(id => id !== phase.id), phase.id]);
-        setRunningPhaseId(null);
-
-        if (i < WORKFLOW_PHASES.length - 1) {
-          setPhaseOverlay({
-            phase: i + 1,
-            phaseName: phase.label,
-            nextPhaseName: WORKFLOW_PHASES[i + 1]!.label
-          });
-          await new Promise(r => setTimeout(r, 2000));
-          setPhaseOverlay(null);
-        }
-      }
-    }
-
-    store.setGraphStatus('completed');
-    const duration = 2000;
-    const end = Date.now() + duration;
-
-    (function frame() {
-      confetti({ particleCount: 8, angle: 60, spread: 70, origin: { x: 0 }, colors: ['#46B1FF', '#CEA3FF', '#DEF767'] });
-      confetti({ particleCount: 8, angle: 120, spread: 70, origin: { x: 1 }, colors: ['#A259FF', '#DEF767', '#ffffff'] });
-      if (Date.now() < end) requestAnimationFrame(frame);
-    }());
-
-    setTimeout(() => setShowOutputScreen(true), 2500);
-  }, [layout, graphStatus, projectPrompt, deployedTemplateId, templates]);
-
-  // ── PHASE-GATED EXECUTION ─────────────────────────────────────
-  const runPhase = useCallback(async (phaseId: string) => {
-    if (!layout || runningPhaseId) return;
-    const store = useWorkflowStore.getState();
-
-    if (!projectPrompt || projectPrompt.trim() === '') {
-      addToast('info', 'Please enter a project directive first.');
-      return;
-    }
-
-    // Gate check — previous phase must be complete
-    const phaseIndex = WORKFLOW_PHASES.findIndex(p => p.id === phaseId);
-    if (phaseIndex > 0) {
-      const prevPhase = WORKFLOW_PHASES[phaseIndex - 1]!;
-      if (!completedPhases.includes(prevPhase.id)) {
-        addToast('warning', `Complete ${prevPhase.label} first before running ${WORKFLOW_PHASES[phaseIndex]!.label}.`);
-        return;
-      }
-    }
-
-    // API key check
-    const seqId = localStorage.getItem('active_sequence_id');
-    if (seqId) {
-      const status = await checkKeyAvailability(seqId);
-      setKeyInfo(status);
-      if (!status.any) {
-        setKeyModalType('NO_KEY');
-        setShowKeyModal(true);
-        return;
-      }
-    }
-
-    setRunningPhaseId(phaseId);
+    builderStore.setRunningGroupId(groupId);
     store.setGraphStatus('running');
 
-    const phase = WORKFLOW_PHASES[phaseIndex]!;
-    const phaseNodes = phase.categories.map((c: any) => `${phase.id}::${c}`);
+    const groupBlockIds = [...group.blockIds, group.outputBlockId];
+    store.resetExecution(groupBlockIds);
 
-    // Build neural context from the previous phase's completed results
-    let neuralContext = '';
-    if (phaseIndex > 0) {
-      const prevPhase = WORKFLOW_PHASES[phaseIndex - 1]!;
-      const prevNodes = prevPhase.categories.map((c: any) => `${prevPhase.id}::${c}`);
-      neuralContext = prevNodes
-        .map((id: any) => store.nodeResults[id]?.content)
-        .filter(Boolean)
-        .join('\n\n---\n\n');
-      if (neuralContext) {
-        neuralContext = `PHASE CONTEXT FROM [${prevPhase.label.toUpperCase()}]:\n${neuralContext.substring(0, 6000)}`;
-      }
-    }
+    const currentBlocks = builderStore.blocks;
+    const activeAgents = currentBlocks.filter(b => group.blockIds.includes(b.id));
 
-    // Mark all phase nodes as idle first
-    phaseNodes.forEach((nId: string) => store.setNodeState(nId, 'idle'));
-    store.setCurrentPhaseIndex(phaseIndex);
-    store.setAnimationState({ activeNodes: phaseNodes });
-
-    // Execute nodes in batches of 3
-    const CONCURRENCY_LIMIT = 3;
-    for (let batchIdx = 0; batchIdx < phaseNodes.length; batchIdx += CONCURRENCY_LIMIT) {
-      const batch = phaseNodes.slice(batchIdx, batchIdx + CONCURRENCY_LIMIT);
-      await Promise.all(batch.map(async (nId: string) => {
+    const CONCURRENCY_LIMIT = 2;
+    for (let batchIdx = 0; batchIdx < activeAgents.length; batchIdx += CONCURRENCY_LIMIT) {
+      const batch = activeAgents.slice(batchIdx, batchIdx + CONCURRENCY_LIMIT);
+      await Promise.all(batch.map(async (block: any, idx: number) => {
+        if (idx > 0) await new Promise(resolve => setTimeout(resolve, idx * 1500));
+        const nId = block.id;
         const agentData = {
           id: nId,
-          phaseLabel: phase.label,
-          categoryName: nId.split('::')[1],
-          name: (layout as any)[nId]?.category?.name || nId.split('::')[1]
+          phaseLabel: group.name,
+          categoryName: 'Agent',
+          name: block.name || 'Agent'
         };
 
         let resolved = false;
         while (!resolved) {
           store.setNodeState(nId, 'running');
           try {
-            const taskObj = `Project directive: ${store.projectPrompt}\n\nExecute agentic objective for ${agentData.name} within the ${agentData.phaseLabel} phase. Provide deep expert analysis.`;
+            const taskObj = `Project directive: ${store.projectPrompt}\n\nObjective: ${block.description}\n\nExecute agentic objective for ${agentData.name} within the ${agentData.phaseLabel} architecture phase. Provide deep expert analysis based on the project directive.`;
+
             const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT_STUCK')), 45000));
             const result: any = await Promise.race([
-              callLLM(taskObj, agentData, neuralContext, store.projectAttachment),
+              callLLM(taskObj, agentData, prevGroupOutputContext, store.projectAttachment),
               timeoutPromise
             ]);
 
-            if (result?._errorType) {
-              store.setNodeResult(nId, result);
+            if (result && result._errorType) {
+              store.setNodeResult(nId, { ...result, agentName: agentData.name });
               store.setNodeState(nId, 'stuck_debugger');
             } else {
-              store.setNodeResult(nId, result);
+              store.setNodeResult(nId, { ...result, agentName: agentData.name });
               store.setNodeState(nId, 'completed');
               resolved = true;
+              break;
             }
           } catch (err: any) {
             console.error(`[${nId}] Error:`, err);
@@ -756,28 +445,141 @@ const Engine = () => {
       }));
     }
 
-    // Phase complete
-    setCompletedPhases(prev => [...prev.filter(id => id !== phaseId), phaseId]);
-    setRunningPhaseId(null);
+    // Execute output synthesis node
+    const outputNodeId = group.outputBlockId;
+    const outputBlock = currentBlocks.find(b => b.id === outputNodeId);
+    const outputAgentData = {
+      id: outputNodeId,
+      phaseLabel: group.name,
+      categoryName: 'Synthesis Output',
+      name: outputBlock?.name || `${group.name} Output`
+    };
 
-    const allDone = WORKFLOW_PHASES.every((p, idx) =>
-      idx <= phaseIndex ? true : completedPhases.includes(p.id)
-    );
+    const currentResults = store.nodeResults || {};
+    const neuralContextForOutput = group.blockIds
+      .map((id: string) => currentResults[id]?.content)
+      .filter(Boolean)
+      .join('\n\n---\n\n');
 
-    if (phaseIndex === WORKFLOW_PHASES.length - 1 || allDone) {
-      store.setGraphStatus('completed');
-      const end = Date.now() + 2000;
-      (function frame() {
-        confetti({ particleCount: 8, angle: 60, spread: 70, origin: { x: 0 }, colors: ['#46B1FF', '#CEA3FF', '#DEF767'] });
-        confetti({ particleCount: 8, angle: 120, spread: 70, origin: { x: 1 }, colors: ['#A259FF', '#DEF767', '#ffffff'] });
-        if (Date.now() < end) requestAnimationFrame(frame);
-      }());
-    } else {
-      store.setGraphStatus('ready');
+    let resolvedOutput = false;
+    while (!resolvedOutput) {
+      store.setNodeState(outputNodeId, 'running');
+      try {
+        const synthesisPromptText = `Project directive: ${store.projectPrompt}\n\nYou are the synthesis node for the group phase "${group.name}". Synthesize, summarize, and integrate the output results from all agents in this phase. Identify key insights, conflicts, and next steps.`;
+        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT_STUCK')), 45000));
+        const result: any = await Promise.race([
+          callLLM(synthesisPromptText, outputAgentData, neuralContextForOutput, store.projectAttachment),
+          timeoutPromise
+        ]);
+
+        if (result && result._errorType) {
+          store.setNodeResult(outputNodeId, { ...result, agentName: outputAgentData.name });
+          store.setNodeState(outputNodeId, 'stuck_debugger');
+        } else {
+          store.setNodeResult(outputNodeId, { ...result, agentName: outputAgentData.name });
+          store.setNodeState(outputNodeId, 'completed');
+          resolvedOutput = true;
+          break;
+        }
+      } catch (err: any) {
+        console.error(`[${outputNodeId}] Output Error:`, err);
+        store.setNodeState(outputNodeId, 'stuck_debugger');
+      }
+
+      if (!resolvedOutput) {
+        await new Promise<void>((resolve) => {
+          const checkInterval = setInterval(() => {
+            const currentState = useWorkflowStore.getState().nodeStates[outputNodeId];
+            if (currentState === 'completed') {
+              clearInterval(checkInterval);
+              resolvedOutput = true;
+              resolve();
+            } else if (currentState === 'running') {
+              clearInterval(checkInterval);
+              resolve();
+            }
+          }, 500);
+        });
+      }
     }
 
-    addToast('success', `${phase.label} phase complete! Download the report or run the next phase.`);
-  }, [layout, projectPrompt, completedPhases, runningPhaseId, deployedTemplateId, templates]);
+    builderStore.addCompletedGroupId(groupId);
+    builderStore.setRunningGroupId(null);
+    store.setGraphStatus('ready');
+
+    return store.nodeResults[outputNodeId]?.content || '';
+  }, [projectPrompt, addToast, checkKeyAvailability]);
+
+  const runGroupWorkflow = useCallback(async () => {
+    const store = useWorkflowStore.getState();
+    const builderStore = useBuilderStore.getState();
+
+    if (!projectPrompt || projectPrompt.trim() === '') {
+      addToast('info', 'Please enter a project directive in the top bar.');
+      return;
+    }
+
+    if (builderStore.groups.length === 0) {
+      addToast('warning', 'Please create at least one phase group before running.');
+      return;
+    }
+
+    // Ungrouped agents warning
+    const agentBlocks = builderStore.blocks.filter(b => b.type === 'agent' && !b.isGroupOutput);
+    const assignedBlockIds = new Set<string>();
+    builderStore.groups.forEach(g => {
+      g.blockIds.forEach(id => assignedBlockIds.add(id));
+    });
+    const ungroupedAgents = agentBlocks.filter(b => !assignedBlockIds.has(b.id));
+
+    if (ungroupedAgents.length > 0) {
+      addToast('warning', 'All agents must be assigned to a phase group before running the workflow.');
+      return;
+    }
+
+    builderStore.resetGroupExecution();
+    store.setGraphStatus('running');
+
+    const sortedGroups = [...builderStore.groups].sort((a, b) => a.order - b.order);
+
+    let prevGroupOutputContext = '';
+    for (let i = 0; i < sortedGroups.length; i++) {
+      const group = sortedGroups[i]!;
+      
+      if (i > 0) {
+        const prevGroup = sortedGroups[i - 1]!;
+        setPhaseOverlay({
+          phase: i,
+          phaseName: prevGroup.name,
+          nextPhaseName: group.name
+        });
+        await new Promise(r => setTimeout(r, 2000));
+        setPhaseOverlay(null);
+      }
+
+      const outputContext = await runSingleGroup(group.id, prevGroupOutputContext);
+      if (outputContext === null) {
+        store.setGraphStatus('ready');
+        return;
+      }
+      prevGroupOutputContext = outputContext;
+    }
+
+    store.setGraphStatus('completed');
+
+    const duration = 2000;
+    const end = Date.now() + duration;
+
+    (function frame() {
+      confetti({ particleCount: 8, angle: 60, spread: 70, origin: { x: 0 }, colors: ['#46B1FF', '#CEA3FF', '#DEF767'] });
+      confetti({ particleCount: 8, angle: 120, spread: 70, origin: { x: 1 }, colors: ['#A259FF', '#DEF767', '#ffffff'] });
+      if (Date.now() < end) requestAnimationFrame(frame);
+    }());
+
+    setTimeout(() => setShowOutputScreen(true), 2500);
+  }, [projectPrompt, addToast, runSingleGroup]);
+
+
 
   const rebootSequence = () => {
     const store = useWorkflowStore.getState();
@@ -798,31 +600,27 @@ const Engine = () => {
       <PhaseTransitionOverlay phaseOverlay={phaseOverlay} />
 
       {viewMode === 'templates' && <TemplatesView />}
+      <PromptBar
+        projectPrompt={projectPrompt}
+        setProjectPrompt={setProjectPrompt}
+        projectAttachment={projectAttachment}
+        setProjectAttachment={setProjectAttachment}
+        graphStatus={graphStatus}
+        addToast={addToast}
+        runFullPipeline={runGroupWorkflow}
+        showKeyModal={showKeyModal}
+        setShowKeyModal={setShowKeyModal}
+        setKeyModalType={setKeyModalType}
+        keyInfo={keyInfo}
+        fileInputRef={fileInputRef}
+        completedPhases={completedPhases}
+        runningPhaseId={runningPhaseId}
+        setPhaseOutputModal={setPhaseOutputModal}
+        runPhase={runSingleGroup}
+        tokenLimitModal={tokenLimitModal}
+      />
 
-      {/* ── Permanent Neuro-Command (Project Prompt) ── */}
-      {viewMode === 'pipeline' && (
-        <PromptBar
-          projectPrompt={projectPrompt}
-          setProjectPrompt={setProjectPrompt}
-          projectAttachment={projectAttachment}
-          setProjectAttachment={setProjectAttachment}
-          graphStatus={graphStatus}
-          addToast={addToast}
-          runFullPipeline={runFullPipeline}
-          showKeyModal={showKeyModal}
-          setShowKeyModal={setShowKeyModal}
-          setKeyModalType={setKeyModalType}
-          keyInfo={keyInfo}
-          fileInputRef={fileInputRef}
-          completedPhases={completedPhases}
-          runningPhaseId={runningPhaseId}
-          setPhaseOutputModal={setPhaseOutputModal}
-          runPhase={runPhase}
-          tokenLimitModal={tokenLimitModal}
-        />
-      )}
 
-      {viewMode === 'pipeline' && <FlowControls setCamera={setCamera} camera={camera} />}
       <ToolDock
         activeTool={activeTool}
         setActiveTool={setActiveTool}
@@ -883,37 +681,44 @@ const Engine = () => {
               '--canvas-zoom': camera.zoom,
             } as React.CSSProperties}
           >
-            {/* Background Phase Labels */}
-            {viewMode === 'pipeline' && WORKFLOW_PHASES.map((p, idx) => {
-              const phaseNodes = Object.values(layout).filter(n => n.phase === p.id);
-              if (phaseNodes.length === 0) return null;
+            {/* Phase Column Headers — shown when blocks have phase fields */}
+            {(() => {
+              const builderBlocks = useBuilderStore.getState().blocks;
+              const phases = ['discover', 'define', 'develop', 'deliver'];
+              const phaseLabels: Record<string, { label: string; subtitle: string }> = {
+                discover: { label: 'DISCOVER', subtitle: 'DIVERGE' },
+                define: { label: 'DEFINE', subtitle: 'CONVERGE' },
+                develop: { label: 'DEVELOP', subtitle: 'DIVERGE' },
+                deliver: { label: 'DELIVER', subtitle: 'CONVERGE' },
+              };
 
-              const minX = Math.min(...phaseNodes.map(n => n.x));
-              const maxX = Math.max(...phaseNodes.map(n => n.x));
-              const centerX = minX + (maxX - minX) / 2;
+              const hasPhases = builderBlocks.some((b: any) => b.phase);
+              if (!hasPhases) return null;
 
-              return (
-                <React.Fragment key={idx}>
+              return phases.map(phaseId => {
+                const phaseBlocks = builderBlocks.filter((b: any) => b.phase === phaseId);
+                if (phaseBlocks.length === 0) return null;
+
+                const xs = phaseBlocks.map((b: any) => b.position.x);
+                const centerX = (Math.min(...xs) + Math.max(...xs)) / 2 + 110;
+                const info = phaseLabels[phaseId]!;
+
+                return (
                   <div
-                    className="absolute pointer-events-none phase-label"
-                    style={{
-                      left: centerX,
-                      top: 100, // Top of canvas
-                      transform: 'translate(-50%, -50%)',
-                    }}
+                    key={phaseId}
+                    className="absolute pointer-events-none"
+                    style={{ left: centerX, top: 20, transform: 'translateX(-50%)' }}
                   >
-                    <div className="text-2xl font-black tracking-[0.4em] mb-1 text-center" style={{ opacity: 0.6 }}>
-                      {p.label}
+                    <div className="text-2xl font-black tracking-[0.4em] mb-1 text-center text-white" style={{ opacity: 0.5 }}>
+                      {info.label}
                     </div>
-                    <div className="text-[9px] font-bold tracking-[0.6em] uppercase text-center mx-auto" style={{ opacity: 0.4, paddingLeft: '0.6em' }}>
-                      {p.subtitle}
+                    <div className="text-[9px] font-bold tracking-[0.6em] uppercase text-center text-white" style={{ opacity: 0.3, paddingLeft: '0.6em' }}>
+                      {info.subtitle}
                     </div>
                   </div>
-
-                  <PhaseSummaryBox phase={p} x={centerX} y={800} />
-                </React.Fragment>
-              );
-            })}
+                );
+              });
+            })()}
 
             {/* Annotations & Edges */}
             <svg className="absolute inset-0 pointer-events-none w-full h-full overflow-visible z-10">
@@ -940,71 +745,14 @@ const Engine = () => {
                 />
               )}
 
-              {viewMode === 'pipeline' && bundledEdges.map((edge: any, idx: any) => {
-                const fromLayout = (layout as any)[edge.from];
-                const toLayout = (layout as any)[edge.to];
-                if (!fromLayout || !toLayout) return null;
 
-                const fromAnchor = { x: fromLayout.x + 140, y: fromLayout.y + 70 };
-                const toAnchor = { x: toLayout.x, y: toLayout.y + 70 };
 
-                const pathString = computeEdgePath(fromAnchor, toAnchor, edge.routeConfig);
-                const isActive = nodeStates[edge.from] === 'running' || nodeStates[edge.from] === 'completed';
-
-                return (
-                  <path
-                    key={idx}
-                    d={pathString}
-                    strokeWidth="2"
-                    fill="none"
-                    className={`thread-wire ${isActive ? 'thread-active' : 'thread-idle'}`}
-                  />
-                );
-              })}
-              {viewMode === 'pipeline' && customEdges.map((edge: any, idx: any) => {
-                const isActive = nodeStates[edge.from] === 'running' || nodeStates[edge.from] === 'completed';
-                return (
-                  <path
-                    key={`custom-${idx}`}
-                    d={edge.d}
-                    strokeWidth="2"
-                    fill="none"
-                    className={`thread-wire ${isActive ? 'thread-active' : 'thread-idle'}`}
-                  />
-                );
-              })}
             </svg>
 
             {/* Builder Canvas */}
-            {viewMode === 'builder' && (
-              <BuilderCanvas activeTool={activeTool} setActiveTool={setActiveTool} getCanvasCoords={getCanvasCoords} />
-            )}
+            <BuilderCanvas activeTool={activeTool} setActiveTool={setActiveTool} getCanvasCoords={getCanvasCoords} />
 
-            {/* Agent Nodes */}
-            {viewMode === 'pipeline' && Object.values(layout as any).map((node: any) => {
-              const animState = useWorkflowStore.getState().animationState;
-              const isVisible = animState.activeNodes.includes(node.id) || graphStatus === 'ready' || graphStatus === 'completed' || graphStatus === 'running';
 
-              // Determine phase index for opacity - works for both schema and builder nodes
-              let parsePhaseIdx = -1;
-              if (node.phase) {
-                parsePhaseIdx = WORKFLOW_PHASES.findIndex(p => p.id === node.phase);
-              } else if (node.id.includes('::')) {
-                parsePhaseIdx = WORKFLOW_PHASES.findIndex(p => p.id === node.id.split('::')[0]);
-              }
-              const isPendingPhase = parsePhaseIdx >= 0 && parsePhaseIdx > currentPhaseIndex;
-
-              return (
-                <div key={node.id} style={{ opacity: isPendingPhase ? 0.5 : 1 }} className="transition-opacity duration-700">
-                  <NodeContainer
-                    node={node}
-                    state={nodeStates[node.id] || 'idle'}
-                    onClick={() => selectNode(node.id)}
-                    isVisible={isVisible}
-                  />
-                </div>
-              )
-            })}
             {/* Sticky Notes */}
             {stickyNotes.map((note: any) => {
               const noteColor = note.color || '#A259FF';
@@ -1155,20 +903,12 @@ const Engine = () => {
                 </div>
               );
             })}
+
           </div>
         </div>
 
         {/* ── Intelligence Layer Output Sidebar ── */}
-        {viewMode === 'builder' ? (
-          <BuilderSidebar />
-        ) : (
-          <PipelineSidebar
-            selectedNodeId={selectedNodeId}
-            layout={layout as Record<string, any>}
-            nodeResults={nodeResults}
-            onClose={() => selectNode(null)}
-          />
-        )}
+        <BuilderSidebar />
       </div>
 
       <EngineModalStack

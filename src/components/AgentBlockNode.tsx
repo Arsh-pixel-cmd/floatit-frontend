@@ -1,4 +1,4 @@
-import { Settings, Play, Clock } from 'lucide-react';
+import { Settings, Play, Clock, Layers } from 'lucide-react';
 import { useAgentBlockNode } from './useAgentBlockNode';
 
 interface BlockPosition {
@@ -20,16 +20,18 @@ interface BlockData {
 interface AgentBlockNodeProps {
   block: BlockData;
   isSelected: boolean;
+  isTopologyLocked?: boolean;
+  isMultiSelected?: boolean;
 }
 
-const AgentBlockNode = ({ block, isSelected }: AgentBlockNodeProps) => {
+const AgentBlockNode = ({ block, isSelected, isTopologyLocked, isMultiSelected }: AgentBlockNodeProps) => {
   const {
     blockW,
     blockH,
     borderClasses,
     pulseClass,
     handleNodeClick,
-  } = useAgentBlockNode({ block, isSelected });
+  } = useAgentBlockNode({ block, isSelected, isMultiSelected });
 
   return (
     // eslint-disable-next-line
@@ -53,12 +55,21 @@ const AgentBlockNode = ({ block, isSelected }: AgentBlockNodeProps) => {
       {/* Header */}
       <div className="flex items-start justify-between mb-3 pb-3 border-b border-[#3e3e3e] shrink-0 w-full">
         <div className="flex items-center gap-3">
-          <div className="p-1.5 rounded-lg bg-[#1a1a1a] border border-[#3e3e3e] text-[#DEF767]">
-            <Settings size={14} />
+          <div className={`p-1.5 rounded-lg bg-[#1a1a1a] border border-[#3e3e3e] ${block.isGroupOutput ? 'text-[#A259FF]' : 'text-[#DEF767]'}`}>
+            {block.isGroupOutput ? <Layers size={14} /> : <Settings size={14} />}
           </div>
-          <h3 className="text-[14px] font-bold text-white tracking-wide truncate max-w-[150px] font-sans">
-            {block.name || 'Agent Block'}
-          </h3>
+          <div className="flex flex-col">
+            <div className="flex items-center gap-2">
+              <h3 className="text-[14px] font-bold text-white tracking-wide truncate max-w-[150px] font-sans">
+                {block.name || 'Agent Block'}
+              </h3>
+              {block.isGroupOutput && (
+                <span className="text-[8px] bg-[#A259FF]/20 text-[#A259FF] border border-[#A259FF]/30 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">
+                  GROUP OUTPUT
+                </span>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 

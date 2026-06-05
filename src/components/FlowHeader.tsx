@@ -1,75 +1,15 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { GitMerge, LayoutGrid, Play, Loader2, LayoutDashboard } from 'lucide-react';
+import { LayoutDashboard } from 'lucide-react';
 import { useBuilderStore } from '../lib/builderStore';
 import { useWorkflowStore } from '../lib/store';
 import { ROUTES } from '../lib/routes';
-import FlowHeaderViewToggle from './FlowHeader/FlowHeaderViewToggle';
-import FlowHeaderValidationModal from './FlowHeader/FlowHeaderValidationModal';
+
 
 const FlowHeader = () => {
-  const { viewMode, setViewMode, blocks } = useBuilderStore();
-  const [isDeploying, setIsDeploying] = useState(false);
-  const [validationErrors, setValidationErrors] = useState<string[]>([]);
-  const [showValidationPopup, setShowValidationPopup] = useState(false);
+  const { viewMode } = useBuilderStore();
 
-  const handleInitializeEngine = async () => {
-    // ── BUILDER VALIDATION: Require exactly 8 nodes, each with name + description ──
-    const errors: string[] = [];
 
-    if (blocks.length !== 8) {
-      errors.push(`You have ${blocks.length} node${blocks.length !== 1 ? 's' : ''}. Exactly 8 agent nodes are required.`);
-    }
-
-    blocks.forEach((block: any, idx: number) => {
-      const label = block.name && block.name.trim() !== '' && block.name !== 'New Agent' ? block.name : null;
-      const desc = block.description && block.description.trim() !== '' && block.description !== 'Describe the agent objective...' ? block.description : null;
-
-      if (!label) {
-        errors.push(`Node ${idx + 1}: Missing a custom agent name.`);
-      }
-      if (!desc) {
-        errors.push(`Node ${idx + 1}${label ? ` (${label})` : ''}: Missing agent description.`);
-      }
-    });
-
-    if (errors.length > 0) {
-      setValidationErrors(errors);
-      setShowValidationPopup(true);
-      return;
-    }
-
-    setIsDeploying(true);
-
-    // Zoom out canvas elements visually
-    const canvasRef = document.getElementById('builder-canvas-area');
-    if (canvasRef) canvasRef.classList.add('scale-75', 'opacity-0', 'transition-all', 'duration-1000');
-
-    // Gradient Pulse transition effect portal hook
-    const transitionOverlay = document.createElement('div');
-    transitionOverlay.className = "fixed inset-0 z-[150] bg-gradient-to-r from-cyan-500/0 via-purple-500/20 to-cyan-500/0 backdrop-blur-3xl animate-fade-in pointer-events-none flex flex-col items-center justify-center";
-    transitionOverlay.innerHTML = `<h1 class="text-4xl font-display font-black text-white mix-blend-overlay tracking-widest uppercase shadow-black drop-shadow-xl animate-pulse">Compiling Neural Path...</h1>`;
-    document.body.appendChild(transitionOverlay);
-
-    // Save configuration — MUST await before switching view
-    const templateName = blocks.length > 0 ? blocks[0].name : "Custom Builder Flow";
-    const deployedId = await useBuilderStore.getState().deployProject(templateName);
-
-    // Remove Overlay
-    document.body.removeChild(transitionOverlay);
-    setIsDeploying(false);
-
-    // Clear styles
-    if (canvasRef) canvasRef.classList.remove('scale-75', 'opacity-0');
-
-    if (!deployedId) {
-      alert('Compilation failed. Please try again or add blocks first.');
-      return;
-    }
-
-    // Only switch after store has deployedTemplateId confirmed
-    setViewMode('pipeline');
-  };
 
   const navigate = useNavigate();
 
@@ -121,30 +61,13 @@ const FlowHeader = () => {
           </button>
         </div>
 
-        {/* Center: View Toggles */}
-        <FlowHeaderViewToggle viewMode={viewMode} onChange={setViewMode} />
 
-        {/* Right: Action */}
-        <div className="flex items-center justify-end gap-4 flex-1">
-          {viewMode === 'builder' && (
-            <button
-              onClick={handleInitializeEngine}
-              disabled={isDeploying}
-              className={`bg-gradient-to-r from-[#A259FF] to-[#6c39b3] text-white px-6 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-transform flex items-center gap-2 shadow-[0_0_20px_rgba(162,89,255,0.4)] ${isDeploying ? 'opacity-80 scale-95 cursor-wait' : 'hover:scale-105'}`}
-            >
-              {isDeploying ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
-              {isDeploying ? 'Deploying...' : 'Initialize Engine'}
-            </button>
-          )}
-        </div>
+
+{/* Right */}
+        <div className="flex items-center justify-end gap-4 flex-1" />
       </header>
 
-      {showValidationPopup && (
-        <FlowHeaderValidationModal
-          validationErrors={validationErrors}
-          onClose={() => setShowValidationPopup(false)}
-        />
-      )}
+
     </>
   );
 };

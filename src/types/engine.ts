@@ -75,7 +75,7 @@ export interface TokenLimitModalState {
   message: string;
 }
 
-export type ToolType = 'cursor' | 'sticky' | 'text' | 'highlighter';
+export type ToolType = 'cursor' | 'sticky' | 'text' | 'highlighter'| 'connect';
 
 export type GraphStatus = 'idle' | 'loading' | 'ready' | 'running' | 'completed' | 'error';
 

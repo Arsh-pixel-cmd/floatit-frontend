@@ -1,5 +1,6 @@
 import { Webhook, Link2 } from 'lucide-react';
 import { useBuilderStore } from '../lib/builderStore';
+import { useWorkflowStore } from '../lib/store';
 
 interface BlockData {
   id: string;
@@ -17,11 +18,15 @@ interface BlockData {
 interface WebhookBlockNodeProps {
   block: BlockData;
   isSelected: boolean;
+  isTopologyLocked?: boolean;
+  isMultiSelected?: boolean;
 }
 
-const WebhookBlockNode = ({ block, isSelected }: WebhookBlockNodeProps) => {
-  const { setSelectedElementId, nodeStatus } = useBuilderStore();
-  const status = nodeStatus[block.id] || 'idle';
+const WebhookBlockNode = ({ block, isSelected, isTopologyLocked, isMultiSelected }: WebhookBlockNodeProps) => {
+  const { setSelectedElementId } = useBuilderStore();
+  const nodeStates = useWorkflowStore((state: any) => state.nodeStates);
+  const rawStatus = nodeStates[block.id] || 'idle';
+  const status = rawStatus === 'completed' ? 'success' : rawStatus === 'stuck_debugger' ? 'error' : rawStatus;
   const blockW = block.size?.width || 260;
   const blockH = block.size?.height || 150;
 
@@ -31,6 +36,8 @@ const WebhookBlockNode = ({ block, isSelected }: WebhookBlockNodeProps) => {
 
   if (isSelected) {
     borderClasses = 'border-[#DEF767] bg-[#242424] shadow-[0_15px_40px_rgba(222,247,103,0.2)] scale-[1.01] -translate-y-0.5 z-50';
+  } else if (isMultiSelected) {
+    borderClasses = 'border-dashed border-2 border-[#DEF767] bg-[#242424] shadow-[0_10px_25px_rgba(222,247,103,0.15)] z-40';
   } else if (status === 'running') {
     borderClasses = 'border-white bg-[#242424] shadow-[0_0_30px_rgba(255,255,255,0.25)] scale-[1.01] -translate-y-0.5 z-40';
     pulseClass = 'animate-pulse';
@@ -45,6 +52,9 @@ const WebhookBlockNode = ({ block, isSelected }: WebhookBlockNodeProps) => {
     <div
       onClick={(e) => {
         e.stopPropagation();
+        if (e.shiftKey || e.ctrlKey || e.metaKey) {
+          return;
+        }
         setSelectedElementId(block.id);
       }}
       className={`absolute border rounded-3xl p-5 transition-all duration-300 ease-out n8n-node overflow-visible group cursor-pointer font-sans ${borderClasses} ${pulseClass}`}

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { supabase } from './supabaseClient';
+import type { Group } from '../types/groupTypes';
 
 const generateId = () => `id_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
 
@@ -32,6 +33,24 @@ export interface BuilderStore {
   deleteStickyNote: (id: string) => void;
   clearAnnotations: () => void;
   deployedTemplateId: string | null;
+
+  isTopologyLocked: boolean;
+  setIsTopologyLocked: (locked: boolean) => void;
+
+  groups: Group[];
+  selectedBlockIds: Set<string>;
+  runningGroupId: string | null;
+  completedGroupIds: string[];
+  toggleBlockSelection: (blockId: string) => void;
+  clearBlockSelection: () => void;
+  createGroup: (name: string) => Group | null;
+  deleteGroup: (groupId: string) => void;
+  renameGroup: (groupId: string, name: string) => void;
+  setRunningGroupId: (groupId: string | null) => void;
+  addCompletedGroupId: (groupId: string) => void;
+  resetGroupExecution: () => void;
+  setGroups: (groups: Group[]) => void;
+
   setTemplates: (templates: any[]) => void;
   deployProject: (name?: string) => Promise<string | null>;
   saveAsTemplate: (name?: string) => Promise<void>;
@@ -42,7 +61,7 @@ export interface BuilderStore {
 }
 
 export const useBuilderStore = create<BuilderStore>((set, get) => ({
-  viewMode: 'pipeline', // 'pipeline' | 'builder' | 'templates'
+  viewMode: 'builder', // 'builder' | 'templates'
   setViewMode: (mode: any) => set({ viewMode: mode, selectedElementId: null }),
 
   blocks: [],
@@ -64,6 +83,137 @@ export const useBuilderStore = create<BuilderStore>((set, get) => ({
 
   selectedElementId: null,
   setSelectedElementId: (id: any) => set({ selectedElementId: id }),
+
+  groups: [],
+  selectedBlockIds: new Set(),
+  runningGroupId: null,
+  completedGroupIds: [],
+
+  toggleBlockSelection: (blockId: string) => set((state) => {
+    const next = new Set(state.selectedBlockIds);
+    if (next.has(blockId)) {
+      next.delete(blockId);
+    } else {
+      next.add(blockId);
+    }
+    return { selectedBlockIds: next };
+  }),
+
+  clearBlockSelection: () => set({ selectedBlockIds: new Set() }),
+
+  createGroup: (name: string) => {
+    const state = get();
+    const selectedIds = Array.from(state.selectedBlockIds);
+    if (selectedIds.length === 0) return null;
+    
+    const selectedBlocks = state.blocks.filter(b => selectedIds.includes(b.id));
+    if (selectedBlocks.length === 0) return null;
+
+    const rightmost = selectedBlocks.reduce((max: any, b: any) => {
+      const bRight = b.position.x + (b.size?.width || 260);
+      const mRight = max.position.x + (max.size?.width || 260);
+      return bRight > mRight ? b : max;
+    }, selectedBlocks[0]);
+
+    const outputPos = {
+      x: rightmost.position.x + (rightmost.size?.width || 260) + 120,
+      y: selectedBlocks.reduce((sum: number, b: any) => sum + b.position.y, 0) / selectedBlocks.length
+    };
+
+    const outputBlockId = generateId();
+    const outputBlockName = `${name} Output`;
+    
+    const outputNodeBlock = {
+      id: outputBlockId,
+      type: 'agent',
+      name: outputBlockName,
+      description: `Synthesized summary for group: ${name}`,
+      apiKey: '',
+      isGroupOutput: true,
+      phase: 'synthesis',
+      waitConfig: { type: 'none', delay: 0 },
+      triggerConfig: { type: 'manual' },
+      position: outputPos,
+    };
+
+    const newGroupId = generateId();
+    const order = state.groups.length;
+    const newGroup: Group = {
+      id: newGroupId,
+      name,
+      blockIds: selectedIds,
+      outputBlockId,
+      order,
+    };
+
+    const newConnections = selectedIds.map(blockId => ({
+      id: generateId(),
+      sourceBlockId: blockId,
+      targetBlockId: outputBlockId,
+      sourcePort: 'output',
+      targetPort: 'input'
+    }));
+
+    set({
+      blocks: [...state.blocks, outputNodeBlock],
+      connections: [...state.connections, ...newConnections],
+      groups: [...state.groups, newGroup],
+      selectedBlockIds: new Set()
+    });
+
+    state.saveBuilderState();
+    return newGroup;
+  },
+
+  deleteGroup: (groupId: string) => set((state) => {
+    const group = state.groups.find(g => g.id === groupId);
+    if (!group) return state;
+    
+    const nextGroups = state.groups.filter(g => g.id !== groupId)
+      .map((g, index) => ({ ...g, order: index }));
+
+    const outputId = group.outputBlockId;
+    const nextBlocks = state.blocks.filter(b => b.id !== outputId);
+    const nextConns = state.connections.filter(c => c.sourceBlockId !== outputId && c.targetBlockId !== outputId);
+
+    setTimeout(() => {
+      get().saveBuilderState();
+    }, 0);
+
+    return {
+      groups: nextGroups,
+      blocks: nextBlocks,
+      connections: nextConns
+    };
+  }),
+
+  renameGroup: (groupId: string, name: string) => set((state) => {
+    const group = state.groups.find(g => g.id === groupId);
+    if (!group) return state;
+
+    const nextBlocks = state.blocks.map(b => 
+      b.id === group.outputBlockId ? { ...b, name: `${name} Output`, description: `Synthesized summary for group: ${name}` } : b
+    );
+
+    const nextGroups = state.groups.map(g => g.id === groupId ? { ...g, name } : g);
+
+    setTimeout(() => {
+      get().saveBuilderState();
+    }, 0);
+
+    return {
+      groups: nextGroups,
+      blocks: nextBlocks
+    };
+  }),
+
+  setRunningGroupId: (groupId: string | null) => set({ runningGroupId: groupId }),
+  addCompletedGroupId: (groupId: string) => set((state) => {
+    if (state.completedGroupIds.includes(groupId)) return state;
+    return { completedGroupIds: [...state.completedGroupIds, groupId] };
+  }),
+  resetGroupExecution: () => set({ runningGroupId: null, completedGroupIds: [] }),
+  setGroups: (groups: Group[]) => set({ groups }),
 
   // --- TEXT LABELS ---
   addTextLabel: (position: any) => set((state) => ({
@@ -152,11 +302,42 @@ export const useBuilderStore = create<BuilderStore>((set, get) => ({
     blocks: state.blocks.map(b => b.id === id ? { ...b, ...updates } : b)
   })),
 
-  deleteBlock: (id: any) => set((state) => ({
-    blocks: state.blocks.filter(b => b.id !== id),
-    connections: state.connections.filter(c => c.sourceBlockId !== id && c.targetBlockId !== id),
-    selectedElementId: state.selectedElementId === id ? null : state.selectedElementId
-  })),
+  deleteBlock: (id: any) => set((state) => {
+    const groupWithOutput = state.groups.find(g => g.outputBlockId === id);
+    let nextGroups = state.groups;
+    let nextBlocks = state.blocks.filter(b => b.id !== id);
+    let nextConns = state.connections.filter(c => c.sourceBlockId !== id && c.targetBlockId !== id);
+
+    if (groupWithOutput) {
+      nextGroups = nextGroups.filter(g => g.id !== groupWithOutput.id)
+        .map((g, index) => ({ ...g, order: index }));
+    } else {
+      nextGroups = nextGroups.map(g => {
+        if (g.blockIds.includes(id)) {
+          return {
+            ...g,
+            blockIds: g.blockIds.filter(bid => bid !== id)
+          };
+        }
+        return g;
+      });
+    }
+
+    setTimeout(() => {
+      get().saveBuilderState();
+    }, 0);
+
+    const nextSel = new Set(state.selectedBlockIds);
+    nextSel.delete(id);
+
+    return {
+      blocks: nextBlocks,
+      connections: nextConns,
+      groups: nextGroups,
+      selectedElementId: state.selectedElementId === id ? null : state.selectedElementId,
+      selectedBlockIds: nextSel
+    };
+  }),
 
   // --- CONNECTIONS ---
   connectBlocks: (sourceId: any, targetId: any, sourcePort: any, targetPort: any) => set((state) => {
@@ -214,12 +395,16 @@ export const useBuilderStore = create<BuilderStore>((set, get) => ({
       connections: JSON.parse(JSON.stringify(state.connections)),
       stickyNotes: JSON.parse(JSON.stringify(state.stickyNotes)),
       textLabels: JSON.parse(JSON.stringify(state.textLabels)),
+      groups: JSON.parse(JSON.stringify(state.groups)),
     };
     await supabase.from('sequences').update({ canvas_state, updated_at: new Date().toISOString() }).eq('id', seqId);
   },
 
   // --- TEMPLATES & PIPELINE DEPLOYMENT ---
   deployedTemplateId: null,
+
+  isTopologyLocked: false,
+  setIsTopologyLocked: (locked) => set({ isTopologyLocked: locked }),
 
   setTemplates: (templates: any) => set({ templates }),
 
@@ -329,28 +514,7 @@ export const useBuilderStore = create<BuilderStore>((set, get) => ({
       targetPort: c.targetPort
     }));
 
-    // Create a NEW sequence in Supabase so we don't overwrite the old one
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session) {
-      const newSeq = {
-        user_id: session.user.id,
-        title: template.name || 'From Template',
-        status: 'Idle',
-        status_color: '#46B1FF',
-        agents_active: 0,
-        total_agents: newBlocks.length,
-        canvas_state: {
-          blocks: newBlocks,
-          connections: newConns,
-          stickyNotes: [],
-          textLabels: [],
-        }
-      };
-      const { data } = await supabase.from('sequences').insert([newSeq]).select().single();
-      if (data) {
-        localStorage.setItem('active_sequence_id', data.id);
-      }
-    }
+
 
     set({
       blocks: newBlocks,
@@ -358,11 +522,11 @@ export const useBuilderStore = create<BuilderStore>((set, get) => ({
       stickyNotes: [],
       textLabels: [],
       selectedElementId: null,
-      viewMode: 'builder'
+      viewMode: 'builder',
+      groups: [],
+      selectedBlockIds: new Set()
     });
-    
-    // Hard reload to completely reboot the Engine state for the new pipeline
-    window.location.reload();
+
   },
   
   updateTemplate: async (id: any, updates: any) => {
