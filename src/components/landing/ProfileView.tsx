@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { User, LogOut, Workflow, ArrowLeft, Key, Eye, EyeOff, Shield, Trash2, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../lib/auth';
 import { ROUTES } from '../../lib/routes';
-import { supabase } from '../../lib/supabaseClient';
+import { dbAdapter } from '../../lib/database';
 
 const API_BASE = import.meta.env.PROD ? '' : 'http://localhost:3001';
 
@@ -19,7 +19,8 @@ interface SaveMessage {
 
 export const ProfileView = ({ user: propUser, onLogout }: ProfileViewProps) => {
   const navigate = useNavigate();
-  const { user: authUser, signOut, getProfile } = useAuth();
+  const location = useLocation();
+  const { user: authUser, signOut, getProfile, getAccessToken } = useAuth();
   const [workflowCount, setWorkflowCount] = useState(0);
   
   const [user, setUser] = useState(propUser || {
@@ -52,13 +53,9 @@ export const ProfileView = ({ user: propUser, onLogout }: ProfileViewProps) => {
            email: authUser.email
         });
 
-        // Fetch workflow count
-        const { count, error } = await supabase
-          .from('sequences')
-          .select('*', { count: 'exact', head: true })
-          .eq('user_id', authUser.id);
-        
-        if (!error) setWorkflowCount(count || 0);
+        // Fetch workflow count via dbAdapter
+        const { data: seqs } = await dbAdapter.fetchSequences();
+        setWorkflowCount(seqs ? seqs.filter(s => s.user_id === authUser.id).length : 0);
       } else {
         navigate(ROUTES.landing);
       }
@@ -70,7 +67,10 @@ export const ProfileView = ({ user: propUser, onLogout }: ProfileViewProps) => {
   const fetchKeyStatus = useCallback(async () => {
     if (!authUser) return;
     try {
-      const res = await fetch(`${API_BASE}/api/keys/status/${authUser.id}`);
+      const token = await getAccessToken();
+      const res = await fetch(`${API_BASE}/api/keys/status/${authUser.id}`, {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      });
       const data = await res.json();
       setHasKey(data.hasKey);
       setLastFour(data.lastFour || '');
@@ -78,7 +78,7 @@ export const ProfileView = ({ user: propUser, onLogout }: ProfileViewProps) => {
     } catch {
       // Server might not be running
     }
-  }, [authUser]);
+  }, [authUser, getAccessToken]);
 
   useEffect(() => {
     fetchKeyStatus();
@@ -89,9 +89,14 @@ export const ProfileView = ({ user: propUser, onLogout }: ProfileViewProps) => {
     if (!authUser && !explicitKey) return;
     setIsLoadingModels(true);
     try {
+      const token = await getAccessToken();
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
       const res = await fetch(`${API_BASE}/api/models`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ userId: authUser?.id, apiKey: explicitKey }),
       });
       const data = await res.json();
@@ -101,7 +106,7 @@ export const ProfileView = ({ user: propUser, onLogout }: ProfileViewProps) => {
     } finally {
       setIsLoadingModels(false);
     }
-  }, [authUser]);
+  }, [authUser, getAccessToken]);
 
   useEffect(() => {
     if (hasKey && !isEditing) fetchAvailableModels();
@@ -116,6 +121,26 @@ export const ProfileView = ({ user: propUser, onLogout }: ProfileViewProps) => {
     return () => window.removeEventListener('agentic:key-error', handler);
   }, []);
 
+  useEffect(() => {
+    if (location.hash === '#api-key') {
+      const scrollToSection = () => {
+        const container = document.getElementById('profile-scroll-container');
+        const element = document.getElementById('api-key-section');
+        if (container && element) {
+          const offset = element.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop;
+          container.scrollTo({ top: offset - 50, behavior: 'smooth' });
+        }
+      };
+      
+      // Try scrolling immediately for fast renders
+      scrollToSection();
+      
+      // Also try after a short layout timeout to handle slow renders
+      const timer = setTimeout(scrollToSection, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [location.hash]);
+
   // ── Save API key (encrypted on server) ────────────────────
   const handleSaveKey = async () => {
     if (!keyInput.trim() || !authUser) return;
@@ -123,10 +148,16 @@ export const ProfileView = ({ user: propUser, onLogout }: ProfileViewProps) => {
     setSaveMessage(null);
 
     try {
+      const token = await getAccessToken();
+      const authHeaders = token ? { 'Authorization': `Bearer ${token}` } : {};
+
       // 1. Verify the key with the provider first
       const verifyRes = await fetch(`${API_BASE}/api/keys/verify`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          ...authHeaders
+        },
         body: JSON.stringify({ userId: authUser.id, apiKey: keyInput.trim() }),
       });
       const verifyData = await verifyRes.json();
@@ -140,7 +171,10 @@ export const ProfileView = ({ user: propUser, onLogout }: ProfileViewProps) => {
       // 2. If valid, encrypt and save it
       const res = await fetch(`${API_BASE}/api/keys/save`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          ...authHeaders
+        },
         body: JSON.stringify({ userId: authUser.id, apiKey: keyInput.trim() }),
       });
 
@@ -169,7 +203,11 @@ export const ProfileView = ({ user: propUser, onLogout }: ProfileViewProps) => {
     if (!authUser) return;
     setIsDeleting(true);
     try {
-      await fetch(`${API_BASE}/api/keys/${authUser.id}`, { method: 'DELETE' });
+      const token = await getAccessToken();
+      await fetch(`${API_BASE}/api/keys/${authUser.id}`, { 
+        method: 'DELETE',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      });
       setHasKey(false);
       setLastFour('');
       setKeyInput('');
@@ -196,7 +234,8 @@ export const ProfileView = ({ user: propUser, onLogout }: ProfileViewProps) => {
 
   return (
     <div 
-      className="min-h-screen pt-32 px-6 pb-24 relative overflow-hidden bg-[#030303] cursor-pointer"
+      id="profile-scroll-container"
+      className="min-h-screen pt-32 px-6 pb-24 relative overflow-y-auto overflow-x-hidden bg-[#030303] cursor-pointer"
       onClick={() => navigate(ROUTES.dashboard)}
     >
       <div 
@@ -235,7 +274,7 @@ export const ProfileView = ({ user: propUser, onLogout }: ProfileViewProps) => {
           <div className="md:col-span-2 space-y-6">
 
             {/* ── API KEY MANAGEMENT CARD ── */}
-            <div className="bg-[#0A0A0A] border border-white/10 rounded-3xl p-8 shadow-2xl">
+            <div id="api-key-section" className="bg-[#0A0A0A] border border-white/10 rounded-3xl p-8 shadow-2xl">
               {/* Card Header */}
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">

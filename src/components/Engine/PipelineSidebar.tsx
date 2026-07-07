@@ -16,36 +16,48 @@ export default function PipelineSidebar({ selectedNodeId, layout, nodeResults, o
   const nodeDetails = selectedNode?.category || {};
 
   const renderPipelineSidebarContent = () => {
-    if (nodeResults && nodeResults[selectedNodeId]?.ui) {
-      const safeHtml = `
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <meta charset="utf-8">
-            <style>
-              body { margin: 0; padding: 0; background: transparent; color-scheme: dark; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-              ::-webkit-scrollbar { width: 6px; height: 6px; }
-              ::-webkit-scrollbar-track { background: transparent; }
-              ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
-              ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
-            </style>
-          </head>
-          <body>
-            ${nodeResults[selectedNodeId].ui}
-          </body>
-        </html>
-      `;
+    const result = nodeResults?.[selectedNodeId];
+    if (result) {
+      if (result._errorType) {
+        return (
+          <div className="p-6 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 font-sans mt-4">
+            <h4 className="font-bold text-sm uppercase tracking-wider mb-2">Execution Halted — {result._errorType.replace('_', ' ')}</h4>
+            <p className="text-xs opacity-80 leading-relaxed">{result.content || 'An error occurred during execution.'}</p>
+          </div>
+        );
+      }
 
-      return (
-        <div className="flex-1 w-full relative h-[600px]">
-          <iframe
-            srcDoc={safeHtml}
-            className="w-full h-full border-0 bg-transparent rounded-2xl"
-            sandbox="allow-scripts"
-            title="Agent Output"
-          />
-        </div>
-      );
+      if (result.ui) {
+        const safeHtml = `
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <meta charset="utf-8">
+              <style>
+                body { margin: 0; padding: 0; background: transparent; color-scheme: dark; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+                ::-webkit-scrollbar { width: 6px; height: 6px; }
+                ::-webkit-scrollbar-track { background: transparent; }
+                ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+                ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+              </style>
+            </head>
+            <body>
+              ${result.ui}
+            </body>
+          </html>
+        `;
+
+        return (
+          <div className="flex-1 w-full relative h-[600px]">
+            <iframe
+              srcDoc={safeHtml}
+              className="w-full h-full border-0 bg-transparent rounded-2xl"
+              sandbox="allow-scripts"
+              title="Agent Output"
+            />
+          </div>
+        );
+      }
     }
 
     return (

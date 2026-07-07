@@ -79,8 +79,22 @@ const ToolDock = ({ activeTool, setActiveTool, canvasLocked, setCanvasLocked, on
         <>
           {!isTopologyLocked && (
             <>
-              <ToolButton data-tour="add-agent-btn" onClick={() => addBlock()} icon={<PlusSquare size={20} />} title="Add Agent Block" />
-              <ToolButton data-tour="add-webhook-btn" onClick={() => addWebhookBlock()} icon={<Webhook size={20} />} title="Add Webhook Bridge" />
+              <ToolButton
+                data-tour="add-agent-btn"
+                onClick={() => addBlock()}
+                draggable={true}
+                onDragStart={(e) => e.dataTransfer.setData('application/floatit-block-type', 'agent')}
+                icon={<PlusSquare size={20} />}
+                title="Add Agent Block (Drag to canvas)"
+              />
+              <ToolButton
+                data-tour="add-webhook-btn"
+                onClick={() => addWebhookBlock()}
+                draggable={true}
+                onDragStart={(e) => e.dataTransfer.setData('application/floatit-block-type', 'webhook')}
+                icon={<Webhook size={20} />}
+                title="Add Webhook Bridge (Drag to canvas)"
+              />
               <ToolButton active={activeTool === 'connect'} onClick={() => setActiveTool('connect')} icon={<Network size={20} />} title="Connect Blocks" />
               <Separator />
             </>
@@ -126,12 +140,16 @@ interface ToolButtonProps {
   icon: React.ReactNode;
   title: string;
   'data-tour'?: string;
+  draggable?: boolean;
+  onDragStart?: (e: React.DragEvent) => void;
 }
 
-const ToolButton = ({ active, onClick, icon, title, ...rest }: ToolButtonProps) => (
+const ToolButton = ({ active, onClick, icon, title, draggable, onDragStart, ...rest }: ToolButtonProps) => (
   <div className="relative group/btn w-12 flex justify-center font-sans" data-tour={rest['data-tour']}>
     <button
       onClick={onClick}
+      draggable={draggable}
+      onDragStart={onDragStart}
       className={`p-3 rounded-xl transition-all duration-300 origin-left group-hover/btn:scale-[1.2] group-hover/btn:translate-x-2 active:scale-95 border ${active
         ? 'bg-[#DEF767] text-black border-[#DEF767] shadow-[0_0_20px_rgba(222,247,103,0.3)]'
         : 'text-slate-400 border-transparent group-hover/btn:text-white group-hover/btn:bg-white/5 group-hover/btn:border-white/10'

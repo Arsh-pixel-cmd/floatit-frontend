@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { Search, Plus, Star, LayoutGrid, Folder, Trash2, User, X, GripVertical } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ROUTES } from '../lib/routes';
-import { supabase } from '../lib/supabaseClient';
+import { dbAdapter } from '../lib/database';
 import { useAuth } from '../lib/auth';
+import CreateSequenceModal from './modals/CreateSequenceModal';
 
 // Brand color palette for auto-assigning folder colors
 const FOLDER_COLORS = ['#8e8e8e', '#5b5b5b', '#929292'];
@@ -30,29 +31,33 @@ export default function Dashboard() {
   const [newFolderName, setNewFolderName] = useState('');
   const [draggedSequenceId, setDraggedSequenceId] = useState<string | null>(null);
   const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showProfileDropdown, setShowProfileDropdown] = useState(false);
+  const profileRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
+
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
+        setShowProfileDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, []);
 
   // Data Fetching
   const fetchSequences = async () => {
     setLoading(true);
-    const { data } = await supabase
-      .from('sequences')
-      .select('*')
-      .order('updated_at', { ascending: false });
-
+    const { data } = await dbAdapter.fetchSequences('updated_at', false);
     if (data) setSequences(data);
     setLoading(false);
   };
 
   const fetchFolders = async () => {
     if (!user) return;
-    const { data } = await supabase
-      .from('spaces')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: true });
-
-    if (data) setFolders(data);
+    const { data } = await dbAdapter.fetchFolders(user.id);
+    if (data) setFolders(data as FolderType[]);
   };
 
   useEffect(() => {
@@ -61,36 +66,33 @@ export default function Dashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-  const handleNewFlow = async () => {
-  if (!user) return;
+  const handleNewFlow = async (name: string) => {
+    if (!user) return;
 
-  const newSeq = {
-    user_id: user.id,
-    title: 'Untitled Flow',
-    status: 'Idle',
-    status_color: '#8e8e8e',
-    agents_active: 0,
-    total_agents: 0,
-    is_starred: false,
-    space_id: activeFolderId || null,
+    const newSeq = {
+      user_id: user.id,
+      title: name,
+      status: 'Idle',
+      status_color: '#8e8e8e',
+      agents_active: 0,
+      total_agents: 0,
+      is_starred: false,
+      space_id: activeFolderId || null,
+    };
+
+    const { data } = await dbAdapter.createSequence(newSeq);
+
+    if (data) {
+      setSequences([data, ...sequences]);
+      localStorage.setItem('active_sequence_id', data.id);
+      setShowCreateModal(false);
+      navigate(ROUTES.canvas);
+    }
   };
-
-  const { data } = await supabase
-    .from('sequences')
-    .insert([newSeq])
-    .select()
-    .single();
-
-  if (data) {
-    setSequences([data, ...sequences]);
-    localStorage.setItem('active_sequence_id', data.id);
-    navigate(ROUTES.canvas);
-  }
-};
 
   const handleDelete = async (id: string | number) => {
     setSequences(sequences.filter((seq: any) => seq.id !== id));
-    await supabase.from('sequences').delete().eq('id', id);
+    await dbAdapter.deleteSequence(id as string);
   };
 
   const handleToggleStar = async (id: string | number) => {
@@ -99,31 +101,25 @@ export default function Dashboard() {
 
     const newStarred = !seq.is_starred;
     setSequences(sequences.map((s: any) => s.id === id ? { ...s, is_starred: newStarred } : s));
-    await supabase.from('sequences').update({ is_starred: newStarred }).eq('id', id);
+    await dbAdapter.updateSequence(id as string, { is_starred: newStarred });
   };
 
   // Folder CRUD
   const handleCreateFolder = async () => {
     if (!user || !newFolderName.trim()) return;
 
-    const { data } = await supabase
-      .from('spaces')
-      .insert([{ name: newFolderName.trim(), user_id: user.id }])
-      .select()
-      .single();
+    const { data } = await dbAdapter.createFolder({ name: newFolderName.trim(), user_id: user.id });
 
     if (data) {
-      setFolders([...folders, data]);
+      setFolders([...folders, data as FolderType]);
     }
     setNewFolderName('');
     setShowNewFolderInput(false);
   };
 
   const handleDeleteFolder = async (folderId: string) => {
-    await supabase.from('sequences').update({ space_id: null }).eq('space_id', folderId);
+    await dbAdapter.deleteFolder(folderId);
     setSequences(sequences.map((s: any) => s.space_id === folderId ? { ...s, space_id: null } : s));
-
-    await supabase.from('spaces').delete().eq('id', folderId);
     setFolders(folders.filter((f: FolderType) => f.id !== folderId));
 
     if (activeFolderId === folderId) {
@@ -142,7 +138,7 @@ export default function Dashboard() {
       setSequences(sequences.map((s: any) =>
         s.id === draggedSequenceId ? { ...s, space_id: dragOverFolderId } : s
       ));
-      await supabase.from('sequences').update({ space_id: dragOverFolderId }).eq('id', draggedSequenceId);
+      await dbAdapter.moveSequenceToFolder(draggedSequenceId, dragOverFolderId);
     }
     setDraggedSequenceId(null);
     setDragOverFolderId(null);
@@ -338,15 +334,46 @@ export default function Dashboard() {
             />
           </div>
 
-          <div className="flex items-center gap-4 shrink-0 justify-end">
+          <div className="flex items-center gap-4 shrink-0 justify-end relative" ref={profileRef}>
             <button
-              onClick={() => navigate(ROUTES.profile)}
-              className="w-12 h-12 flex items-center justify-center rounded-2xl border border-[#2e2e2e] text-zinc-400 hover:text-[#EB9A21] hover:border-[#EB9A21] bg-[#1e1e1e] shadow-md hover:-translate-y-0.5 transition-all"
+              onClick={() => setShowProfileDropdown((prev) => !prev)}
+              className="w-12 h-12 flex items-center justify-center rounded-2xl border border-[#2e2e2e] text-zinc-400 hover:text-[#EB9A21] hover:border-[#EB9A21] bg-[#1e1e1e] shadow-md hover:-translate-y-0.5 transition-all animate-none"
               aria-label="User Profile"
               title="User Profile"
             >
               <User size={18} />
             </button>
+            <AnimatePresence>
+              {showProfileDropdown && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 10 }}
+                  className="absolute right-0 top-14 w-48 rounded-2xl bg-[#181818] border border-[#2e2e2e] py-2 z-50 shadow-[0_10px_30px_rgba(0,0,0,0.5)] font-sans"
+                >
+                  <button
+                    onMouseDown={(e) => {
+                      e.stopPropagation();
+                      setShowProfileDropdown(false);
+                      navigate(ROUTES.profile);
+                    }}
+                    className="w-full text-left px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-zinc-300 hover:text-white hover:bg-zinc-800 transition-colors"
+                  >
+                    Profile Settings
+                  </button>
+                  <button
+                    onMouseDown={(e) => {
+                      e.stopPropagation();
+                      setShowProfileDropdown(false);
+                      navigate(ROUTES.profile + '#api-key');
+                    }}
+                    className="w-full text-left px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-zinc-300 hover:text-white hover:bg-zinc-800 transition-colors border-t border-[#2e2e2e]"
+                  >
+                    Global API Key
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </header>
 
@@ -392,13 +419,20 @@ export default function Dashboard() {
         {/* CREATE FLOW FIXED FAB */}
         <button
           data-tour="create-flow-btn"
-          onClick={handleNewFlow}
+          onClick={() => setShowCreateModal(true)}
           className="fixed bottom-8 right-8 z-50 w-14 h-14 rounded-full bg-[#EB9A21] border border-[#c57f12] shadow-[0_8px_30px_rgba(235,154,33,0.35)] hover:shadow-[0_15px_40px_rgba(235,154,33,0.6)] hover:-translate-y-1 hover:scale-105 transition-all duration-300 flex items-center justify-center text-[#FFFFFF]"
           aria-label="Create Flow"
           title="Create Flow"
         >
           <Plus size={24} strokeWidth={3} />
         </button>
+
+        {/* Sequence Naming Modal (PRD Flow 1, Steps 3-4) */}
+        <CreateSequenceModal
+          isOpen={showCreateModal}
+          onCreate={handleNewFlow}
+          onClose={() => setShowCreateModal(false)}
+        />
 
       </main>
     </div>

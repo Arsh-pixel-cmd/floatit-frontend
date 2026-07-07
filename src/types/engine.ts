@@ -1,5 +1,39 @@
 export type ApiKeyModalType = 'NO_KEY' | 'INVALID_KEY' | 'RATE_LIMIT';
 
+export interface BaseBlock {
+  id: string;
+  name: string;
+  description: string;
+  position: { x: number; y: number };
+  size?: { width: number; height: number };
+  waitConfig: { type: string; delay: number };
+  triggerConfig: { type: string };
+  isGroupOutput?: boolean;
+  useCustomKey?: boolean;
+  apiKey?: string;
+  outputContext?: string; // Information to be passed on to other agents (Flow 2, Step 3)
+  linkedSequenceId?: string | null;
+  linkedSequenceName?: string;
+}
+
+export interface AgentBlock extends BaseBlock {
+  type: 'agent';
+  apiKey: string;
+  useCustomKey?: boolean;
+  isGroupOutput?: boolean;
+  phase?: string;
+  outputContext?: string;
+}
+
+export interface WebhookBlock extends BaseBlock {
+  type: 'webhook';
+  linkedSequenceId: string | null;
+  linkedSequenceName: string;
+}
+
+export type Block = AgentBlock | WebhookBlock;
+
+
 export interface KeyInfoState {
   activeSource: 'none' | 'project' | 'global';
   project: {

@@ -9,8 +9,21 @@
     "dev": "concurrently --kill-others --prefix \"[{name}]\" --names \"VITE,SRVR\" --prefix-colors \"cyan,magenta\" \"npm run dev:frontend\" \"npm run dev:server\"",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run"
   },
+  "rewrites": [
+    {
+      "source": "/api/*",
+      "destination": "/api/index.js"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
+  ],
   "dependencies": {
     "@emotion/is-prop-valid": "^1.4.0",
     "@supabase/supabase-js": "^2.104.1",
@@ -24,6 +37,7 @@
     "html2canvas": "^1.4.1",
     "html2pdf.js": "^0.14.0",
     "lucide-react": "^1.8.0",
+    "openspec": "^0.0.0",
     "react": "19.2.5",
     "react-dom": "19.2.5",
     "react-router-dom": "^7.14.2",
@@ -35,6 +49,7 @@
     "@types/html2canvas": "^0.5.35",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
+    "@types/react-router-dom": "^5.3.3",
     "@vitejs/plugin-react": "^6.0.1",
     "autoprefixer": "^10.4.27",
     "eslint": "^9.39.4",
@@ -44,6 +59,7 @@
     "postcss": "^8.5.9",
     "tailwindcss": "^4.2.2",
     "typescript": "^6.0.3",
-    "vite": "^8.0.4"
+    "vite": "^8.0.4",
+    "vitest": "^3.0.0"
   }
 }

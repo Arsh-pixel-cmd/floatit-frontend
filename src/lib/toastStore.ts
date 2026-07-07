@@ -1,16 +1,17 @@
 import { create } from 'zustand';
+import React from 'react';
 
 export type ToastType = 'success' | 'error' | 'info' | 'warning';
 
 export interface Toast {
   id: string;
   type: ToastType;
-  message: string;
+  message: string | React.ReactNode;
 }
 
 interface ToastStore {
   toasts: Toast[];
-  addToast: (type: ToastType, message: string) => void;
+  addToast: (type: ToastType, message: string | React.ReactNode) => void;
   removeToast: (id: string) => void;
 }
 

@@ -41,9 +41,9 @@ const ToastItem = ({ toast, onClose }: { toast: Toast; onClose: () => void }) =>
       className={`pointer-events-auto flex items-center gap-4 px-5 py-4 rounded-2xl border backdrop-blur-2xl shadow-2xl min-w-[320px] max-w-[420px] ${bgColors[toast.type]}`}
     >
       <div className="shrink-0">{icons[toast.type]}</div>
-      <p className="flex-1 text-sm font-bold text-white leading-tight">
+      <div className="flex-1 text-sm font-bold text-white leading-tight">
         {toast.message}
-      </p>
+      </div>
       <button
         onClick={onClose}
         title="Close notification"

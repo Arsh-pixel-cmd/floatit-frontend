@@ -1,12 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useBuilderStore } from '../lib/builderStore';
-import AgentBlockNode from './AgentBlockNode';
-import WebhookBlockNode from './WebhookBlockNode';
+import useCanvasHandlers from '../hooks/useCanvasHandlers';
 import { Trash2 } from 'lucide-react';
 import { computeEdgePath } from '../lib/edgeRouter';
 import type { ToolType } from '../types/engine';
-import MultiSelectActionBar from './MultiSelectActionBar';
-import CreateGroupModal from './CreateGroupModal';
+import { NodeComponentRegistry } from '../lib/blocks/NodeComponentRegistry';
 
 interface Coords { x: number; y: number; }
 
@@ -42,81 +40,35 @@ interface BuilderCanvasProps {
 const BuilderCanvas = ({ activeTool, setActiveTool, getCanvasCoords }: BuilderCanvasProps) => {
   const { 
     blocks, connections, updateBlock, selectedElementId, 
-    setSelectedElementId, connectBlocks,
+    setSelectedElementId, connectBlocks, addBlock, addWebhookBlock,
     stickyNotes, addStickyNote, updateStickyNote, deleteStickyNote,
     textLabels, addTextLabel, updateTextLabel, deleteTextLabel,
     nodeStatus,  isTopologyLocked,
-    groups, selectedBlockIds, toggleBlockSelection, clearBlockSelection, createGroup
+    groups, selectedBlockIds, toggleBlockSelection, clearBlockSelection
   } = useBuilderStore();
 
-  const [isCreateGroupModalOpen, setIsCreateGroupModalOpen] = useState(false);
+  const {
+    draggingElement,
+    setDraggingElement,
+    wiringState,
+    setWiringState,
+    resizingElement,
+    setResizingElement,
+  } = useCanvasHandlers(getCanvasCoords);
 
-  const [draggingElement, setDraggingElement] = useState<DraggingElement | null>(null);
-  const [wiringState, setWiringState] = useState<WiringState | null>(null);
-  const [resizingElement, setResizingElement] = useState<ResizingElement | null>(null);
-
-  // Dragging + wiring + resizing logic
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (draggingElement) {
-        const coords = getCanvasCoords(e.clientX, e.clientY);
-        const dx = coords.x - draggingElement.startMouseX;
-        const dy = coords.y - draggingElement.startMouseY;
-        const newPos = { x: draggingElement.startX + dx, y: draggingElement.startY + dy };
-        
-        if (draggingElement.type === 'block') {
-          updateBlock(draggingElement.id, { position: newPos });
-        } else if (draggingElement.type === 'sticky') {
-          updateStickyNote(draggingElement.id, { position: newPos });
-        }
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    if (isTopologyLocked) return;
+    const type = e.dataTransfer.getData('application/floatit-block-type');
+    if (type === 'agent' || type === 'webhook') {
+      const coords = getCanvasCoords(e.clientX, e.clientY);
+      if (type === 'agent') {
+        addBlock(coords);
+      } else if (type === 'webhook') {
+        addWebhookBlock(coords);
       }
-
-      if (wiringState) {
-        const coords = getCanvasCoords(e.clientX, e.clientY);
-        setWiringState(prev => prev ? { ...prev, currentMousePos: coords } : null);
-      }
-
-      if (resizingElement) {
-        const coords = getCanvasCoords(e.clientX, e.clientY);
-        const newWidth = Math.max(120, coords.x - resizingElement.elemX);
-        const newHeight = Math.max(120, coords.y - resizingElement.elemY);
-        
-        if (resizingElement.type === 'block') {
-          updateBlock(resizingElement.id, { size: { width: Math.max(180, newWidth), height: newHeight } });
-        } else if (resizingElement.type === 'sticky') {
-          updateStickyNote(resizingElement.id, { size: { width: newWidth, height: newHeight } });
-        }
-      }
-    };
-
-    const handleMouseUp = (e: MouseEvent) => {
-      if (draggingElement) setDraggingElement(null);
-      if (resizingElement) setResizingElement(null);
-      
-      if (wiringState) {
-        const target = document.elementFromPoint(e.clientX, e.clientY);
-        if (target && target.classList.contains('connection-port')) {
-          const targetId = target.getAttribute('data-port-id');
-          const targetPort = target.getAttribute('data-port-position');
-          
-          if (targetId && targetId !== wiringState.sourceId && wiringState.sourcePort && targetPort) {
-            connectBlocks(wiringState.sourceId, targetId, wiringState.sourcePort, targetPort);
-          }
-        }
-        setWiringState(null);
-      }
-    };
-
-    if (draggingElement || wiringState || resizingElement) {
-      window.addEventListener('mousemove', handleMouseMove);
-      window.addEventListener('mouseup', handleMouseUp);
     }
-    
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [draggingElement, wiringState, resizingElement, getCanvasCoords, updateBlock, connectBlocks, updateStickyNote]);
+  };
 
   const handleBlockMouseDown = (e: React.MouseEvent, block: any) => {
     const target = e.target as HTMLElement;
@@ -365,7 +317,13 @@ const BuilderCanvas = ({ activeTool, setActiveTool, getCanvasCoords }: BuilderCa
   };
 
   return (
-    <div id="builder-canvas-area" className="pointer-events-auto w-full h-full z-40 absolute inset-0" onClick={handleCanvasClick}>
+    <div 
+      id="builder-canvas-area" 
+      className="pointer-events-auto w-full h-full z-40 absolute inset-0" 
+      onClick={handleCanvasClick}
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={handleDrop}
+    >
       <svg className="absolute inset-0 pointer-events-none w-full h-full overflow-visible z-0">
          <g style={{ pointerEvents: 'all' }}>
            {renderConnections()}
@@ -375,25 +333,20 @@ const BuilderCanvas = ({ activeTool, setActiveTool, getCanvasCoords }: BuilderCa
       {renderGroupBoundaries()}
 
       {/* Agent & Webhook Blocks */}
-      {blocks.map((block: any) => (
-        <div key={block.id} className="pointer-events-auto absolute" onMouseDown={(e) => handleBlockMouseDown(e, block)}>
-          {block.type === 'webhook' ? (
-            <WebhookBlockNode
+      {blocks.map((block: any) => {
+        const NodeComponent = NodeComponentRegistry.get(block.type);
+        if (!NodeComponent) return null;
+        return (
+          <div key={block.id} className="pointer-events-auto absolute" onMouseDown={(e) => handleBlockMouseDown(e, block)}>
+            <NodeComponent
               block={block}
               isSelected={selectedElementId === block.id}
               isTopologyLocked={isTopologyLocked}
               isMultiSelected={selectedBlockIds.has(block.id)}
             />
-          ) : (
-            <AgentBlockNode
-              block={block}
-              isSelected={selectedElementId === block.id}
-              isTopologyLocked={isTopologyLocked}
-              isMultiSelected={selectedBlockIds.has(block.id)}
-            />
-          )}
-        </div>
-      ))}
+          </div>
+        );
+      })}
 
       {/* Builder Sticky Notes (Flat Brutalist Styling) */}
       {stickyNotes.map((note: any) => {
@@ -481,21 +434,6 @@ const BuilderCanvas = ({ activeTool, setActiveTool, getCanvasCoords }: BuilderCa
         </div>
       ))}
 
-      <MultiSelectActionBar
-        selectedCount={selectedBlockIds.size}
-        onCreateGroup={() => setIsCreateGroupModalOpen(true)}
-        onClearSelection={clearBlockSelection}
-      />
-
-      <CreateGroupModal
-        isOpen={isCreateGroupModalOpen}
-        selectedAgentNames={blocks.filter(b => selectedBlockIds.has(b.id)).map(b => b.name || 'New Agent')}
-        onCreate={(name) => {
-          createGroup(name);
-          setIsCreateGroupModalOpen(false);
-        }}
-        onClose={() => setIsCreateGroupModalOpen(false)}
-      />
     </div>
   );
 };

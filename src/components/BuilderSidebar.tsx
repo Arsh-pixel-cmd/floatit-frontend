@@ -1,15 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useBuilderStore } from '../lib/builderStore';
-import { Settings, Play, Clock, Key, Trash2, Download, Loader2, Webhook, Link2, Lock } from 'lucide-react';
+import { Settings, Play, Clock, Key, Trash2, Download, Loader2, Webhook, Link2, Lock, Save, CheckCircle } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
+import { useToastStore } from '../lib/toastStore';
 
 const BuilderSidebar = () => {
-  const { blocks, connections, selectedElementId, setSelectedElementId, updateBlock, deleteBlock, deleteConnection, isTopologyLocked, groups } = useBuilderStore();
+  const { blocks, connections, selectedElementId, setSelectedElementId, updateBlock, deleteBlock, deleteConnection, isTopologyLocked, groups, saveBuilderState } = useBuilderStore();
 
   const [showResultOverlay, setShowResultOverlay] = useState(false);
   const [globalContextLog] = useState("");
   const [availableSequences, setAvailableSequences] = useState<any[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const addToast = useToastStore((state) => state.addToast);
 
   const selectedBlock = blocks.find(b => b.id === selectedElementId);
   const selectedConnection = connections.find(c => c.id === selectedElementId);
@@ -56,7 +60,7 @@ const BuilderSidebar = () => {
 
           <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
             {selectedBlock ? (
-              <div className="animate-fade-in flex flex-col h-full gap-6">
+              <div className="animate-fade-in flex flex-col min-h-full gap-6">
                 {selectedBlock.isGroupOutput ? (
                   <div className="space-y-6 flex-1 flex flex-col justify-between">
                     <div className="space-y-6">
@@ -123,6 +127,19 @@ const BuilderSidebar = () => {
                           placeholder={isWebhook ? 'Describe what data this bridge passes...' : 'Describe what this agent does...'}
                         />
                       </div>
+                      {!isWebhook && (
+                        <div>
+                          <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2 block">
+                            Output Context / Information to Pass
+                          </label>
+                          <textarea
+                            value={selectedBlock.outputContext || ''}
+                            onChange={(e) => updateBlock(selectedBlock.id, { outputContext: e.target.value })}
+                            className="w-full bg-black/40 border border-white/5 focus:border-[#A259FF]/50 rounded-xl px-4 py-3 text-sm text-slate-300 min-h-[100px] transition-colors outline-none resize-none custom-scrollbar"
+                            placeholder="Describe what information this agent should pass to connected agents..."
+                          />
+                        </div>
+                      )}
                     </div>
 
                     {/* Webhook-specific: Linked Sequence Picker */}
@@ -233,7 +250,34 @@ const BuilderSidebar = () => {
                       </>
                     )}
 
-                    <div className="mt-auto">
+                    <div className="mt-auto space-y-3">
+                      {/* Save Agent Button (PRD Flow 2, Step 5) */}
+                      <button
+                        onClick={async () => {
+                          setIsSaving(true);
+                          try {
+                            await saveBuilderState();
+                            setSaveSuccess(true);
+                            addToast('success', `${isWebhook ? 'Webhook' : 'Agent'} saved successfully`);
+                            setTimeout(() => setSaveSuccess(false), 1500);
+                          } catch {
+                            addToast('error', 'Failed to save. Please try again.');
+                          } finally {
+                            setIsSaving(false);
+                          }
+                        }}
+                        disabled={isSaving}
+                        className="w-full py-3 rounded-xl bg-[#DEF767]/10 border border-[#DEF767]/20 text-[#DEF767] text-xs font-bold uppercase tracking-widest hover:bg-[#DEF767]/20 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                      >
+                        {isSaving ? (
+                          <><Loader2 size={14} className="animate-spin" /> Saving...</>
+                        ) : saveSuccess ? (
+                          <><CheckCircle size={14} /> Saved</>
+                        ) : (
+                          <><Save size={14} /> Save {isWebhook ? 'Webhook' : 'Agent'}</>
+                        )}
+                      </button>
+
                       {isTopologyLocked ? (
                         <div className="w-full py-3 rounded-xl bg-white/[0.02] border border-white/5 text-slate-600 text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2">
                           <Lock size={14} /> Structure Locked

@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 // eslint-disable-next-line no-unused-vars
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Maximize2 } from 'lucide-react';
-import { supabase } from '../lib/supabaseClient';
+import { dbAdapter } from '../lib/database';
 import { useWorkflowStore } from '../lib/store';
 
 const PHASE_COLORS: Record<string, string> = {
@@ -62,8 +62,8 @@ const ThinkingTerminal = ({ node, isRunning }: any) => {
     }, 0);
 
     const startStream = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      const userId = session?.user?.id;
+      const authSession = await dbAdapter.getAuthSession();
+      const userId = authSession.userId;
       
       if (!userId) {
          setText(prev => prev + '\n> Not authenticated. Stream aborted.');
@@ -72,13 +72,18 @@ const ThinkingTerminal = ({ node, isRunning }: any) => {
 
       try {
         const API_BASE = import.meta.env.PROD ? '' : 'http://localhost:3001';
+        const token = authSession.accessToken;
         const response = await fetch(`${API_BASE}/api/agent/stream`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+          },
           body: JSON.stringify({
             userTask: projectPrompt,
             agent: { name: node.category?.name || 'Agent' },
-            userId
+            userId,
+            useDefaultKey: localStorage.getItem('use_default_key') === 'true'
           })
         });
 
@@ -174,6 +179,11 @@ const ThinkingTerminal = ({ node, isRunning }: any) => {
                      <Maximize2 size={12} />
                    </button>
                 </div>
+                {isRunning && localStorage.getItem('use_default_key') === 'true' && (
+                  <div className="text-[#46B1FF] animate-pulse text-[9px] px-3 py-1.5 bg-[#46B1FF]/5 border-b border-white/5 font-sans leading-tight text-left">
+                    💡 Our AI is working hard to provide you the answers, please bear with it...
+                  </div>
+                )}
                 
                 {/* Terminal Output */}
                 <div 
@@ -238,6 +248,11 @@ const ThinkingTerminal = ({ node, isRunning }: any) => {
                     <X size={18} />
                   </button>
                </div>
+               {isRunning && localStorage.getItem('use_default_key') === 'true' && (
+                  <div className="text-[#46B1FF] animate-pulse text-xs px-6 py-2.5 bg-[#46B1FF]/5 border-b border-white/5 font-sans text-left">
+                    💡 Our AI is working hard to provide you the answers, please bear with it...
+                  </div>
+               )}
                
                {/* Terminal Output */}
                <div 

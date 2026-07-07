@@ -1,21 +1,23 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { X } from 'lucide-react';
-import confetti from 'canvas-confetti';
 import { ToastContainer } from './components/ToastContainer';
+import MultiSelectActionBar from './components/MultiSelectActionBar';
+import CreateGroupModal from './components/CreateGroupModal';
 import html2canvas from 'html2canvas';
 
 // Core Schema & Logic
-import { WORKFLOW_PHASES } from './data/schema';
 import { validateGraph } from './lib/graphValidator';
-import { computeLayout } from './lib/layoutEngine';
 
 import { useWorkflowStore, type WorkflowStoreState } from './lib/store';
-import { callLLM, checkKeyAvailability } from './lib/llm';
-import { supabase } from './lib/supabaseClient';
+import { checkKeyAvailability } from './lib/llm';
+import { dbAdapter } from './lib/database';
 import { useToastStore } from './lib/toastStore';
 
 // Hooks
 import { useModalState, usePhaseOverlay, usePromptInput, useCanvasControls } from './hooks/engineHooks';
+import useCanvasLayout from './hooks/useCanvasLayout';
+import useAutoSave from './hooks/useAutoSave';
+import useWorkflowExecution from './hooks/useWorkflowExecution';
 
 // Components
 import FlowHeader from './components/FlowHeader';
@@ -36,6 +38,7 @@ import { useBuilderStore, type BuilderStore } from './lib/builderStore';
 
 const Engine = () => {
   const [initError, setInitError] = useState<string | null>(null);
+  const [isCreateGroupModalOpen, setIsCreateGroupModalOpen] = useState(false);
 
   // Zustand State
   const graphStatus = useWorkflowStore((state: WorkflowStoreState) => state.graphStatus);
@@ -47,6 +50,10 @@ const Engine = () => {
   const viewMode = useBuilderStore((state: BuilderStore) => state.viewMode);
   const deployedTemplateId = useBuilderStore((state: BuilderStore) => state.deployedTemplateId);
   const templates = useBuilderStore((state: BuilderStore) => state.templates);
+  const selectedBlockIds = useBuilderStore((state: BuilderStore) => state.selectedBlockIds);
+  const clearBlockSelection = useBuilderStore((state: BuilderStore) => state.clearBlockSelection);
+  const blocks = useBuilderStore((state: BuilderStore) => state.blocks);
+  const createGroup = useBuilderStore((state: BuilderStore) => state.createGroup);
 
   const {
     projectPrompt,
@@ -135,7 +142,7 @@ const Engine = () => {
 
         const seqId = localStorage.getItem('active_sequence_id');
         if (seqId) {
-          const { data } = await supabase.from('sequences').select('canvas_state, title').eq('id', seqId).single();
+          const { data } = await dbAdapter.fetchCanvasState(seqId);
           if (data?.canvas_state) {
             const state = data.canvas_state;
             useBuilderStore.setState({
@@ -154,7 +161,7 @@ const Engine = () => {
                 currentPhaseIndex: state.execution.currentPhaseIndex || 0,
                 projectPrompt: state.execution.projectPrompt || (data.title !== 'New Neural Sequence' ? data.title : '')
               });
-            } else if (!state.execution?.projectPrompt && data.title && data.title !== 'Untitled Flow') {
+            } else if (data.title && data.title !== 'Untitled Flow') {
               useWorkflowStore.setState({ projectPrompt: data.title });
             }
 
@@ -180,9 +187,9 @@ const Engine = () => {
           }
 
           // Fetch templates for the user (do this even if canvas_state is empty)
-          const { data: { session } } = await supabase.auth.getSession();
-          if (session) {
-            const { data: templates } = await supabase.from('templates').select('*').eq('user_id', session.user.id).order('created_at', { ascending: false });
+          const userId = await dbAdapter.getCurrentUserId();
+          if (userId) {
+            const { data: templates } = await dbAdapter.fetchTemplates(userId);
             if (templates) {
               useBuilderStore.setState({ templates });
             }
@@ -201,383 +208,27 @@ const Engine = () => {
     return () => { };
   }, [setGraphStatus, addToast]);
 
-  // --- AUTO-SAVE BACKGROUND ENGINE ---
-  const lastSavedHashRef = useRef<string>('');
-
-  useEffect(() => {
-    const seqId = localStorage.getItem('active_sequence_id');
-    if (!seqId) return;
-
-    const buildSavePayload = () => {
-      const state = useBuilderStore.getState();
-      const workflowState = useWorkflowStore.getState();
-
-      const getSessionName = (title: string, prompt: string) => {
-        if (title && title !== 'Untitled Flow') return title;
-        const trimmed = prompt?.trim().replace(/\s+/g, ' ') || '';
-        if (!trimmed) return 'Untitled Flow';
-        return trimmed.substring(0, 50) + (trimmed.length > 50 ? '...' : '');
-      };
-
-      const canvas_state = {
-        blocks: state.blocks,
-        connections: state.connections,
-        stickyNotes: state.stickyNotes,
-        textLabels: state.textLabels,
-        deployedTemplateId: state.deployedTemplateId || null,
-        groups: state.groups,
-        execution: {
-          nodeStates: workflowState.nodeStates,
-          nodeResults: workflowState.nodeResults,
-          currentPhaseIndex: workflowState.currentPhaseIndex,
-          projectPrompt: workflowState.projectPrompt
-        }
-      };
-
-      return {
-        canvas_state,
-        title: getSessionName(workflowState.flowTitle, workflowState.projectPrompt),
-        updated_at: new Date().toISOString()
-      };
-    };
-
-    const interval = setInterval(async () => {
-      if (useWorkflowStore.getState().graphStatus === 'loading') return;
-      try {
-        const payload = buildSavePayload();
-        const currentHash = JSON.stringify({ canvas_state: payload.canvas_state, title: payload.title });
-
-        if (currentHash === lastSavedHashRef.current) return;
-
-        await supabase.from('sequences').update(payload).eq('id', seqId);
-        lastSavedHashRef.current = currentHash;
-        console.log("[Engine] Auto-save synchronized");
-      } catch (err: any) {
-        console.error("Auto-save failed", err);
-      }
-    }, 5000);
-
-    return () => clearInterval(interval);
-  }, []);
+  // --- AUTO-SAVE (delegated to hook using dbAdapter) ---
+  useAutoSave();
 
 
   // Compute Layout 
-  const layout = useMemo(() => {
-    if (graphStatus === 'error') return null;
-    if (deployedTemplateId) {
-      // First try to find in the loaded templates array
-      let activeTemplate = templates.find((t: any) => t.id === deployedTemplateId);
-
-      // Fallback: If not in templates array yet (e.g. local deploy), build from builderStore blocks directly
-      if (!activeTemplate) {
-        const builderState = useBuilderStore.getState();
-        if (builderState.blocks.length > 0) {
-          activeTemplate = {
-            id: deployedTemplateId,
-            blocks: builderState.blocks,
-            connections: builderState.connections,
-          };
-        }
-      }
-
-      if (activeTemplate) {
-        const depths: Record<string, number> = {};
-        const adj: Record<string, any[]> = {};
-        const inDegree: Record<string, number> = {};
-
-        activeTemplate.blocks.forEach((b: any) => {
-          adj[b.id] = [];
-          inDegree[b.id] = 0;
-          depths[b.id] = 0;
-        });
-
-        activeTemplate.connections.forEach((c: any) => {
-          if (adj[c.sourceBlockId] && inDegree[c.targetBlockId] !== undefined) {
-            adj[c.sourceBlockId]!.push(c.targetBlockId);
-            inDegree[c.targetBlockId]!++;
-          }
-        });
-
-        let queue: any[] = [];
-        Object.keys(inDegree).forEach(id => {
-          if (inDegree[id] === 0) queue.push(id);
-        });
-
-        while (queue.length > 0) {
-          const curr = queue.shift();
-          adj[curr]!.forEach(neighbor => {
-            depths[neighbor] = Math.max(depths[neighbor]!, depths[curr]! + 1);
-            inDegree[neighbor]!--;
-            if (inDegree[neighbor] === 0) queue.push(neighbor);
-          });
-        }
-
-        const phaseIds = WORKFLOW_PHASES.map(p => p.id);
-        const depthGroups: Record<number, any[]> = {};
-
-        activeTemplate.blocks.forEach((block: any) => {
-          const d = depths[block.id] || 0;
-          const phaseIndex = Math.min(d, phaseIds.length - 1);
-          block.dynamicPhase = phaseIds[phaseIndex];
-          if (!depthGroups[d]) depthGroups[d] = [];
-          depthGroups[d]!.push(block);
-        });
-
-        const newLayout: Record<string, any> = {};
-        const maxDepth = Math.max(0, ...Object.keys(depthGroups).map(Number));
-
-        for (let d = 0; d <= maxDepth; d++) {
-          const blocksInCol = depthGroups[d] || [];
-          const x = 350 + (d * 500);
-          const startY = 400 - ((blocksInCol.length - 1) * 200) / 2;
-
-          blocksInCol.forEach((block: any, bIdx: any) => {
-            const phaseIndex = Math.min(d, phaseIds.length - 1);
-            newLayout[block.id] = {
-              id: block.id,
-              x: x + (bIdx % 2 !== 0 ? 60 : 0),
-              y: startY + (bIdx * 200),
-              category: { name: block.name, description: block.description },
-              phase: phaseIds[phaseIndex],
-              tools: [],
-              blockRef: block
-            };
-          });
-        }
-        return newLayout;
-      }
-    }
-    return computeLayout('desktop', 2000, 1000);
-  }, [graphStatus, deployedTemplateId, templates]);
+  const layout = useCanvasLayout();
 
 
 
 
 
-  const runSingleGroup = useCallback(async (groupId: string, prevGroupOutputContext = '') => {
-    const store = useWorkflowStore.getState();
-    const builderStore = useBuilderStore.getState();
-    
-    if (!projectPrompt || projectPrompt.trim() === '') {
-      addToast('info', 'Please enter a project directive in the top bar.');
-      return null;
-    }
-
-    // --- PRE-CHECK API KEY ---
-    const seqId = localStorage.getItem('active_sequence_id');
-    if (seqId) {
-      const status = await checkKeyAvailability(seqId);
-      setKeyInfo(status);
-      if (!status.any) {
-        setKeyModalType('NO_KEY');
-        setShowKeyModal(true);
-        return null;
-      }
-    }
-
-    const group = builderStore.groups.find(g => g.id === groupId);
-    if (!group) return null;
-
-    builderStore.setRunningGroupId(groupId);
-    store.setGraphStatus('running');
-
-    const groupBlockIds = [...group.blockIds, group.outputBlockId];
-    store.resetExecution(groupBlockIds);
-
-    const currentBlocks = builderStore.blocks;
-    const activeAgents = currentBlocks.filter(b => group.blockIds.includes(b.id));
-
-    const CONCURRENCY_LIMIT = 2;
-    for (let batchIdx = 0; batchIdx < activeAgents.length; batchIdx += CONCURRENCY_LIMIT) {
-      const batch = activeAgents.slice(batchIdx, batchIdx + CONCURRENCY_LIMIT);
-      await Promise.all(batch.map(async (block: any, idx: number) => {
-        if (idx > 0) await new Promise(resolve => setTimeout(resolve, idx * 1500));
-        const nId = block.id;
-        const agentData = {
-          id: nId,
-          phaseLabel: group.name,
-          categoryName: 'Agent',
-          name: block.name || 'Agent'
-        };
-
-        let resolved = false;
-        while (!resolved) {
-          store.setNodeState(nId, 'running');
-          try {
-            const taskObj = `Project directive: ${store.projectPrompt}\n\nObjective: ${block.description}\n\nExecute agentic objective for ${agentData.name} within the ${agentData.phaseLabel} architecture phase. Provide deep expert analysis based on the project directive.`;
-
-            const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT_STUCK')), 45000));
-            const result: any = await Promise.race([
-              callLLM(taskObj, agentData, prevGroupOutputContext, store.projectAttachment),
-              timeoutPromise
-            ]);
-
-            if (result && result._errorType) {
-              store.setNodeResult(nId, { ...result, agentName: agentData.name });
-              store.setNodeState(nId, 'stuck_debugger');
-            } else {
-              store.setNodeResult(nId, { ...result, agentName: agentData.name });
-              store.setNodeState(nId, 'completed');
-              resolved = true;
-              break;
-            }
-          } catch (err: any) {
-            console.error(`[${nId}] Error:`, err);
-            store.setNodeState(nId, 'stuck_debugger');
-          }
-
-          if (!resolved) {
-            await new Promise<void>((resolve) => {
-              const checkInterval = setInterval(() => {
-                const currentState = useWorkflowStore.getState().nodeStates[nId];
-                if (currentState === 'completed') {
-                  clearInterval(checkInterval);
-                  resolved = true;
-                  resolve();
-                } else if (currentState === 'running') {
-                  clearInterval(checkInterval);
-                  resolve();
-                }
-              }, 500);
-            });
-          }
-        }
-      }));
-    }
-
-    // Execute output synthesis node
-    const outputNodeId = group.outputBlockId;
-    const outputBlock = currentBlocks.find(b => b.id === outputNodeId);
-    const outputAgentData = {
-      id: outputNodeId,
-      phaseLabel: group.name,
-      categoryName: 'Synthesis Output',
-      name: outputBlock?.name || `${group.name} Output`
-    };
-
-    const currentResults = store.nodeResults || {};
-    const neuralContextForOutput = group.blockIds
-      .map((id: string) => currentResults[id]?.content)
-      .filter(Boolean)
-      .join('\n\n---\n\n');
-
-    let resolvedOutput = false;
-    while (!resolvedOutput) {
-      store.setNodeState(outputNodeId, 'running');
-      try {
-        const synthesisPromptText = `Project directive: ${store.projectPrompt}\n\nYou are the synthesis node for the group phase "${group.name}". Synthesize, summarize, and integrate the output results from all agents in this phase. Identify key insights, conflicts, and next steps.`;
-        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT_STUCK')), 45000));
-        const result: any = await Promise.race([
-          callLLM(synthesisPromptText, outputAgentData, neuralContextForOutput, store.projectAttachment),
-          timeoutPromise
-        ]);
-
-        if (result && result._errorType) {
-          store.setNodeResult(outputNodeId, { ...result, agentName: outputAgentData.name });
-          store.setNodeState(outputNodeId, 'stuck_debugger');
-        } else {
-          store.setNodeResult(outputNodeId, { ...result, agentName: outputAgentData.name });
-          store.setNodeState(outputNodeId, 'completed');
-          resolvedOutput = true;
-          break;
-        }
-      } catch (err: any) {
-        console.error(`[${outputNodeId}] Output Error:`, err);
-        store.setNodeState(outputNodeId, 'stuck_debugger');
-      }
-
-      if (!resolvedOutput) {
-        await new Promise<void>((resolve) => {
-          const checkInterval = setInterval(() => {
-            const currentState = useWorkflowStore.getState().nodeStates[outputNodeId];
-            if (currentState === 'completed') {
-              clearInterval(checkInterval);
-              resolvedOutput = true;
-              resolve();
-            } else if (currentState === 'running') {
-              clearInterval(checkInterval);
-              resolve();
-            }
-          }, 500);
-        });
-      }
-    }
-
-    builderStore.addCompletedGroupId(groupId);
-    builderStore.setRunningGroupId(null);
-    store.setGraphStatus('ready');
-
-    return store.nodeResults[outputNodeId]?.content || '';
-  }, [projectPrompt, addToast, checkKeyAvailability]);
-
-  const runGroupWorkflow = useCallback(async () => {
-    const store = useWorkflowStore.getState();
-    const builderStore = useBuilderStore.getState();
-
-    if (!projectPrompt || projectPrompt.trim() === '') {
-      addToast('info', 'Please enter a project directive in the top bar.');
-      return;
-    }
-
-    if (builderStore.groups.length === 0) {
-      addToast('warning', 'Please create at least one phase group before running.');
-      return;
-    }
-
-    // Ungrouped agents warning
-    const agentBlocks = builderStore.blocks.filter(b => b.type === 'agent' && !b.isGroupOutput);
-    const assignedBlockIds = new Set<string>();
-    builderStore.groups.forEach(g => {
-      g.blockIds.forEach(id => assignedBlockIds.add(id));
-    });
-    const ungroupedAgents = agentBlocks.filter(b => !assignedBlockIds.has(b.id));
-
-    if (ungroupedAgents.length > 0) {
-      addToast('warning', 'All agents must be assigned to a phase group before running the workflow.');
-      return;
-    }
-
-    builderStore.resetGroupExecution();
-    store.setGraphStatus('running');
-
-    const sortedGroups = [...builderStore.groups].sort((a, b) => a.order - b.order);
-
-    let prevGroupOutputContext = '';
-    for (let i = 0; i < sortedGroups.length; i++) {
-      const group = sortedGroups[i]!;
-      
-      if (i > 0) {
-        const prevGroup = sortedGroups[i - 1]!;
-        setPhaseOverlay({
-          phase: i,
-          phaseName: prevGroup.name,
-          nextPhaseName: group.name
-        });
-        await new Promise(r => setTimeout(r, 2000));
-        setPhaseOverlay(null);
-      }
-
-      const outputContext = await runSingleGroup(group.id, prevGroupOutputContext);
-      if (outputContext === null) {
-        store.setGraphStatus('ready');
-        return;
-      }
-      prevGroupOutputContext = outputContext;
-    }
-
-    store.setGraphStatus('completed');
-
-    const duration = 2000;
-    const end = Date.now() + duration;
-
-    (function frame() {
-      confetti({ particleCount: 8, angle: 60, spread: 70, origin: { x: 0 }, colors: ['#46B1FF', '#CEA3FF', '#DEF767'] });
-      confetti({ particleCount: 8, angle: 120, spread: 70, origin: { x: 1 }, colors: ['#A259FF', '#DEF767', '#ffffff'] });
-      if (Date.now() < end) requestAnimationFrame(frame);
-    }());
-
-    setTimeout(() => setShowOutputScreen(true), 2500);
-  }, [projectPrompt, addToast, runSingleGroup]);
+  // --- Workflow Execution (delegated to hook) ---
+  const { runSingleGroup, runGroupWorkflow } = useWorkflowExecution({
+    projectPrompt,
+    projectAttachment,
+    setKeyInfo,
+    setShowKeyModal,
+    setKeyModalType,
+    setPhaseOverlay,
+    setShowOutputScreen,
+  });
 
 
 
@@ -933,6 +584,23 @@ const Engine = () => {
           if (seqId) checkKeyAvailability(seqId).then(setKeyInfo);
           setShowKeyModal(false);
         }}
+      />
+
+      {/* Multi-select action bar & group modal — rendered outside the transformed canvas */}
+      <MultiSelectActionBar
+        selectedCount={selectedBlockIds.size}
+        onCreateGroup={() => setIsCreateGroupModalOpen(true)}
+        onClearSelection={clearBlockSelection}
+      />
+
+      <CreateGroupModal
+        isOpen={isCreateGroupModalOpen}
+        selectedAgentNames={blocks.filter(b => selectedBlockIds.has(b.id)).map(b => b.name || 'New Agent')}
+        onCreate={(name) => {
+          createGroup(name);
+          setIsCreateGroupModalOpen(false);
+        }}
+        onClose={() => setIsCreateGroupModalOpen(false)}
       />
 
       {/* Toast System */}

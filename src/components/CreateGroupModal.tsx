@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Layers, HelpCircle } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 interface CreateGroupModalProps {
   isOpen: boolean;
@@ -27,11 +28,14 @@ export default function CreateGroupModal({
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/85 backdrop-blur-md pointer-events-auto">
-      <div 
-        className="relative w-[460px] max-w-[92vw] bg-[#0d0d15] border border-[#A259FF]/25 rounded-3xl shadow-[0_40px_120px_rgba(162,89,255,0.15)] overflow-hidden pointer-events-auto"
+      <motion.div 
+        drag
+        dragMomentum={false}
+        style={{ resize: 'both', overflow: 'auto', minWidth: '350px', minHeight: '300px', maxHeight: '90vh' }}
+        className="relative w-[460px] max-w-[92vw] bg-[#0d0d15] border border-[#A259FF]/25 rounded-3xl shadow-[0_40px_120px_rgba(162,89,255,0.15)] pointer-events-auto flex flex-col"
       >
         <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#A259FF] to-transparent pointer-events-none" />
-        <div className="p-8">
+        <div className="p-8 flex flex-col h-full">
           <div className="flex items-start gap-4 mb-6">
             <div className="w-12 h-12 rounded-2xl bg-[#A259FF]/10 border border-[#A259FF]/20 flex items-center justify-center flex-shrink-0 shadow-[0_0_24px_rgba(162,89,255,0.2)] text-[#A259FF]">
               <Layers size={22} />
@@ -63,7 +67,7 @@ export default function CreateGroupModal({
               <span className="text-[10px] text-slate-500 uppercase tracking-widest font-black block">
                 Selected Agents ({selectedAgentNames.length})
               </span>
-              <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-4 max-h-[140px] overflow-y-auto custom-scrollbar-neon space-y-2.5">
+              <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-4 flex-1 min-h-[140px] overflow-y-auto custom-scrollbar-neon space-y-2.5">
                 {selectedAgentNames.map((name, i) => (
                   <div key={i} className="flex items-center gap-2.5 text-xs text-slate-300 font-medium">
                     <span className="w-1.5 h-1.5 rounded-full bg-[#A259FF]/60" />
@@ -98,7 +102,7 @@ export default function CreateGroupModal({
             </div>
           </form>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }

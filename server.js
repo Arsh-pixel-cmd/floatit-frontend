@@ -23,28 +23,49 @@ if (!supabaseUrl || !supabaseServiceKey) {
 const supabase = createClient(supabaseUrl || '', supabaseServiceKey || '');
 
 // ── ENCRYPTION & KEY MANAGEMENT (AES-256-GCM) ──────────────────────
-const ENCRYPTION_SECRET = process.env.ENCRYPTION_SECRET || 'agentic-flow-default-secret-change-in-production!!';
+const ENCRYPTION_SECRET = process.env.ENCRYPTION_SECRET;
 
-function deriveKey(secret) {
-  return crypto.scryptSync(secret, 'agentic-flow-salt', 32);
+if (!ENCRYPTION_SECRET || ENCRYPTION_SECRET === 'agentic-flow-default-secret-change-in-production!!') {
+  console.error('[FATAL] ENCRYPTION_SECRET is missing or set to the default placeholder! Exiting.');
+  process.exit(1);
 }
 
-function encryptKey(text) {
-  const key = deriveKey(ENCRYPTION_SECRET);
+const DEFAULT_NVIDIA_KEY = process.env.VITE_NVIDIA_API_KEY || process.env.NVIDIA_API_KEY || '';
+
+if (!DEFAULT_NVIDIA_KEY) {
+  console.warn('[Server] Warning: VITE_NVIDIA_API_KEY is missing. Default fallback key will be empty.');
+}
+
+export function deriveKey(secret, salt) {
+  return crypto.scryptSync(secret, salt, 32);
+}
+
+export function encryptKey(text) {
+  const salt = crypto.randomBytes(16).toString('hex');
+  const key = deriveKey(ENCRYPTION_SECRET, salt);
   const iv = crypto.randomBytes(16);
   const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
   let encrypted = cipher.update(text, 'utf8', 'hex');
   encrypted += cipher.final('hex');
   const authTag = cipher.getAuthTag().toString('hex');
-  return { encrypted, iv: iv.toString('hex'), authTag };
+  return { encrypted: `${salt}:${encrypted}`, iv: iv.toString('hex'), authTag };
 }
 
-function decryptKey(encData) {
-  const key = deriveKey(ENCRYPTION_SECRET);
+export function decryptKey(encData) {
+  let salt = 'agentic-flow-salt';
+  let encryptedHex = encData.encrypted;
+
+  if (encData.encrypted && encData.encrypted.includes(':')) {
+    const parts = encData.encrypted.split(':');
+    salt = parts[0];
+    encryptedHex = parts[1];
+  }
+
+  const key = deriveKey(ENCRYPTION_SECRET, salt);
   const iv = Buffer.from(encData.iv, 'hex');
   const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
   decipher.setAuthTag(Buffer.from(encData.authTag, 'hex'));
-  let decrypted = decipher.update(encData.encrypted, 'hex', 'utf8');
+  let decrypted = decipher.update(encryptedHex, 'hex', 'utf8');
   decrypted += decipher.final('utf8');
   return decrypted;
 }
@@ -89,7 +110,7 @@ async function deleteStoredKey(userId, projectId = 'global') {
  * Resolve the API key for a user.
  * Priority: project-stored encrypted key > global-stored encrypted key > fallback key from client.
  */
-async function resolveApiKey(userId, sequenceId, fallbackKey) {
+export async function resolveApiKey(userId, sequenceId, fallbackKey, useDefaultKey = false) {
   if (userId) {
     // 1. Try project-scoped key
     if (sequenceId) {
@@ -109,6 +130,9 @@ async function resolveApiKey(userId, sequenceId, fallbackKey) {
       } catch (err) { console.error('[Server] Global key decryption failed:', err.message); }
     }
   }
+  if (useDefaultKey) {
+    return DEFAULT_NVIDIA_KEY || null;
+  }
   return fallbackKey || null;
 }
 
@@ -124,6 +148,8 @@ function determineProvider(key, requestedModel) {
     return { url: 'https://api.x.ai/v1/chat/completions', defaultModel: requestedModel || 'grok-beta' };
   } else if (key.startsWith('AIzaSy')) {
     return { url: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', defaultModel: requestedModel || 'gemini-2.0-flash' };
+  } else if (key.startsWith('nvapi-')) {
+    return { url: 'https://integrate.api.nvidia.com/v1/chat/completions', defaultModel: requestedModel || 'meta/llama-3.1-70b-instruct' };
   } else if (key.startsWith('sk-')) {
     return { url: 'https://api.openai.com/v1/chat/completions', defaultModel: requestedModel || 'gpt-4o' };
   }
@@ -135,6 +161,26 @@ function determineProvider(key, requestedModel) {
 const FALLBACK_KEYS = (process.env.FALLBACK_KEYS || '').split(',').map(k => k.trim()).filter(Boolean);
 const userFallbackTracker = new Map(); // userId -> sequenceId
 
+// Auth middleware
+async function authenticateToken(req, res, next) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Unauthorized: Missing token.' });
+  }
+
+  const token = authHeader.split(' ')[1];
+  try {
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    if (error || !user) {
+      return res.status(401).json({ error: 'Unauthorized: Invalid token.' });
+    }
+    req.user = user;
+    next();
+  } catch (err) {
+    return res.status(500).json({ error: 'Internal authentication error.' });
+  }
+}
+
 // ── KEY MANAGEMENT ENDPOINTS ────────────────────────────────────────
 
 // Health check endpoint
@@ -143,10 +189,14 @@ app.get('/api/health', (req, res) => {
 });
 
 // Save (or replace) an API key — encrypted at rest
-app.post('/api/keys/save', async (req, res) => {
+app.post('/api/keys/save', authenticateToken, async (req, res) => {
   const { userId, apiKey } = req.body;
   if (!userId || !apiKey) {
     return res.status(400).json({ error: 'userId and apiKey are required.' });
+  }
+
+  if (userId !== req.user.id) {
+    return res.status(403).json({ error: 'Forbidden: You cannot modify keys for another user.' });
   }
 
   try {
@@ -164,23 +214,32 @@ app.post('/api/keys/save', async (req, res) => {
 });
 
 // Check if a key exists for a user (never returns the actual key)
-app.get('/api/keys/status/:userId', async (req, res) => {
+app.get('/api/keys/status/:userId', authenticateToken, async (req, res) => {
   const { userId } = req.params;
+  if (userId !== req.user.id) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
   const entry = await getStoredKey(userId, 'global');
   if (!entry) return res.json({ hasKey: false });
   res.json({ hasKey: true, lastFour: entry.last_four || '****', savedAt: entry.saved_at });
 });
 
-app.get('/api/keys/project-status/:userId/:sequenceId', async (req, res) => {
+app.get('/api/keys/project-status/:userId/:sequenceId', authenticateToken, async (req, res) => {
   const { userId, sequenceId } = req.params;
+  if (userId !== req.user.id) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
   const entry = await getStoredKey(userId, sequenceId);
   if (!entry) return res.json({ hasKey: false });
   res.json({ hasKey: true, lastFour: entry.last_four || '****' });
 });
 
-app.post('/api/keys/save-project', async (req, res) => {
+app.post('/api/keys/save-project', authenticateToken, async (req, res) => {
   const { userId, sequenceId, apiKey } = req.body;
   if (!userId || !sequenceId || !apiKey) return res.status(400).json({ error: 'Missing data' });
+  if (userId !== req.user.id) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
 
   try {
     const encrypted = encryptKey(apiKey);
@@ -193,18 +252,25 @@ app.post('/api/keys/save-project', async (req, res) => {
 });
 
 // Delete a stored key
-app.delete('/api/keys/:userId', async (req, res) => {
+app.delete('/api/keys/:userId', authenticateToken, async (req, res) => {
+  const { userId } = req.params;
+  if (userId !== req.user.id) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
   try {
-    await deleteStoredKey(req.params.userId, 'global');
-    console.log(`[Server] ✗ API key deleted for user ${req.params.userId.substring(0, 8)}...`);
+    await deleteStoredKey(userId, 'global');
+    console.log(`[Server] ✗ API key deleted for user ${userId.substring(0, 8)}...`);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-app.delete('/api/keys/project/:userId/:sequenceId', async (req, res) => {
+app.delete('/api/keys/project/:userId/:sequenceId', authenticateToken, async (req, res) => {
   const { userId, sequenceId } = req.params;
+  if (userId !== req.user.id) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
   try {
     await deleteStoredKey(userId, sequenceId);
     res.json({ success: true });
@@ -214,9 +280,12 @@ app.delete('/api/keys/project/:userId/:sequenceId', async (req, res) => {
 });
 
 // Verify a stored key works by making a lightweight test call
-app.post('/api/keys/verify', async (req, res) => {
+app.post('/api/keys/verify', authenticateToken, async (req, res) => {
   const { userId, apiKey: explicitKey } = req.body;
   if (!userId && !explicitKey) return res.status(400).json({ error: 'userId or apiKey is required.' });
+  if (userId && userId !== req.user.id) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
 
   // Use explicitKey if provided (for pre-save validation), otherwise fetch from DB
   const apiKey = explicitKey || await resolveApiKey(userId, null, null);
@@ -255,9 +324,12 @@ app.post('/api/keys/verify', async (req, res) => {
   }
 });
 
-app.post('/api/models', async (req, res) => {
+app.post('/api/models', authenticateToken, async (req, res) => {
   const { userId, apiKey: explicitKey } = req.body;
   if (!userId && !explicitKey) return res.status(400).json({ error: 'userId or apiKey is required.' });
+  if (userId && userId !== req.user.id) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
 
   const apiKey = explicitKey || await resolveApiKey(userId, null, null);
   if (!apiKey) return res.json({ models: [] });
@@ -310,25 +382,23 @@ app.post('/api/models', async (req, res) => {
 
 // ── LLM EXECUTION ENDPOINT ─────────────────────────────────────────
 
-app.post('/api/llm', async (req, res) => {
-  const { userTask, agent, neuralContext, activeKey, userId, sequenceId, requestedModel } = req.body;
+app.post('/api/llm', authenticateToken, async (req, res) => {
+  const { userTask, agent, neuralContext, activeKey, userId, sequenceId, requestedModel, useDefaultKey } = req.body;
+
+  if (userId !== req.user.id) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
 
   console.log(`[Server] Incoming request for agent: ${agent?.name || 'unknown'}, phase: ${agent?.phaseLabel || 'unknown'}`);
 
   // Resolve key: project > global > client-provided
-  const resolvedKey = await resolveApiKey(userId, sequenceId, activeKey);
+  const resolvedKey = await resolveApiKey(userId, sequenceId, activeKey, useDefaultKey);
 
   if (!resolvedKey) {
     return res.status(401).json({
       _errorType: 'NO_KEY',
       content: 'No API key configured. Please add a key for this project or globally.',
-      ui: `<div style="padding:32px;font-family:Outfit,sans-serif;background:rgba(10,10,15,0.8);backdrop-filter:blur(16px);border-radius:24px;border:1px solid rgba(255,255,255,0.08);color:#fff;">
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
-          <div style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#A259FF,#46B1FF);display:flex;align-items:center;justify-content:center;color:white;font-weight:bold;font-size:20px;box-shadow:0 8px 32px rgba(162,89,255,0.3)">⚡</div>
-          <h2 style="font-size:24px;font-weight:800;margin:0;letter-spacing:-0.5px">Gateway Authentication Required</h2>
-        </div>
-        <p style="color:#8b949e;font-size:15px;line-height:1.7;margin:0">No API key found. Please add your key to proceed.</p>
-      </div>`,
+      ui: null,
     });
   }
 
@@ -464,10 +534,7 @@ CRITICAL: Return ONLY the raw JSON object. No markdown fences. NO Markdown synta
         _model: defaultModel,
         _provider: url.includes('groq') ? 'Groq' : url.includes('openrouter') ? 'OpenRouter' : url.includes('anthropic') ? 'Anthropic' : url.includes('googleapis') ? 'Google' : 'OpenAI',
         content: `Upstream Provider Error (${response.status}): ${errMessage}`,
-        ui: `<div style="padding:24px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);border-radius:16px;color:#ef4444">
-               <h4 style="margin:0 0 8px 0">Execution Halted — ${errorType.replace('_', ' ')}</h4>
-               <p style="margin:0;font-size:13px;opacity:0.8">${errMessage || 'The upstream model provider returned an error.'}</p>
-             </div>`
+        ui: null
       });
     }
 
@@ -531,31 +598,26 @@ CRITICAL: Return ONLY the raw JSON object. No markdown fences. NO Markdown synta
   } catch (error) {
     console.error(`[Server] LLM Fallback Triggered:`, error.message);
     res.status(500).json({
+      _errorType: 'GATEWAY_ERROR',
       content: `[System Error] Sequence halted. ${error.message}`,
-      ui: `<div style="padding:32px;font-family:Outfit,sans-serif;background:rgba(10,10,15,0.9);backdrop-filter:blur(16px);border-radius:24px;border:1px solid rgba(239,68,68,0.25)">
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
-          <div style="width:36px;height:36px;border-radius:10px;background:rgba(239,68,68,0.15);display:flex;align-items:center;justify-content:center;color:#ef4444;font-size:18px;border:1px solid rgba(239,68,68,0.3)">⚠</div>
-          <h3 style="color:#ef4444;font-size:20px;font-weight:700;margin:0;font-family:Syne,sans-serif">Gateway Routing Failure</h3>
-        </div>
-        <p style="color:#8b949e;font-size:14px;line-height:1.6;margin:0 0 16px 0">${error.message.replace(/"/g, '&quot;')}</p>
-        <div style="padding:16px;background:rgba(255,255,255,0.03);border-radius:12px;border:1px solid rgba(255,255,255,0.05)">
-           <p style="color:#A259FF;font-size:12px;margin:0;font-weight:600;text-transform:uppercase;letter-spacing:1px">Fallback Protocol</p>
-           <p style="color:#64748b;font-size:13px;margin:6px 0 0 0">Verify your API key in Profile, or try a different provider.</p>
-        </div>
-      </div>`,
+      ui: null,
     });
   }
 });
 
-app.post('/api/agent/stream', async (req, res) => {
-  const { userTask, agent, activeKey, userId, requestedModel } = req.body;
+app.post('/api/agent/stream', authenticateToken, async (req, res) => {
+  const { userTask, agent, activeKey, userId, requestedModel, useDefaultKey } = req.body;
+
+  if (userId !== req.user.id) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
 
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
 
   // Resolve key: prefer server-stored encrypted key
-  const resolvedKey = await resolveApiKey(userId, null, activeKey);
+  const resolvedKey = await resolveApiKey(userId, null, activeKey, useDefaultKey);
 
   if (!resolvedKey) {
     res.write('data: {"choices":[{"delta":{"content":"No API key detected. Add one in Profile → API Key Management.\\n"}}]}\n\n');

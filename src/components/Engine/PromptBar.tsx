@@ -1,5 +1,6 @@
 import React from 'react';
 import { Activity, Paperclip, Folder, X, Play, FileText, Key } from 'lucide-react';
+import { motion } from 'framer-motion';
 import type { ApiKeyModalType, KeyInfoState, SequenceAttachment, GraphStatus, TokenLimitModalState } from '../../types/engine';
 import { WORKFLOW_PHASES } from '../../data/schema';
 import { useBuilderStore } from '../../lib/builderStore';
@@ -44,19 +45,39 @@ export default function PromptBar({
 }: PromptBarProps) {
   const { groups, runningGroupId, completedGroupIds } = useBuilderStore();
   return (
-    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[60] w-full max-w-5xl px-8 pointer-events-none">
-      <div className="flex flex-col items-center gap-2 pointer-events-auto bg-[#0a0a0f]/80 backdrop-blur-3xl border border-white/10 rounded-[32px] p-5 shadow-[0_30px_60px_rgba(0,0,0,0.8)]">
+    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[60] w-full max-w-5xl px-8 pointer-events-none flex justify-center">
+      <motion.div 
+        drag
+        dragMomentum={false}
+        dragElastic={0}
+        className="flex flex-col items-center gap-2 pointer-events-auto bg-[#0a0a0f]/80 backdrop-blur-3xl border border-white/10 rounded-[32px] p-5 shadow-[0_30px_60px_rgba(0,0,0,0.8)] cursor-move w-full"
+      >
         <div className="flex items-center gap-4 w-full">
           <div className="flex-1 relative group">
             <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-slate-500 group-focus-within:text-[#46B1FF] transition-colors">
               <Activity size={18} />
             </div>
-            <input
+            <textarea
               value={projectPrompt}
               onChange={(e) => setProjectPrompt(e.target.value)}
+              onInput={(e) => {
+                const target = e.target as HTMLTextAreaElement;
+                target.style.height = 'auto';
+                target.style.height = `${target.scrollHeight}px`;
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  if (graphStatus !== 'running' && projectPrompt && groups.length > 0) {
+                    runFullPipeline();
+                  }
+                }
+              }}
+              onPointerDown={(e) => e.stopPropagation()}
               placeholder="Orchestrate your objective... (e.g. Design a technical whitepaper for a DeFi protocol)"
-              className="w-full bg-black/60 border border-white/5 rounded-[20px] py-4 pl-12 pr-6 outline-none focus:border-[#46B1FF]/40 transition-all text-white text-sm shadow-inner placeholder:text-slate-600 font-secondary"
+              className="w-full bg-black/60 border border-white/5 rounded-[20px] py-4 pl-12 pr-6 outline-none focus:border-[#46B1FF]/40 transition-all text-white text-sm shadow-inner placeholder:text-slate-600 font-secondary resize-none overflow-hidden min-h-[52px] max-h-[200px]"
               disabled={graphStatus === 'running'}
+              style={{ height: '52px' }}
             />
           </div>
 
@@ -106,9 +127,10 @@ export default function PromptBar({
               }}
             />
             <button
+              onPointerDown={(e) => e.stopPropagation()}
               onClick={() => fileInputRef.current?.click()}
               disabled={graphStatus === 'running'}
-              className="w-14 h-14 rounded-[20px] bg-white/[0.03] border border-white/5 text-slate-400 hover:text-[#46B1FF] hover:border-[#46B1FF]/30 transition-all flex items-center justify-center group"
+              className="w-14 h-14 rounded-[20px] bg-white/[0.03] border border-white/5 text-slate-400 hover:text-[#46B1FF] hover:border-[#46B1FF]/30 transition-all flex items-center justify-center group shrink-0"
               title="Attach context (.txt, .md, .pdf)"
               aria-label="Attach context file"
             >
@@ -130,6 +152,7 @@ export default function PromptBar({
                 setKeyModalType('NO_KEY');
                 setShowKeyModal(true);
               }}
+              onPointerDown={(e) => e.stopPropagation()}
             >
               <Key size={12} />
               {keyInfo.activeSource === 'project'
@@ -148,6 +171,7 @@ export default function PromptBar({
               <Folder size={14} />
               {projectAttachment.name}
               <button
+                onPointerDown={(e) => e.stopPropagation()}
                 onClick={() => setProjectAttachment(null)}
                 className="ml-2 hover:text-white transition-colors"
                 title="Remove attachment"
@@ -162,6 +186,7 @@ export default function PromptBar({
         <div className="flex items-center justify-between mt-3 w-full px-1 mb-2">
           <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Pipeline Execution</h3>
           <button
+            onPointerDown={(e) => e.stopPropagation()}
             onClick={() => {
               runFullPipeline();
             }}
@@ -222,8 +247,9 @@ export default function PromptBar({
                   </div>
                   {isCompleted ? (
                     <button
+                      onPointerDown={(e) => e.stopPropagation()}
                       onClick={() => setPhaseOutputModal(group.outputBlockId)}
-                      className="w-full py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1 hover:opacity-85 pointer-events-auto"
+                      className="w-full py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1 hover:opacity-85 pointer-events-auto cursor-pointer"
                       style={{
                         background: `${color.accent}10`,
                         color: color.accent,
@@ -234,9 +260,10 @@ export default function PromptBar({
                     </button>
                   ) : (
                     <button
+                      onPointerDown={(e) => e.stopPropagation()}
                       onClick={() => runPhase(group.id)}
                       disabled={isRunning || graphStatus === 'running' || !projectPrompt}
-                      className="w-full py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1 pointer-events-auto"
+                      className="w-full py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1 pointer-events-auto cursor-pointer"
                       style={{
                         background: !projectPrompt ? 'rgba(255,255,255,0.03)' : `${color.accent}20`,
                         color: !projectPrompt ? '#475569' : color.accent,
@@ -255,7 +282,7 @@ export default function PromptBar({
             })}
           </div>
         )}
-      </div>
+      </motion.div>
     </div>
   );
 }

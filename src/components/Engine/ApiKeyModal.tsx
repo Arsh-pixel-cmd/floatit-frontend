@@ -46,7 +46,10 @@ export default function ApiKeyModal({ type, onClose, onSaved }: ApiKeyModalProps
       const API_BASE = import.meta.env.PROD ? '' : 'http://localhost:3001';
       const res = await fetch(`${API_BASE}${endpoint}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
         body: JSON.stringify(payload)
       });
 

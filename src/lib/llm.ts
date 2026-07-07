@@ -18,6 +18,16 @@ async function getCurrentUserId() {
   }
 }
 
+async function getAuthHeaders() {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    return token ? { 'Authorization': `Bearer ${token}` } : {};
+  } catch {
+    return {};
+  }
+}
+
 /**
  * Check key status from the server (encrypted storage).
  */
@@ -26,7 +36,9 @@ export async function getKeyStatus() {
   if (!userId) return { any: false, serverKey: false };
 
   try {
-    const res = await fetch(`${API_BASE}/api/keys/status/${userId}`);
+    const res = await fetch(`${API_BASE}/api/keys/status/${userId}`, {
+      headers: await getAuthHeaders()
+    });
     const data = await res.json();
     return { any: data.hasKey, serverKey: data.hasKey, lastFour: data.lastFour };
   } catch {
@@ -42,7 +54,9 @@ export async function getProjectKeyStatus(sequenceId: string) {
   if (!userId || !sequenceId) return { hasKey: false };
 
   try {
-    const res = await fetch(`${API_BASE}/api/keys/project-status/${userId}/${sequenceId}`);
+    const res = await fetch(`${API_BASE}/api/keys/project-status/${userId}/${sequenceId}`, {
+      headers: await getAuthHeaders()
+    });
     const data = await res.json();
     return { hasKey: data.hasKey, lastFour: data.lastFour };
   } catch {
@@ -82,7 +96,7 @@ export async function checkKeyAvailability(sequenceId: string): Promise<KeyCheck
  * @param {string} neuralContext - Previous phase data (Neural Bridge)
  * @returns {Promise<{content: string, ui: string}>}
  */
-export async function callLLM(userTask: any, agent: any, neuralContext: any = '', attachment: any = null) {
+export async function callLLM(userTask: any, agent: any, neuralContext: any = '', attachment: any = null, useDefaultKey: boolean = false) {
   const userId = await getCurrentUserId();
 
   // Build enriched task with attachment
@@ -115,7 +129,10 @@ export async function callLLM(userTask: any, agent: any, neuralContext: any = ''
       
       const response = await fetch(API_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          ...(await getAuthHeaders())
+        },
         body: JSON.stringify({
           userTask: enrichedTask,
           agent,
@@ -123,6 +140,7 @@ export async function callLLM(userTask: any, agent: any, neuralContext: any = ''
           userId, 
           sequenceId,
           requestedModel,
+          useDefaultKey,
         }),
       });
 
