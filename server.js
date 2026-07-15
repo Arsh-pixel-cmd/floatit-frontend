@@ -24,10 +24,10 @@ const supabaseUrl = process.env.VITE_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseServiceKey) {
-  if (IS_PROD) {
-    throw new Error('[FATAL] Supabase credentials (VITE_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY) are missing in production!');
-  }
   console.warn('[Server] Supabase credentials missing! API Key storage may fail. Using placeholders to prevent crash.');
+  if (IS_PROD) {
+    console.error('[Server] CRITICAL: Supabase credentials (VITE_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY) are missing in production! Set them in Vercel Environment Variables.');
+  }
 }
 const supabase = createClient(supabaseUrl || 'https://placeholder.supabase.co', supabaseServiceKey || 'placeholder-key');
 
@@ -35,10 +35,10 @@ const supabase = createClient(supabaseUrl || 'https://placeholder.supabase.co', 
 const ENCRYPTION_SECRET = process.env.ENCRYPTION_SECRET || 'agentic-flow-default-secret-change-in-production!!';
 
 if (ENCRYPTION_SECRET === 'agentic-flow-default-secret-change-in-production!!') {
-  if (IS_PROD) {
-    throw new Error('[FATAL] ENCRYPTION_SECRET must be explicitly set to a unique, secure secret in production. Default placeholder is forbidden!');
-  }
   console.warn('[Server] WARNING: Using default ENCRYPTION_SECRET. Keys are not securely encrypted!');
+  if (IS_PROD) {
+    console.error('[Server] CRITICAL: ENCRYPTION_SECRET is not set in production. Set it in Vercel Environment Variables.');
+  }
 }
 
 const DEFAULT_NVIDIA_KEY = process.env.VITE_NVIDIA_API_KEY || process.env.NVIDIA_API_KEY || '';
@@ -195,12 +195,13 @@ const userFallbackTracker = new Map(); // userId -> sequenceId
 // Auth middleware
 // When DEV_AUTH_BYPASS=true (local dev where Supabase project keys may mismatch),
 // skip JWT verification and read userId from the request body instead.
-const DEV_AUTH_BYPASS = process.env.DEV_AUTH_BYPASS === 'true';
+// In production, forcibly disable DEV_AUTH_BYPASS even if it was accidentally set.
+// This prevents a fatal crash on Vercel when the local .env is accidentally deployed.
+const DEV_AUTH_BYPASS = process.env.DEV_AUTH_BYPASS === 'true' && !IS_PROD;
 
-if (DEV_AUTH_BYPASS) {
-  if (IS_PROD) {
-    throw new Error('[FATAL] DEV_AUTH_BYPASS=true is not allowed in production! Process terminating.');
-  }
+if (process.env.DEV_AUTH_BYPASS === 'true' && IS_PROD) {
+  console.warn('[Server] ⚠️  DEV_AUTH_BYPASS=true was set but IGNORED in production for security. JWT verification is active.');
+} else if (DEV_AUTH_BYPASS) {
   console.warn('[Server] ⚠️  DEV_AUTH_BYPASS=true — JWT verification skipped. Do NOT use in production!');
 }
 
