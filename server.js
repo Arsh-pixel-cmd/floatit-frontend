@@ -175,7 +175,7 @@ function determineProvider(key, requestedModel) {
   } else if (key.startsWith('nvapi-')) {
     // If the model isn't a valid Nvidia model identifier, map it to a valid Nvidia model
     if (!finalModel || (!finalModel.startsWith('nvidia/') && !finalModel.startsWith('meta/') && !finalModel.startsWith('mistralai/') && !finalModel.startsWith('microsoft/'))) {
-      finalModel = 'meta/llama-3.1-70b-instruct';
+      finalModel = 'meta/llama-3.3-70b-instruct';
     }
     return { url: 'https://integrate.api.nvidia.com/v1/chat/completions', defaultModel: finalModel };
   } else if (key.startsWith('sk-')) {
@@ -501,96 +501,109 @@ CRITICAL: Return ONLY the raw JSON object. No markdown fences. NO Markdown synta
 
   try {
     // Define keys to try (Primary key, then up to 2 unique fallback keys if primary fails)
-  const attempts = [{ key: resolvedKey, isPrimary: true }];
-  if (FALLBACK_KEYS.length > 0) {
-    const uniqueFallbacks = Array.from(new Set(FALLBACK_KEYS)).filter(k => k !== resolvedKey);
-    // Shuffle fallback keys to distribute load
-    uniqueFallbacks.sort(() => 0.5 - Math.random());
-    uniqueFallbacks.slice(0, 2).forEach(k => {
-      attempts.push({ key: k, isPrimary: false });
-    });
-  }
+    // Define keys to try (Up to 3 attempts for primary key, and fallback keys if primary fails)
+    const attempts = [];
+    attempts.push({ key: resolvedKey, isPrimary: true, attemptIndex: 1 });
+    attempts.push({ key: resolvedKey, isPrimary: true, attemptIndex: 2 });
+    attempts.push({ key: resolvedKey, isPrimary: true, attemptIndex: 3 });
 
-  let response;
-  let responseData;
-  let finalModel = requestedModel;
-  let finalUrl = '';
-  let lastError;
-
-  for (let i = 0; i < attempts.length; i++) {
-    const currentAttempt = attempts[i];
-    const currentKey = currentAttempt.key;
-    const { url, defaultModel } = determineProvider(currentKey, requestedModel);
-    finalModel = defaultModel;
-    finalUrl = url;
-
-    console.log(`[Server] [Attempt ${i + 1}/${attempts.length}] Routing to provider: ${url} with model: ${defaultModel}`);
-
-    // If it's a fallback attempt, verify user hasn't switched pipelines (prevent concurrency race)
-    if (!currentAttempt.isPrimary) {
-      const previousFallbackSequence = userFallbackTracker.get(userId);
-      if (previousFallbackSequence && previousFallbackSequence !== sequenceId) {
-        console.log(`[Server] Fallback DENIED on attempt ${i + 1}. User ${userId} switched pipelines.`);
-        continue;
-      }
-      userFallbackTracker.set(userId, sequenceId);
+    if (FALLBACK_KEYS.length > 0) {
+      const uniqueFallbacks = Array.from(new Set(FALLBACK_KEYS)).filter(k => k !== resolvedKey);
+      // Shuffle fallback keys to distribute load
+      uniqueFallbacks.sort(() => 0.5 - Math.random());
+      uniqueFallbacks.slice(0, 2).forEach(k => {
+        attempts.push({ key: k, isPrimary: false, attemptIndex: 1 });
+        attempts.push({ key: k, isPrimary: false, attemptIndex: 2 });
+      });
     }
 
-    const SERVER_LLM_TIMEOUT = 120000;
-    const upstreamController = new AbortController();
-    const upstreamTimer = setTimeout(() => {
-      upstreamController.abort();
-      console.warn(`[Server] Upstream LLM request timed out after 120s on attempt ${i + 1}. Aborting.`);
-    }, SERVER_LLM_TIMEOUT);
+    let response;
+    let responseData;
+    let finalModel = requestedModel;
+    let finalUrl = '';
+    let lastError;
 
-    try {
-      response = await fetch(url, {
-        method: 'POST',
-        signal: upstreamController.signal,
-        headers: {
-          Authorization: `Bearer ${currentKey}`,
-          'Content-Type': 'application/json',
-          'HTTP-Referer': 'http://localhost:5173',
-          'X-Title': 'Agentic Flow Express Server',
-        },
-        body: JSON.stringify({
-          model: defaultModel,
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userTask || 'Begin execution sequence.' },
-          ],
-          response_format: { type: 'json_object' },
-          temperature: 0.7,
-        }),
-      });
+    for (let i = 0; i < attempts.length; i++) {
+      const currentAttempt = attempts[i];
+      const currentKey = currentAttempt.key;
 
-      clearTimeout(upstreamTimer);
+      // Add backoff/delay if retrying the same key
+      if (i > 0 && attempts[i - 1].key === currentKey) {
+        console.log(`[Server] Waiting 2s before retry attempt ${currentAttempt.attemptIndex} for the same key...`);
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
 
-      if (response.ok) {
-        responseData = await response.json();
-        break; // Success! Break out of retry loop
-      } else {
-        const errJson = await response.json().catch(() => ({}));
-        const errMessage = errJson.error?.message || errJson.message || response.statusText || '';
-        console.warn(`[Server] Attempt ${i + 1} failed with status ${response.status}: ${errMessage}`);
+      const { url, defaultModel } = determineProvider(currentKey, requestedModel);
+      finalModel = defaultModel;
+      finalUrl = url;
+
+      console.log(`[Server] [Attempt ${i + 1}/${attempts.length}] Routing to provider: ${url} with model: ${defaultModel}`);
+
+      // If it's a fallback attempt, verify user hasn't switched pipelines (prevent concurrency race)
+      if (!currentAttempt.isPrimary) {
+        const previousFallbackSequence = userFallbackTracker.get(userId);
+        if (previousFallbackSequence && previousFallbackSequence !== sequenceId) {
+          console.log(`[Server] Fallback DENIED on attempt ${i + 1}. User ${userId} switched pipelines.`);
+          continue;
+        }
+        userFallbackTracker.set(userId, sequenceId);
+      }
+
+      const SERVER_LLM_TIMEOUT = 60000; // 60s timeout per attempt
+      const upstreamController = new AbortController();
+      const upstreamTimer = setTimeout(() => {
+        upstreamController.abort();
+        console.warn(`[Server] Upstream LLM request timed out after 60s on attempt ${i + 1}. Aborting.`);
+      }, SERVER_LLM_TIMEOUT);
+
+      try {
+        response = await fetch(url, {
+          method: 'POST',
+          signal: upstreamController.signal,
+          headers: {
+            Authorization: `Bearer ${currentKey}`,
+            'Content-Type': 'application/json',
+            'HTTP-Referer': 'http://localhost:5173',
+            'X-Title': 'Agentic Flow Express Server',
+          },
+          body: JSON.stringify({
+            model: defaultModel,
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: userTask || 'Begin execution sequence.' },
+            ],
+            response_format: { type: 'json_object' },
+            temperature: 0.7,
+          }),
+        });
+
+        clearTimeout(upstreamTimer);
+
+        if (response.ok) {
+          responseData = await response.json();
+          break; // Success! Break out of retry loop
+        } else {
+          const errJson = await response.json().catch(() => ({}));
+          const errMessage = errJson.error?.message || errJson.message || response.statusText || '';
+          console.warn(`[Server] Attempt ${i + 1} failed with status ${response.status}: ${errMessage}`);
+          lastError = {
+            status: response.status,
+            message: errMessage,
+            url,
+            defaultModel
+          };
+        }
+      } catch (err) {
+        clearTimeout(upstreamTimer);
+        console.warn(`[Server] Attempt ${i + 1} encountered exception: ${err.message}`);
         lastError = {
-          status: response.status,
-          message: errMessage,
+          status: err.name === 'AbortError' ? 408 : 500,
+          message: err.message || String(err),
           url,
           defaultModel
         };
       }
-    } catch (err) {
-      clearTimeout(upstreamTimer);
-      console.warn(`[Server] Attempt ${i + 1} encountered exception: ${err.message}`);
-      lastError = {
-        status: err.name === 'AbortError' ? 408 : 500,
-        message: err.message || String(err),
-        url,
-        defaultModel
-      };
     }
-  }
 
   // If all attempts failed
   if (!responseData) {
