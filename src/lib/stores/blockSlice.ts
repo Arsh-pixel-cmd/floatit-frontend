@@ -10,12 +10,15 @@ export interface BlockSlice {
   connections: any[];
   nodeStatus: Record<string, string>;
   nodeResults: Record<string, any>;
-  selectedBlockIds: Set<string>;
+  // Stored as string[] for Zustand persist JSON-serialization compatibility (BUG-017).
+  // Use selectedBlockIdSet() helper to get a runtime Set when needed.
+  selectedBlockIds: string[];
   setNodeStatus: (id: string, status: string) => void;
   setNodeResult: (id: string, result: any) => void;
   resetExecution: () => void;
   toggleBlockSelection: (blockId: string) => void;
   clearBlockSelection: () => void;
+  setBlockSelection: (ids: string[]) => void;
   addBlock: (position?: any) => void;
   addWebhookBlock: (position?: any) => void;
   updateBlock: (id: string, updates: any) => void;
@@ -29,7 +32,7 @@ export const createBlockSlice: StateCreator<BuilderStore, [], [], BlockSlice> = 
   connections: [],
   nodeStatus: {},
   nodeResults: {},
-  selectedBlockIds: new Set(),
+  selectedBlockIds: [],
 
   setNodeStatus: (id, status) => set(state => ({ nodeStatus: { ...state.nodeStatus, [id]: status } })),
   setNodeResult: (id, result) => set(state => ({ nodeResults: { ...state.nodeResults, [id]: result } })),
@@ -40,15 +43,14 @@ export const createBlockSlice: StateCreator<BuilderStore, [], [], BlockSlice> = 
   }),
 
   toggleBlockSelection: (blockId) => set((state) => {
-    const next = new Set(state.selectedBlockIds);
-    if (next.has(blockId)) {
-      next.delete(blockId);
-    } else {
-      next.add(blockId);
+    const current = state.selectedBlockIds;
+    if (current.includes(blockId)) {
+      return { selectedBlockIds: current.filter(id => id !== blockId) };
     }
-    return { selectedBlockIds: next };
+    return { selectedBlockIds: [...current, blockId] };
   }),
-  clearBlockSelection: () => set({ selectedBlockIds: new Set() }),
+  clearBlockSelection: () => set({ selectedBlockIds: [] }),
+  setBlockSelection: (ids) => set({ selectedBlockIds: ids }),
 
   addBlock: (position) => {
     const state = get();
@@ -118,7 +120,7 @@ export const createBlockSlice: StateCreator<BuilderStore, [], [], BlockSlice> = 
         if (g.blockIds.includes(id)) {
           return {
             ...g,
-            blockIds: g.blockIds.filter(bid => bid !== id)
+            blockIds: g.blockIds.filter((bid: string) => bid !== id)
           };
         }
         return g;
@@ -129,15 +131,12 @@ export const createBlockSlice: StateCreator<BuilderStore, [], [], BlockSlice> = 
       get().saveBuilderState();
     }, 0);
 
-    const nextSel = new Set(state.selectedBlockIds);
-    nextSel.delete(id);
-
     return {
       blocks: nextBlocks,
       connections: nextConns,
       groups: nextGroups,
       selectedElementId: state.selectedElementId === id ? null : state.selectedElementId,
-      selectedBlockIds: nextSel
+      selectedBlockIds: state.selectedBlockIds.filter(sid => sid !== id)
     };
   }),
 

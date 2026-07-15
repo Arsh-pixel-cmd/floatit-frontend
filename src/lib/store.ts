@@ -21,8 +21,10 @@ export interface WorkflowStoreState {
   setCurrentPhaseIndex: (idx: any) => void;
   nodeStates: Record<string, any>;
   nodeResults: Record<string, any>;
+  nodeStatusTexts: Record<string, string>;
   setNodeState: (nodeId: any, state: any) => void;
   setNodeResult: (nodeId: any, result: any) => void;
+  setNodeStatusText: (nodeId: string, text: string) => void;
   resetExecution: (nodes: any) => void;
   layoutMode: string;
   setLayoutMode: (mode: any) => void;
@@ -43,6 +45,10 @@ export interface WorkflowStoreState {
   selectTool: (toolId: any) => void;
   revealedPhases: string[];
   revealNextPhase: () => void;
+  selectedGroupId: string | null;
+  setSelectedGroupId: (id: string | null) => void;
+  editedOutputs: Record<string, string>;
+  setEditedOutput: (groupId: string, content: string) => void;
 }
 
 export const useWorkflowStore = create<WorkflowStoreState>((set, get) => ({
@@ -72,16 +78,20 @@ export const useWorkflowStore = create<WorkflowStoreState>((set, get) => ({
   setCurrentPhaseIndex: (idx: any) => set({ currentPhaseIndex: idx }),
   nodeStates: {}, // Record<nodeId, 'idle' | 'running' | 'completed'>
   nodeResults: {}, // Record<nodeId, { content, ui }>
+  nodeStatusTexts: {}, // Record<nodeId, string>
   setNodeState: (nodeId: any, state: any) => set((s: any) => ({
     nodeStates: { ...s.nodeStates, [nodeId]: state }
   })),
   setNodeResult: (nodeId: any, result: any) => set((s: any) => ({
     nodeResults: { ...s.nodeResults, [nodeId]: result }
   })),
+  setNodeStatusText: (nodeId: string, text: string) => set((s: any) => ({
+    nodeStatusTexts: { ...s.nodeStatusTexts, [nodeId]: text }
+  })),
   resetExecution: (nodes: any) => {
     const freshStates: Record<string, any> = {};
     nodes.forEach((n: any) => { freshStates[n] = 'idle'; });
-    set({ nodeStates: freshStates, nodeResults: {}, currentPhaseIndex: 0, revealedPhases: [], graphStatus: 'ready', animationState: { phase: 'idle', activeNodes: [], queuedTransitions: [] } });
+    set({ nodeStates: freshStates, nodeResults: {}, nodeStatusTexts: {}, currentPhaseIndex: 0, revealedPhases: [], animationState: { phase: 'idle', activeNodes: [], queuedTransitions: [] } });
   },
 
   // Layout Constraints
@@ -130,7 +140,16 @@ export const useWorkflowStore = create<WorkflowStoreState>((set, get) => ({
         set({ revealedPhases: [...current, nextPhaseId] });
       }
     }
-  }
+  },
+
+  // Group selection for prompt bar
+  selectedGroupId: null,
+  setSelectedGroupId: (id) => set({ selectedGroupId: id }),
+
+  // Edited output content (Task 5)
+  editedOutputs: {},
+  setEditedOutput: (groupId, content) =>
+    set((s) => ({ editedOutputs: { ...s.editedOutputs, [groupId]: content } })),
 }));
 
 // Selectors for specific Memoized updates in React

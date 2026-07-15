@@ -127,7 +127,7 @@ export const createServerSyncSlice: StateCreator<BuilderStore, [], [], ServerSyn
       selectedElementId: null,
       viewMode: 'builder',
       groups: [],
-      selectedBlockIds: new Set()
+      selectedBlockIds: []
     });
   },
   

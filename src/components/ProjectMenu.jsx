@@ -1,14 +1,47 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ChevronDown, ChevronRight, PlusSquare, Trash2, Sun, LogOut, Delete, Bell, Pencil } from 'lucide-react';
+import { ChevronDown, ChevronRight, PlusSquare, Trash2, Sun, LogOut, Delete, Bell, Pencil, Key } from 'lucide-react';
 import { useAuth } from '../lib/auth';
+import { useBuilderStore } from '../lib/builderStore';
+import { useWorkflowStore } from '../lib/store';
+import { CommandHistory } from '../lib/blocks/CommandHistory';
+import { DeleteBlockCommand } from '../lib/blocks/commands/DeleteBlockCommand';
+import { DeleteAnnotationCommand } from '../lib/blocks/commands/DeleteAnnotationCommand';
+import { useThemeStore } from '../lib/themeStore';
+import { apiProxy } from '../lib/http/AuthenticatedApiProxy';
+import toast from 'react-hot-toast';
 
 export default function ProjectMenu() {
   const { user, signOut } = useAuth();
+  const { 
+    selectedElementId, deleteBlock, deleteStickyNote, deleteTextLabel
+  } = useBuilderStore();
   const [isOpen, setIsOpen] = useState(false);
   const [showEditMenu, setShowEditMenu] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [appearanceOpen, setAppearanceOpen] = useState(false);
   const menuRef = useRef(null);
+  const { theme, setTheme } = useThemeStore();
+  const { saveAsTemplate } = useBuilderStore();
+  const { flowTitle } = useWorkflowStore();
+  const [apiKey, setApiKey] = useState('');
+  const [savingKey, setSavingKey] = useState(false);
+  const [showApiKeyInput, setShowApiKeyInput] = useState(false);
+
+  const handleSaveApiKey = async () => {
+    if (!apiKey.trim() || !user?.id) return;
+    setSavingKey(true);
+    try {
+      const API_BASE = import.meta.env.PROD ? '' : 'http://localhost:3001';
+      await apiProxy.post(`${API_BASE}/api/keys/save`, { userId: user.id, apiKey: apiKey.trim() });
+      toast.success('API key saved!');
+      setApiKey('');
+      setShowApiKeyInput(false);
+    } catch (err) {
+      toast.error('Failed to save API key');
+    } finally {
+      setSavingKey(false);
+    }
+  };
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -17,8 +50,22 @@ export default function ProjectMenu() {
         setShowEditMenu(false);
       }
     };
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        CommandHistory.undo();
+      }
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+        e.preventDefault();
+        CommandHistory.redo();
+      }
+    };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
   }, []);
 
   const handleLogout = async () => {
@@ -27,6 +74,43 @@ export default function ProjectMenu() {
     } catch (err) {
       console.error('Logout failed:', err);
     }
+  };
+
+  const handleDelete = () => {
+    if (!selectedElementId) return;
+    if (selectedElementId.startsWith('sticky-')) {
+      CommandHistory.execute(new DeleteAnnotationCommand(selectedElementId.replace('sticky-', ''), 'sticky'));
+    } else if (selectedElementId.startsWith('text-')) {
+      CommandHistory.execute(new DeleteAnnotationCommand(selectedElementId.replace('text-', ''), 'text'));
+    } else if (selectedElementId.startsWith('image-')) {
+      CommandHistory.execute(new DeleteAnnotationCommand(selectedElementId.replace('image-', ''), 'image'));
+    } else {
+      const store = useBuilderStore.getState();
+      const isBlock = store.blocks.some(b => b.id === selectedElementId);
+      if (isBlock) {
+        CommandHistory.execute(new DeleteBlockCommand(selectedElementId));
+      }
+    }
+    setIsOpen(false);
+  };
+
+  const handleExport = () => {
+    const store = useBuilderStore.getState();
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({
+      blocks: store.blocks,
+      connections: store.connections,
+      groups: store.groups,
+      stickyNotes: store.stickyNotes,
+      textLabels: store.textLabels,
+      drawLines: store.drawLines
+    }, null, 2));
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.setAttribute("href", dataStr);
+    downloadAnchor.setAttribute("download", `floatit_workflow_${Date.now()}.json`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+    setIsOpen(false);
   };
 
   // Get user display info from auth context
@@ -65,24 +149,41 @@ export default function ProjectMenu() {
                 onMouseLeave={() => setShowEditMenu(false)}
               >
                 {[
-                  { label: 'Undo', shortcut: 'Ctrl+Z' },
-                  { label: 'Redo', shortcut: 'Ctrl+Y' },
-                  { label: 'Paste', shortcut: 'Ctrl+V' },
-                  { label: 'Duplicate', shortcut: 'Ctrl+D' },
+                  { label: 'Undo', shortcut: 'Ctrl+Z', action: () => CommandHistory.undo() },
+                  { label: 'Redo', shortcut: 'Ctrl+Y', action: () => CommandHistory.redo() },
+                  { label: 'Paste', shortcut: 'Ctrl+V', action: () => alert('Paste action is stubbed') },
+                  { label: 'Duplicate', shortcut: 'Ctrl+D', action: () => alert('Duplicate action is stubbed') },
                 ].map((item, i) => (
-                  <button key={i} className="w-full flex items-center justify-between px-4 py-1.5 text-[12px] font-medium text-gray-700 hover:bg-gray-50 transition">
+                  <button 
+                    key={i} 
+                    onClick={() => {
+                      if (item.action) item.action();
+                      setIsOpen(false);
+                    }}
+                    className="w-full flex items-center justify-between px-4 py-1.5 text-[12px] font-medium text-gray-700 hover:bg-gray-50 transition"
+                  >
                     {item.label} <span className="text-gray-400 text-[10px]">{item.shortcut}</span>
                   </button>
                 ))}
-                <button className="w-full flex items-center justify-between px-4 py-1.5 text-[12px] font-medium text-gray-700 hover:bg-gray-50 transition">
+                <button 
+                  onClick={handleDelete}
+                  className="w-full flex items-center justify-between px-4 py-1.5 text-[12px] font-medium text-gray-700 hover:bg-gray-50 transition"
+                >
                   Delete <Delete size={14} className="text-gray-400" />
                 </button>
                 <div className="h-px bg-gray-100 my-1"></div>
                 {[
-                  { label: 'Find', shortcut: 'Ctrl+F' },
-                  { label: 'Select all', shortcut: 'Ctrl+A' },
+                  { label: 'Find', shortcut: 'Ctrl+F', action: () => alert('Find action is stubbed') },
+                  { label: 'Select all', shortcut: 'Ctrl+A', action: () => alert('Select all action is stubbed') },
                 ].map((item, i) => (
-                  <button key={i} className="w-full flex items-center justify-between px-4 py-1.5 text-[12px] font-medium text-gray-700 hover:bg-gray-50 transition">
+                  <button 
+                    key={i} 
+                    onClick={() => {
+                      if (item.action) item.action();
+                      setIsOpen(false);
+                    }}
+                    className="w-full flex items-center justify-between px-4 py-1.5 text-[12px] font-medium text-gray-700 hover:bg-gray-50 transition"
+                  >
                     {item.label} <span className="text-gray-400 text-[10px]">{item.shortcut}</span>
                   </button>
                 ))}
@@ -100,8 +201,26 @@ export default function ProjectMenu() {
             Profile <ChevronRight size={14} className="text-gray-400" />
           </button>
           
-          <button className="w-full flex items-center justify-between px-4 py-2 text-[13px] font-medium text-gray-700 hover:bg-gray-50 transition">
+          <button 
+            onClick={handleExport}
+            className="w-full flex items-center justify-between px-4 py-2 text-[13px] font-medium text-gray-700 hover:bg-gray-50 transition"
+          >
             Export
+          </button>
+
+          {/* Task 8: Save as Template */}
+          <button
+            className="w-full flex items-center justify-between px-4 py-2 text-[13px] font-medium text-gray-700 hover:bg-gray-50 transition"
+            onClick={async () => {
+              setIsOpen(false);
+              const name = window.prompt('Template name:', flowTitle || 'My Template');
+              if (name) {
+                await saveAsTemplate(name);
+                toast.success('Saved as template!');
+              }
+            }}
+          >
+            Save as Template
           </button>
         </div>
       )}
@@ -140,9 +259,48 @@ export default function ProjectMenu() {
               {appearanceOpen && (
                 <div className="pl-8 pr-2 py-1 space-y-1 mb-1 relative">
                   <div className="absolute left-[17px] top-0 bottom-0 w-px bg-gray-200"></div>
-                  <button className="block w-full text-left text-[11px] text-gray-500 font-medium hover:text-gray-900 transition py-1">Light</button>
-                  <button className="block w-full text-left text-[11px] text-gray-500 font-medium hover:text-gray-900 transition py-1">Dark</button>
-                  <button className="block w-full text-left text-[11px] text-gray-500 font-medium hover:text-gray-900 transition py-1">System theme</button>
+                  {['light', 'dark', 'system'].map((t) => (
+                    <button
+                      key={t}
+                      onClick={() => setTheme(t)}
+                      className={`block w-full text-left text-[11px] font-medium hover:text-gray-900 transition py-1 capitalize ${theme === t ? 'text-blue-600 font-bold' : 'text-gray-500'}`}
+                    >
+                      {t === 'system' ? 'System theme' : t.charAt(0).toUpperCase() + t.slice(1)}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Task 6: API Key Section */}
+            <div className="px-1 mt-1">
+              <button
+                className="w-full flex items-center justify-between px-2.5 py-2 rounded-lg hover:bg-gray-50 transition"
+                onClick={() => setShowApiKeyInput(!showApiKeyInput)}
+              >
+                <div className="flex items-center gap-2.5 text-[12px] text-gray-600 font-medium">
+                  <Key size={14} className="text-gray-400" /> Add API Key
+                </div>
+                <ChevronDown size={14} className={`text-gray-400 transition-transform duration-200 ${showApiKeyInput ? 'rotate-180' : ''}`} />
+              </button>
+              {showApiKeyInput && (
+                <div className="pl-6 pr-2 py-2 space-y-2">
+                  <input
+                    type="password"
+                    value={apiKey}
+                    onChange={(e) => setApiKey(e.target.value)}
+                    placeholder="sk-or-v1-..."
+                    className="w-full text-[12px] border border-gray-200 rounded-lg px-3 py-2 outline-none
+                      focus:border-blue-400 transition bg-transparent text-gray-800"
+                  />
+                  <button
+                    onClick={handleSaveApiKey}
+                    disabled={savingKey || !apiKey.trim()}
+                    className="w-full text-[11px] font-semibold text-white bg-[#2945D1] rounded-lg py-1.5
+                      hover:bg-blue-700 transition disabled:opacity-50"
+                  >
+                    {savingKey ? 'Saving...' : 'Save Key'}
+                  </button>
                 </div>
               )}
             </div>

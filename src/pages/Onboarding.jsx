@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Paperclip, ArrowUp, Sparkles, Users2, Plug, Info, Heart, Lightbulb, User, Mail, Lock, Key, EyeOff, Eye, Lock as LockIcon, X } from 'lucide-react';
 import { useAuth } from '../lib/auth';
+import { supabase } from '../lib/supabaseClient';
 
 const API_BASE = import.meta.env.PROD ? '' : 'http://localhost:3001';
 
@@ -74,7 +75,6 @@ export default function Onboarding({
     }
     setApiKeyLoading(true);
     try {
-      const { supabase } = await import('../lib/supabaseClient');
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user?.id) {
         await fetch(`${API_BASE}/api/keys/save`, {
@@ -95,7 +95,6 @@ export default function Onboarding({
 
   const handleGoogleSignIn = async () => {
     try {
-      const { supabase } = await import('../lib/supabaseClient');
       await supabase.auth.signInWithOAuth({ provider: 'google' });
     } catch (err) {
       console.error('Google sign-in failed:', err);

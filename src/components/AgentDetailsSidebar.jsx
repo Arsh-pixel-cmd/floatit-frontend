@@ -1,12 +1,17 @@
 import React, { useState } from 'react';
 import { useBuilderStore } from '../lib/builderStore';
 import { ChevronDown, ChevronUp } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { CommandHistory } from '../lib/blocks/CommandHistory';
+import { DeleteBlockCommand } from '../lib/blocks/commands/DeleteBlockCommand';
+import ConfirmDialog from './ConfirmDialog';
 
 export default function AgentDetailsSidebar() {
   const { blocks, selectedElementId, updateBlock, setSelectedElementId } = useBuilderStore();
   
   const [triggerDropdown, setTriggerDropdown] = useState(false);
   const [waitDropdown, setWaitDropdown] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const selectedBlock = blocks.find(b => b.id === selectedElementId);
 
@@ -102,6 +107,19 @@ export default function AgentDetailsSidebar() {
           )}
         </div>
 
+        {/* LLM Model / Strategy */}
+        <div>
+          <label className="block text-[13px] font-medium text-gray-800 mb-1.5">Execution Strategy / Model</label>
+          <select
+            value={selectedBlock.modelType || 'local'}
+            onChange={(e) => updateBlock(selectedBlock.id, { modelType: e.target.value })}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-[13px] text-gray-900 outline-none focus:border-[#2945D1] transition bg-white"
+          >
+            <option value="local">Local Server (Nemotron)</option>
+            <option value="groq">Groq (Llama 3)</option>
+          </select>
+        </div>
+
         {/* Custom API Key */}
         <div>
           <label className="block text-[13px] font-medium text-gray-800 mb-1.5">Custom API Key</label>
@@ -131,15 +149,36 @@ export default function AgentDetailsSidebar() {
 
       </div>
       
-      {/* Footer / Create button */}
+      {/* Footer / Save + Delete buttons */}
       <div className="mt-6 pt-4 border-t border-gray-100">
         <button 
-          onClick={() => setSelectedElementId(null)}
+          onClick={() => {
+            toast.success('Agent saved!', { icon: '✅' });
+            setSelectedElementId(null);
+          }}
           className="w-full bg-[#2945D1] text-white rounded-lg py-2.5 text-[13px] font-medium hover:bg-blue-700 transition"
         >
-          Create agent
+          Save Agent
+        </button>
+        <button
+          onClick={() => setShowDeleteConfirm(true)}
+          className="w-full border border-red-200 text-red-500 rounded-lg py-2 text-[13px] font-medium hover:bg-red-50 transition mt-2"
+        >
+          Delete Agent
         </button>
       </div>
+
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        onOpenChange={setShowDeleteConfirm}
+        title="Delete Agent?"
+        description="This will permanently delete this agent and cannot be undone."
+        onConfirm={() => {
+          CommandHistory.execute(new DeleteBlockCommand(selectedBlock.id));
+          setSelectedElementId(null);
+          setShowDeleteConfirm(false);
+        }}
+      />
     </div>
   );
 }

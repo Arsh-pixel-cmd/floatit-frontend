@@ -3,10 +3,13 @@ import { Search, Plus, List, LayoutGrid } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
 import { dbAdapter } from '../lib/database';
 import { useAuth } from '../lib/auth';
+import { useBuilderStore } from '../lib/builderStore';
+
 export default function Dashboard({ isSidebarOpen, setIsSidebarOpen, setCurrentPage, dashboardView, setDashboardView }) {
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
+  const resetCanvas = useBuilderStore(state => state.resetCanvas);
 
   useEffect(() => {
     const loadProjects = async () => {
@@ -30,6 +33,7 @@ export default function Dashboard({ isSidebarOpen, setIsSidebarOpen, setCurrentP
     });
     if (data) {
       localStorage.setItem('active_sequence_id', data.id);
+      resetCanvas();
       setCurrentPage('newProject');
     }
   };

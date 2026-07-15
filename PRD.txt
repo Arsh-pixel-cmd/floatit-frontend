@@ -1,0 +1,165 @@
+Functionalities & Flows (Technical) 
+Previous: 
+ 
+
+Essential flows for v1
+
+Login into the system 
+Main screen with default buttons and screen layout; Prompt window, login and sign up button.
+
+User can opt multiple ways to login/sign up one is using the login/signup buttons in the top right corner or by clicking on the dummy prompt bar which will redirect them to login/signup popup.
+
+They will be able to sign up or login into the system by putting information into the text fields; 
+
+login: email address and password they have created/login with google.
+
+sign up: name, email address, password and re-enter password/login with google. 
+
+When creating an account the user will be automatically logged in.
+
+Creating a new file 
+The user can have two cases either they will be making their very first file in this platform or they can be regular users already having files in the platform.
+
+Case 1: Empty state: when there a no files prior.
+
+The user will have an empty screen (no files) with template section and a prompt box same size a file card prompting to create a ‘New File‘.
+
+After clicking the ‘New File‘ the user will have a new file opened, unnamed.
+
+The user can name their file by clicking the ‘Untitled‘.
+
+User can create a new agent, edit the canvas, share the file, bring in a template onto the canvas.
+
+Case 2: Multiple files state; when there are multiple existing files.
+
+The user will have a button ‘+ New project’ on the top right of the screen.
+
+It will allow the user to create a new blank file, unnamed.
+
+The user can name their file by clicking the ‘Untitled‘.
+
+User can create a new agent, edit the canvas, share the file, bring in a template onto the canvas.
+
+Adding a new agent 
+The user can select ‘agent‘ option from the tool bar on the bottom to add an agent.
+
+Adding an agent on the canvas will trigger a side pushover, in which the user has to put all the required information for the agent they want to create. The information to create an agent is given below.
+
+Name of the agent
+
+Description of the task it do.
+
+Trigger; types of trigger
+
+Information taken from/ information to act upon. This is only applicable if the trigger is dependent on some other agent.
+
+Information to give to. This option is allows the agent to pass on information or output when attached and needed by the other agent.
+
+API key
+
+Personal_Global
+
+Personal_Agent specific
+
+Global/Fallback. [which is nvidia nemotron for now]
+
+Assigning info to it; name, task to be done
+
+Trigger
+
+Information taken from - information sending to
+
+API key; personal_global, personal_agent_specific, global
+
+Editing information of an agent 
+Considering that the user has already made the agent and added all the information perfectly. If the user has to perform any type of edit;
+
+Click on the agent that has to be edited
+
+Side popover will appear with all the information related to that agent, the information can be edited.
+
+The user has to click ‘save’, so that it can actually save the data that has been changed.
+
+Deleting an agent 
+Considering that the user has already created an agent.
+
+The agent that has to be deleted will be selected by the user.
+
+Side popover will appear, click on the ‘Delete agent‘ option.
+
+A popup to ensure that the user has to actually delete the agent.
+
+Creating a group of agents 
+Considering that the user have created multiple agents which they have to collectively group together.
+
+The user can either drag-select the agents they want to group together or shift click all the agents the user wants to group together.
+
+Name the group of the agents selected and save.
+
+This will create a group which will be appear as a dropdown list in the prompt bar. If multiple groups : multiple items in the list.
+
+Prompting the flow of agents/using an agent 
+Considering that the user has designed and set their desired agent flow.
+
+Their is an option in the toolbar, as given below.
+
+The user can select this option to switch on the prompt bar.
+
+User can write their designated prompt into the prompt text input bar.
+
+User can also attach any file in the prompt bar, if they want to work with that, to provide a better context to the agents or any other preferred use case.
+
+Outputs by agents 
+Let’s consider the user has created agent(s) or maybe a group of agents to execute through. The user wishes to test out or actually run through agents. 
+
+The user has given their desired prompt to the flow.
+
+After the flow has been executed, the user can:
+
+See the output
+
+Edit the output 
+
+Download output in different formats
+
+Share the report with someone
+
+Adding an API key (case 1: on login, case 2: after login, in platform) 
+Case 1: Adding an API key on login/sign up
+
+Considering that user has logged into the system or signed up in the system.
+
+The system will check and send a request to backend to check that if the user has added any of their personal key to use globally in the system.
+
+This given data call should only go if the user has logged into the system not signed up, because sign will require a personal API key by the user (bring you own API key)
+
+If the user has signed up for float platform, they will be prompt to give a personal global API key (Groq or OpenRouter). If not given by the user the system will use fallback API key; nvidia nemotron 3.
+
+Case 2: Adding a key after login/sign up is done, in the system.
+
+The user will get a profile popup.
+
+Select the option to add ‘Add API key‘ prompting a text input, to allow the user to put the API key into that.
+
+Click save to save the API key.
+
+Editing in canvas 
+This functionality allows the user to interact better and edit/use/create/add/delete components. It will allow the user to explain their flow, canvas better, note taking, important marking, brainstorm, etc.
+
+The user can drag and drop the component that they want to use onto the canvas (method 1)
+
+The user can click on the component they want to put onto the canvas, it will place the component at the random and relevant place; near the workspace on the canvas (method 2) 
+
+
+
+
+
+Essential flows for v1.1
+
+File sharing  
+Creating a template 
+Choosing a template from own or community/in-built templates 
+Activating and using the chatbot 
+Commenting in the canvas 
+Editing an agent of a template 
+Exporting an output 

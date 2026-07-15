@@ -3,6 +3,7 @@
 // API keys are resolved SERVER-SIDE from encrypted storage.
 
 import { supabase } from './supabaseClient';
+import { apiProxy } from './http/AuthenticatedApiProxy';
 
 const API_BASE = import.meta.env.PROD ? '' : 'http://localhost:3001';
 
@@ -18,16 +19,6 @@ async function getCurrentUserId() {
   }
 }
 
-async function getAuthHeaders() {
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    const token = session?.access_token;
-    return token ? { 'Authorization': `Bearer ${token}` } : {};
-  } catch {
-    return {};
-  }
-}
-
 /**
  * Check key status from the server (encrypted storage).
  */
@@ -36,10 +27,7 @@ export async function getKeyStatus() {
   if (!userId) return { any: false, serverKey: false };
 
   try {
-    const res = await fetch(`${API_BASE}/api/keys/status/${userId}`, {
-      headers: await getAuthHeaders()
-    });
-    const data = await res.json();
+    const data = await apiProxy.get<{hasKey: boolean, lastFour?: string}>(`${API_BASE}/api/keys/status/${userId}`);
     return { any: data.hasKey, serverKey: data.hasKey, lastFour: data.lastFour };
   } catch {
     return { any: false, serverKey: false };
@@ -54,10 +42,7 @@ export async function getProjectKeyStatus(sequenceId: string) {
   if (!userId || !sequenceId) return { hasKey: false };
 
   try {
-    const res = await fetch(`${API_BASE}/api/keys/project-status/${userId}/${sequenceId}`, {
-      headers: await getAuthHeaders()
-    });
-    const data = await res.json();
+    const data = await apiProxy.get<{hasKey: boolean, lastFour?: string}>(`${API_BASE}/api/keys/project-status/${userId}/${sequenceId}`);
     return { hasKey: data.hasKey, lastFour: data.lastFour };
   } catch {
     return { hasKey: false };
@@ -96,7 +81,7 @@ export async function checkKeyAvailability(sequenceId: string): Promise<KeyCheck
  * @param {string} neuralContext - Previous phase data (Neural Bridge)
  * @returns {Promise<{content: string, ui: string}>}
  */
-export async function callLLM(userTask: any, agent: any, neuralContext: any = '', attachment: any = null, useDefaultKey: boolean = false) {
+export async function callLLM(userTask: any, agent: any, neuralContext: any = '', attachment: any = null, useDefaultKey: boolean = false, requestedModel?: string, signal?: AbortSignal) {
   const userId = await getCurrentUserId();
 
   // Build enriched task with attachment
@@ -125,74 +110,66 @@ export async function callLLM(userTask: any, agent: any, neuralContext: any = ''
   while (attempt <= maxRetries) {
     try {
       const sequenceId = localStorage.getItem('active_sequence_id');
-      const requestedModel = localStorage.getItem('agentic_model') || undefined;
+      const finalModel = requestedModel || localStorage.getItem('agentic_model') || undefined;
       
-      const response = await fetch(API_URL, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          ...(await getAuthHeaders())
-        },
-        body: JSON.stringify({
-          userTask: enrichedTask,
-          agent,
-          neuralContext,
-          userId, 
-          sequenceId,
-          requestedModel,
-          useDefaultKey,
-        }),
-      });
+      const result = await apiProxy.post<any>(API_URL, {
+        userTask: enrichedTask,
+        agent,
+        neuralContext,
+        userId, 
+        sequenceId,
+        requestedModel: finalModel,
+        useDefaultKey,
+      }, { signal });
 
-      if (!response.ok) {
-        // Retry on Rate Limit or Server Overload
-        if ((response.status === 429 || response.status === 503 || response.status === 502) && attempt < maxRetries) {
-          attempt++;
-          const delay = Math.pow(2, attempt) * 1000;
-          console.warn(`[Frontend] Provider overload or rate limit (Attempt ${attempt}/${maxRetries}). Retrying in ${delay}ms...`);
-          await new Promise(r => setTimeout(r, delay));
-          continue;
-        }
-
-        const errorPayload = await response.json().catch(() => null);
-
-        // If the server reports a key error, dispatch a global event with type classification
-        if (errorPayload?._keyError) {
-          window.dispatchEvent(new CustomEvent('agentic:key-error', {
-            detail: { 
-              type: errorPayload._errorType || 'INVALID_KEY',
-              message: errorPayload.content 
-            },
-          }));
-        }
-
-        // If the server reports a token / context-limit error, dispatch a dedicated event
-        if (errorPayload?._tokenError) {
-          window.dispatchEvent(new CustomEvent('agentic:token-limit', {
-            detail: {
-              model: errorPayload._model || 'Unknown Model',
-              provider: errorPayload._provider || 'Unknown Provider',
-              message: errorPayload.content || 'The model context window was exceeded.',
-            },
-          }));
-        }
-
-        if (errorPayload && errorPayload.ui) return errorPayload;
-        throw new Error(`Node Server returned status ${response.status}`);
+      return result;
+    } catch (err: any) {
+      const status = err?.status;
+      // Retry on Rate Limit or Server Overload
+      if ((status === 429 || status === 503 || status === 502) && attempt < maxRetries) {
+        attempt++;
+        const delay = Math.pow(2, attempt) * 1000;
+        console.warn(`[Frontend] Provider overload or rate limit (Attempt ${attempt}/${maxRetries}). Retrying in ${delay}ms...`);
+        await new Promise(r => setTimeout(r, delay));
+        continue;
       }
 
-      return await response.json();
-    } catch (err: any) {
-      if (attempt < maxRetries && err.message.includes('fetch')) {
+      // If the server reports a key error, dispatch a global event with type classification
+      if (err?._keyError) {
+        window.dispatchEvent(new CustomEvent('agentic:key-error', {
+          detail: { 
+            type: err._errorType || 'INVALID_KEY',
+            message: err.content 
+          },
+        }));
+      }
+
+      // If the server reports a token / context-limit error, dispatch a dedicated event
+      if (err?._tokenError) {
+        window.dispatchEvent(new CustomEvent('agentic:token-limit', {
+          detail: {
+            model: err._model || 'Unknown Model',
+            provider: err._provider || 'Unknown Provider',
+            message: err.content || 'The model context window was exceeded.',
+          },
+        }));
+      }
+
+      if (err && (err.ui || err.content)) {
+        return err;
+      }
+
+      if (attempt < maxRetries && err.message?.includes('fetch')) {
         attempt++;
         const delay = Math.pow(2, attempt) * 1000;
         console.warn(`[Frontend] Network error (Attempt ${attempt}/${maxRetries}). Retrying in ${delay}ms...`);
         await new Promise(r => setTimeout(r, delay));
         continue;
       }
+
       console.error('[Frontend] Failed to communicate with backend:', err);
       return {
-        content: `Error reaching backend: ${err.message}`,
+        content: `Error reaching backend: ${err.message || err}`,
         ui: `<div style="padding:32px;font-family:Outfit,sans-serif;background:rgba(10,10,15,0.9);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-radius:24px;border:1px solid rgba(239,68,68,0.25)">
             <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
               <h3 style="color:#ef4444;font-size:20px;font-weight:700;margin:0;font-family:Syne,sans-serif">Frontend/Backend Conductor Error</h3>

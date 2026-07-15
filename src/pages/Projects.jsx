@@ -3,8 +3,11 @@ import { Search, Plus, List, LayoutGrid } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
 import { dbAdapter } from '../lib/database';
 import { useAuth } from '../lib/auth';
+import { useBuilderStore } from '../lib/builderStore';
+
 export default function Projects({ isSidebarOpen, setIsSidebarOpen, setCurrentPage }) {
   const { user } = useAuth();
+  const resetCanvas = useBuilderStore(state => state.resetCanvas);
 
   const handleCreateProject = async () => {
     const { data } = await dbAdapter.createSequence({
@@ -18,6 +21,7 @@ export default function Projects({ isSidebarOpen, setIsSidebarOpen, setCurrentPa
     });
     if (data) {
       localStorage.setItem('active_sequence_id', data.id);
+      resetCanvas();
       setCurrentPage('newProject');
     }
   };

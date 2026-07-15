@@ -33,7 +33,7 @@ export const createGroupSlice: StateCreator<BuilderStore, [], [], GroupSlice> = 
 
   createGroup: (name) => {
     const state = get();
-    const selectedIds = Array.from(state.selectedBlockIds);
+    const selectedIds = [...state.selectedBlockIds];
     if (selectedIds.length === 0) return null;
     
     const selectedBlocks = state.blocks.filter(b => selectedIds.includes(b.id));
@@ -83,7 +83,7 @@ export const createGroupSlice: StateCreator<BuilderStore, [], [], GroupSlice> = 
       blocks: [...state.blocks, outputNodeBlock],
       connections: [...state.connections, ...newConnections],
       groups: [...state.groups, newGroup],
-      selectedBlockIds: new Set()
+      selectedBlockIds: []
     });
 
     state.saveBuilderState();
@@ -105,10 +105,15 @@ export const createGroupSlice: StateCreator<BuilderStore, [], [], GroupSlice> = 
       get().saveBuilderState();
     }, 0);
 
+    // BUG-019: clear deleted group member IDs from selection
+    const removedIds = new Set([...(group.blockIds || []), group.outputBlockId]);
+    const nextSel = state.selectedBlockIds.filter((id: string) => !removedIds.has(id));
+
     return {
       groups: nextGroups,
       blocks: nextBlocks,
-      connections: nextConns
+      connections: nextConns,
+      selectedBlockIds: nextSel,
     };
   }),
 

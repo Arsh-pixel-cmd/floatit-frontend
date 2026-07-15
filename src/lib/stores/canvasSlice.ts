@@ -19,6 +19,13 @@ export interface CanvasSlice {
   updateStickyNote: (id: string, updates: any) => void;
   deleteStickyNote: (id: string) => void;
   clearAnnotations: () => void;
+  drawLines: any[];
+  addDrawLine: (line: any) => void;
+  clearDrawings: () => void;
+  resetCanvas: () => void;
+  images: any[];
+  addImage: (position: any, url: string) => void;
+  deleteImage: (id: string) => void;
 }
 
 export const createCanvasSlice: StateCreator<BuilderStore, [], [], CanvasSlice> = (set) => ({
@@ -26,10 +33,38 @@ export const createCanvasSlice: StateCreator<BuilderStore, [], [], CanvasSlice> 
   setViewMode: (mode) => set({ viewMode: mode, selectedElementId: null }),
   stickyNotes: [],
   textLabels: [],
+  drawLines: [],
+  images: [],
   selectedElementId: null,
   setSelectedElementId: (id) => set({ selectedElementId: id }),
   isTopologyLocked: false,
   setIsTopologyLocked: (locked) => set({ isTopologyLocked: locked }),
+
+  resetCanvas: () => set({
+    viewMode: 'builder',
+    stickyNotes: [],
+    textLabels: [],
+    drawLines: [],
+    selectedElementId: null,
+    isTopologyLocked: false,
+    blocks: [],
+    connections: [],
+    groups: [],
+    nodeStatus: {},
+    nodeResults: {},
+    selectedBlockIds: [],
+    runningGroupId: null,
+    completedGroupIds: [],
+    images: [],
+  }),
+
+  addImage: (position, url) => set((state) => ({
+    images: [...state.images, { id: generateId(), url, x: position.x, y: position.y, width: 200, height: 200 }]
+  })),
+  deleteImage: (id) => set((state) => ({
+    images: state.images.filter(img => img.id !== id),
+    selectedElementId: state.selectedElementId === `image-${id}` ? null : state.selectedElementId
+  })),
 
   addTextLabel: (position) => set((state) => ({
     textLabels: [...state.textLabels, { id: generateId(), text: '', x: position.x, y: position.y }]
@@ -64,4 +99,8 @@ export const createCanvasSlice: StateCreator<BuilderStore, [], [], CanvasSlice> 
     selectedElementId: state.selectedElementId === `sticky-${id}` ? null : state.selectedElementId
   })),
   clearAnnotations: () => set({ stickyNotes: [] }),
+  addDrawLine: (line) => set((state) => ({
+    drawLines: [...state.drawLines, { id: generateId(), ...line }]
+  })),
+  clearDrawings: () => set({ drawLines: [] }),
 });

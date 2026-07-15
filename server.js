@@ -137,23 +137,43 @@ export async function resolveApiKey(userId, sequenceId, fallbackKey, useDefaultK
 
 // ── UNIVERSAL GATEWAY PROTOCOL ──────────────────────────────────────
 function determineProvider(key, requestedModel) {
+  let finalModel = requestedModel;
+
   if (key.startsWith('sk-or-')) {
-    return { url: 'https://openrouter.ai/api/v1/chat/completions', defaultModel: requestedModel || 'openrouter/auto' };
+    return { url: 'https://openrouter.ai/api/v1/chat/completions', defaultModel: finalModel || 'openrouter/auto' };
   } else if (key.startsWith('sk-ant-')) {
-    return { url: 'https://api.anthropic.com/v1/messages', defaultModel: requestedModel || 'claude-3-5-sonnet-20240620' };
+    if (finalModel && !finalModel.startsWith('claude-')) {
+      finalModel = 'claude-3-5-sonnet-20240620';
+    }
+    return { url: 'https://api.anthropic.com/v1/messages', defaultModel: finalModel || 'claude-3-5-sonnet-20240620' };
   } else if (key.startsWith('gsk_')) {
-    return { url: 'https://api.groq.com/openai/v1/chat/completions', defaultModel: requestedModel || 'llama-3.3-70b-versatile' };
+    if (finalModel === 'groq-llama-3') {
+      finalModel = 'llama-3.3-70b-versatile';
+    } else if (finalModel && !finalModel.includes('llama') && !finalModel.includes('mixtral') && !finalModel.includes('gemma')) {
+      finalModel = 'llama-3.3-70b-versatile';
+    }
+    return { url: 'https://api.groq.com/openai/v1/chat/completions', defaultModel: finalModel || 'llama-3.3-70b-versatile' };
   } else if (key.startsWith('xai-')) {
-    return { url: 'https://api.x.ai/v1/chat/completions', defaultModel: requestedModel || 'grok-beta' };
+    return { url: 'https://api.x.ai/v1/chat/completions', defaultModel: finalModel || 'grok-beta' };
   } else if (key.startsWith('AIzaSy')) {
-    return { url: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', defaultModel: requestedModel || 'gemini-2.0-flash' };
+    if (finalModel && !finalModel.startsWith('gemini-')) {
+      finalModel = 'gemini-2.0-flash';
+    }
+    return { url: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', defaultModel: finalModel || 'gemini-2.0-flash' };
   } else if (key.startsWith('nvapi-')) {
-    return { url: 'https://integrate.api.nvidia.com/v1/chat/completions', defaultModel: requestedModel || 'meta/llama-3.1-70b-instruct' };
+    // If the model isn't a valid Nvidia model identifier, map it to a valid Nvidia model
+    if (!finalModel || (!finalModel.startsWith('nvidia/') && !finalModel.startsWith('meta/') && !finalModel.startsWith('mistralai/') && !finalModel.startsWith('microsoft/'))) {
+      finalModel = 'meta/llama-3.1-70b-instruct';
+    }
+    return { url: 'https://integrate.api.nvidia.com/v1/chat/completions', defaultModel: finalModel };
   } else if (key.startsWith('sk-')) {
-    return { url: 'https://api.openai.com/v1/chat/completions', defaultModel: requestedModel || 'gpt-4o' };
+    if (finalModel && !finalModel.startsWith('gpt-')) {
+      finalModel = 'gpt-4o';
+    }
+    return { url: 'https://api.openai.com/v1/chat/completions', defaultModel: finalModel || 'gpt-4o' };
   }
 
-  return { url: 'https://openrouter.ai/api/v1/chat/completions', defaultModel: requestedModel || 'openrouter/auto' };
+  return { url: 'https://openrouter.ai/api/v1/chat/completions', defaultModel: finalModel || 'openrouter/auto' };
 }
 
 // ── FALLBACK KEY TRACKER ───────────────────────────────────────────
@@ -161,7 +181,22 @@ const FALLBACK_KEYS = (process.env.FALLBACK_KEYS || '').split(',').map(k => k.tr
 const userFallbackTracker = new Map(); // userId -> sequenceId
 
 // Auth middleware
+// When DEV_AUTH_BYPASS=true (local dev where Supabase project keys may mismatch),
+// skip JWT verification and read userId from the request body instead.
+const DEV_AUTH_BYPASS = process.env.DEV_AUTH_BYPASS === 'true';
+
+if (DEV_AUTH_BYPASS) {
+  console.warn('[Server] ⚠️  DEV_AUTH_BYPASS=true — JWT verification skipped. Do NOT use in production!');
+}
+
 async function authenticateToken(req, res, next) {
+  // Dev bypass: skip JWT check, trust userId from request body/params
+  if (DEV_AUTH_BYPASS) {
+    const userId = req.body?.userId || req.params?.userId || 'dev-user';
+    req.user = { id: userId };
+    return next();
+  }
+
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'Unauthorized: Missing token.' });
@@ -384,7 +419,8 @@ app.post('/api/models', authenticateToken, async (req, res) => {
 app.post('/api/llm', authenticateToken, async (req, res) => {
   const { userTask, agent, neuralContext, activeKey, userId, sequenceId, requestedModel, useDefaultKey } = req.body;
 
-  if (userId !== req.user.id) {
+  // In dev bypass mode, userId comes from body directly (already set on req.user)
+  if (!DEV_AUTH_BYPASS && userId !== req.user.id) {
     return res.status(403).json({ error: 'Forbidden' });
   }
 

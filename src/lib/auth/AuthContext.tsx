@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { Navigate } from 'react-router-dom';
 import { ROUTES } from '../routes';
+import { useBuilderStore } from '../builderStore';
 
 // ─── Context ────────────────────────────────────────────────
 export interface AuthContextType {
@@ -30,7 +31,9 @@ export const AuthProvider = ({ children, adapter }: any) => {
       try {
         const { session } = await adapter.getSession();
         if (!cancelled) {
-          setUser(session?.user || null);
+          if (session) {
+            setUser(session.user);
+          }
         }
       } catch (err) {
         console.error('[AuthProvider] bootstrap error:', err);
@@ -39,13 +42,19 @@ export const AuthProvider = ({ children, adapter }: any) => {
       }
     };
 
-    bootstrap();
-
     // Listen for auth state changes (login/logout in other tabs, token refresh)
-    const { unsubscribe } = adapter.onAuthStateChange((_event: any, session: any) => {
-      setUser(session?.user || null);
-      setLoading(false);
+    const { unsubscribe } = adapter.onAuthStateChange((event: any, session: any) => {
+      if (!cancelled) {
+        if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'USER_UPDATED') {
+          setUser(session?.user || null);
+        } else if (event === 'INITIAL_SESSION' && session) {
+          setUser(session.user);
+        }
+        setLoading(false);
+      }
     });
+
+    bootstrap();
 
     return () => {
       cancelled = true;
@@ -74,6 +83,16 @@ export const AuthProvider = ({ children, adapter }: any) => {
   const signOut = useCallback(async () => {
     const result = await adapter.signOut();
     if (!result.error) {
+      // Clear store canvas state to prevent leak to other users
+      try {
+        useBuilderStore.getState().resetCanvas();
+      } catch (e) {
+        console.error('Failed to reset canvas on sign out:', e);
+      }
+      localStorage.removeItem('active_sequence_id');
+      localStorage.removeItem('use_default_key');
+      localStorage.removeItem('agentic_model');
+      localStorage.removeItem('currentPage');
       setUser(null);
     }
     return result;

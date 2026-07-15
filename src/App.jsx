@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from './lib/auth';
 import Templates from './pages/Templates';
 import Dashboard from './pages/Dashboard';
 import Projects from './pages/Projects';
+import Library from './pages/Library';
 import Home from './pages/Home';
 import Onboarding from './pages/Onboarding';
 import InteractiveCanvas from './components/InteractiveCanvas';
@@ -14,9 +15,15 @@ export default function App() {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showAPIModal, setShowAPIModal] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [currentPage, setCurrentPage] = useState('templates');
+  const [currentPage, setCurrentPage] = useState(() => {
+    return localStorage.getItem('currentPage') || 'templates';
+  });
   const [dashboardView, setDashboardView] = useState('grid');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
+  useEffect(() => {
+    localStorage.setItem('currentPage', currentPage);
+  }, [currentPage]);
 
   // Show loading spinner while auth is checking session
   if (loading) {
@@ -45,6 +52,9 @@ export default function App() {
     }
     if (currentPage === 'projects') {
       return <Projects isSidebarOpen={isSidebarOpen} setIsSidebarOpen={setIsSidebarOpen} setCurrentPage={setCurrentPage} />;
+    }
+    if (currentPage === 'library') {
+      return <Library setCurrentPage={setCurrentPage} />;
     }
     return <Home inputValue={inputValue} setInputValue={setInputValue} setCurrentPage={setCurrentPage} />;
   }
