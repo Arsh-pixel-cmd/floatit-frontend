@@ -500,97 +500,133 @@ RESPONSE FORMAT — Return a valid JSON object with exactly two keys:
 CRITICAL: Return ONLY the raw JSON object. No markdown fences. NO Markdown syntax in the UI field.`;
 
   try {
-    console.log(`[Server] Sending request to LLM provider...`);
-
-    let response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${resolvedKey}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': 'http://localhost:5173',
-        'X-Title': 'Agentic Flow Express Server',
-      },
-      body: JSON.stringify({
-        model: defaultModel,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userTask || 'Begin execution sequence.' },
-        ],
-        response_format: { type: 'json_object' },
-        temperature: 0.7,
-      }),
+    // Define keys to try (Primary key, then up to 2 unique fallback keys if primary fails)
+  const attempts = [{ key: resolvedKey, isPrimary: true }];
+  if (FALLBACK_KEYS.length > 0) {
+    const uniqueFallbacks = Array.from(new Set(FALLBACK_KEYS)).filter(k => k !== resolvedKey);
+    // Shuffle fallback keys to distribute load
+    uniqueFallbacks.sort(() => 0.5 - Math.random());
+    uniqueFallbacks.slice(0, 2).forEach(k => {
+      attempts.push({ key: k, isPrimary: false });
     });
+  }
 
-    if (!response.ok && response.status === 429 && FALLBACK_KEYS.length > 0) {
-      console.log(`[Server] Primary key rate limited. Evaluating fallback protocol for user ${userId}...`);
+  let response;
+  let responseData;
+  let finalModel = requestedModel;
+  let finalUrl = '';
+  let lastError;
+
+  for (let i = 0; i < attempts.length; i++) {
+    const currentAttempt = attempts[i];
+    const currentKey = currentAttempt.key;
+    const { url, defaultModel } = determineProvider(currentKey, requestedModel);
+    finalModel = defaultModel;
+    finalUrl = url;
+
+    console.log(`[Server] [Attempt ${i + 1}/${attempts.length}] Routing to provider: ${url} with model: ${defaultModel}`);
+
+    // If it's a fallback attempt, verify user hasn't switched pipelines (prevent concurrency race)
+    if (!currentAttempt.isPrimary) {
       const previousFallbackSequence = userFallbackTracker.get(userId);
-      
-      if (!previousFallbackSequence || previousFallbackSequence === sequenceId) {
-         // Allow fallback: Either first time using fallback or still on the same pipeline
-         userFallbackTracker.set(userId, sequenceId);
-         const randomFallbackKey = FALLBACK_KEYS[Math.floor(Math.random() * FALLBACK_KEYS.length)];
-         const { url: fallbackUrl, defaultModel: fallbackModel } = determineProvider(randomFallbackKey, null);
-         
-         console.log(`[Server] Fallback approved. Retrying with fallback model ${fallbackModel}...`);
-         response = await fetch(fallbackUrl, {
-           method: 'POST',
-           headers: {
-             Authorization: `Bearer ${randomFallbackKey}`,
-             'Content-Type': 'application/json',
-             'HTTP-Referer': 'http://localhost:5173',
-             'X-Title': 'Agentic Flow Express Server',
-           },
-           body: JSON.stringify({
-             model: fallbackModel,
-             messages: [
-               { role: 'system', content: systemPrompt },
-               { role: 'user', content: userTask || 'Begin execution sequence.' },
-             ],
-             response_format: { type: 'json_object' },
-             temperature: 0.7,
-           }),
-         });
-      } else {
-         console.log(`[Server] Fallback DENIED. User ${userId} switched pipelines from ${previousFallbackSequence} to ${sequenceId}.`);
+      if (previousFallbackSequence && previousFallbackSequence !== sequenceId) {
+        console.log(`[Server] Fallback DENIED on attempt ${i + 1}. User ${userId} switched pipelines.`);
+        continue;
       }
+      userFallbackTracker.set(userId, sequenceId);
     }
 
-    if (!response.ok) {
-      console.error(`[Server] Provider Error: ${response.status} ${response.statusText}`);
-      const errJson = await response.json().catch(() => ({}));
-      const errMessage = errJson.error?.message || errJson.message || response.statusText || '';
+    const SERVER_LLM_TIMEOUT = 120000;
+    const upstreamController = new AbortController();
+    const upstreamTimer = setTimeout(() => {
+      upstreamController.abort();
+      console.warn(`[Server] Upstream LLM request timed out after 120s on attempt ${i + 1}. Aborting.`);
+    }, SERVER_LLM_TIMEOUT);
 
-      // Classify error type precisely
-      let errorType = 'PROVIDER_ERROR';
-      if (response.status === 401 || response.status === 403) errorType = 'INVALID_KEY';
-      if (response.status === 429) errorType = 'RATE_LIMIT';
-
-      // Token / context-window exceeded — check message content across all providers
-      const tokenKeywords = [
-        'context_length_exceeded', 'context length', 'maximum context',
-        'token limit', 'insufficient_quota', 'quota exceeded',
-        'too many tokens', 'max_tokens', 'string too long', 'input too long'
-      ];
-      const isTokenError = response.status === 413 ||
-        tokenKeywords.some(kw => errMessage.toLowerCase().includes(kw));
-      if (isTokenError) errorType = 'TOKEN_LIMIT';
-
-      console.log(`[Server] Error classified as: ${errorType} | Message: ${errMessage.substring(0, 80)}`);
-
-      return res.status(response.status).json({
-        _errorType: errorType,
-        _keyError: errorType !== 'TOKEN_LIMIT', // Only key-errors open the key modal
-        _tokenError: errorType === 'TOKEN_LIMIT',
-        _model: defaultModel,
-        _provider: url.includes('groq') ? 'Groq' : url.includes('openrouter') ? 'OpenRouter' : url.includes('anthropic') ? 'Anthropic' : url.includes('googleapis') ? 'Google' : 'OpenAI',
-        content: `Upstream Provider Error (${response.status}): ${errMessage}`,
-        ui: null
+    try {
+      response = await fetch(url, {
+        method: 'POST',
+        signal: upstreamController.signal,
+        headers: {
+          Authorization: `Bearer ${currentKey}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': 'http://localhost:5173',
+          'X-Title': 'Agentic Flow Express Server',
+        },
+        body: JSON.stringify({
+          model: defaultModel,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userTask || 'Begin execution sequence.' },
+          ],
+          response_format: { type: 'json_object' },
+          temperature: 0.7,
+        }),
       });
-    }
 
-    const data = await response.json();
-    let raw = data.choices?.[0]?.message?.content || '';
-    console.log(`[Server] Raw LLM response length: ${raw.length} chars`);
+      clearTimeout(upstreamTimer);
+
+      if (response.ok) {
+        responseData = await response.json();
+        break; // Success! Break out of retry loop
+      } else {
+        const errJson = await response.json().catch(() => ({}));
+        const errMessage = errJson.error?.message || errJson.message || response.statusText || '';
+        console.warn(`[Server] Attempt ${i + 1} failed with status ${response.status}: ${errMessage}`);
+        lastError = {
+          status: response.status,
+          message: errMessage,
+          url,
+          defaultModel
+        };
+      }
+    } catch (err) {
+      clearTimeout(upstreamTimer);
+      console.warn(`[Server] Attempt ${i + 1} encountered exception: ${err.message}`);
+      lastError = {
+        status: err.name === 'AbortError' ? 408 : 500,
+        message: err.message || String(err),
+        url,
+        defaultModel
+      };
+    }
+  }
+
+  // If all attempts failed
+  if (!responseData) {
+    const status = lastError?.status || 500;
+    const errMessage = lastError?.message || 'Unknown upstream failure';
+    const providerUrl = lastError?.url || '';
+    const modelUsed = lastError?.defaultModel || '';
+
+    let errorType = 'PROVIDER_ERROR';
+    if (status === 401 || status === 403) errorType = 'INVALID_KEY';
+    if (status === 429) errorType = 'RATE_LIMIT';
+
+    const tokenKeywords = [
+      'context_length_exceeded', 'context length', 'maximum context',
+      'token limit', 'insufficient_quota', 'quota exceeded',
+      'too many tokens', 'max_tokens', 'string too long', 'input too long'
+    ];
+    const isTokenError = status === 413 || tokenKeywords.some(kw => errMessage.toLowerCase().includes(kw));
+    if (isTokenError) errorType = 'TOKEN_LIMIT';
+
+    console.log(`[Server] Error classified as: ${errorType} | Status: ${status} | Message: ${errMessage.substring(0, 80)}`);
+
+    return res.status(status === 408 ? 504 : status).json({
+      _errorType: errorType,
+      _keyError: errorType !== 'TOKEN_LIMIT',
+      _tokenError: errorType === 'TOKEN_LIMIT',
+      _model: modelUsed,
+      _provider: providerUrl.includes('groq') ? 'Groq' : providerUrl.includes('openrouter') ? 'OpenRouter' : providerUrl.includes('anthropic') ? 'Anthropic' : providerUrl.includes('googleapis') ? 'Google' : 'OpenAI',
+      content: `Upstream Provider Error (${status}): ${errMessage}`,
+      ui: null
+    });
+  }
+
+  const data = responseData;
+  let raw = data.choices?.[0]?.message?.content || '';
+  console.log(`[Server] Raw LLM response length: ${raw.length} chars`);
 
     const formatMarkdownToHTML = (text) => {
       if (!text) return '';

@@ -142,6 +142,9 @@ export const useWorkflowExecution = (config: ExecutionConfig) => {
           store.setNodeState(nId, 'running');
           store.setNodeStatusText(nId, 'Contacting LLM provider...');
 
+          // Track the timeout timer so we can clear it when the promise resolves
+          let timeoutTimer: ReturnType<typeof setTimeout> | null = null;
+
           try {
             store.setNodeStatusText(nId, 'Analyzing objective & thinking...');
             const taskObj = `Project directive: ${store.projectPrompt}\n\nObjective: ${block.description}\n\nExecute agentic objective for ${agentData.name} within the ${agentData.phaseLabel} architecture phase. Provide deep expert analysis based on the project directive.`;
@@ -150,17 +153,22 @@ export const useWorkflowExecution = (config: ExecutionConfig) => {
             const strategy = ExecutionStrategyManager.getStrategy(modelType);
             const isDefaultFallback = localStorage.getItem('use_default_key') === 'true';
             
-            // Timeout control (BUG-003) - Increased to 180s to prevent stuck timeouts
+            // Timeout control (BUG-003) - 180s client-side safety net
             const timeoutDuration = 180000;
-            const timeoutPromise = new Promise((_, reject) => setTimeout(() => {
-              controller.abort();
-              reject(new Error('TIMEOUT_STUCK'));
-            }, timeoutDuration));
+            const timeoutPromise = new Promise((_, reject) => {
+              timeoutTimer = setTimeout(() => {
+                controller.abort();
+                reject(new Error('TIMEOUT_STUCK'));
+              }, timeoutDuration);
+            });
 
             const result: any = await Promise.race([
               strategy.execute(taskObj, agentData, prevGroupOutputContext, projectAttachment, isDefaultFallback, controller.signal),
               timeoutPromise
             ]);
+
+            // Clear timeout immediately after promise resolves to prevent stale aborts
+            if (timeoutTimer) { clearTimeout(timeoutTimer); timeoutTimer = null; }
 
             if (result && result._errorType) {
               store.setNodeResult(nId, { ...result, agentName: agentData.name });
@@ -181,6 +189,8 @@ export const useWorkflowExecution = (config: ExecutionConfig) => {
               break;
             }
           } finally {
+            // Always clear the timeout timer to prevent stale abort signals
+            if (timeoutTimer) { clearTimeout(timeoutTimer); }
             activeControllersRef.current.delete(controller);
           }
 
@@ -241,6 +251,9 @@ export const useWorkflowExecution = (config: ExecutionConfig) => {
       store.setNodeState(outputNodeId, 'running');
       store.setNodeStatusText(outputNodeId, 'Reading agent inputs...');
 
+      // Track the timeout timer so we can clear it when the promise resolves
+      let timeoutTimer: ReturnType<typeof setTimeout> | null = null;
+
       try {
         store.setNodeStatusText(outputNodeId, 'Synthesizing final phase output...');
         const synthesisPromptText = `Project directive: ${store.projectPrompt}\n\nYou are the synthesis node for the group phase "${group.name}". Synthesize, summarize, and integrate the output results from all agents in this phase. Identify key insights, conflicts, and next steps.`;
@@ -248,17 +261,22 @@ export const useWorkflowExecution = (config: ExecutionConfig) => {
         const strategy = ExecutionStrategyManager.getStrategy(outputModelType);
         const isDefaultFallback = localStorage.getItem('use_default_key') === 'true';
         
-        // Timeout control (BUG-003) - Increased to 180s to prevent stuck timeouts
+        // Timeout control (BUG-003) - 180s client-side safety net
         const timeoutDuration = 180000;
-        const timeoutPromise = new Promise((_, reject) => setTimeout(() => {
-          controller.abort();
-          reject(new Error('TIMEOUT_STUCK'));
-        }, timeoutDuration));
+        const timeoutPromise = new Promise((_, reject) => {
+          timeoutTimer = setTimeout(() => {
+            controller.abort();
+            reject(new Error('TIMEOUT_STUCK'));
+          }, timeoutDuration);
+        });
 
         const result: any = await Promise.race([
           strategy.execute(synthesisPromptText, outputAgentData, neuralContextForOutput, projectAttachment, isDefaultFallback, controller.signal),
           timeoutPromise
         ]);
+
+        // Clear timeout immediately after promise resolves to prevent stale aborts
+        if (timeoutTimer) { clearTimeout(timeoutTimer); timeoutTimer = null; }
 
         if (result && result._errorType) {
           store.setNodeResult(outputNodeId, { ...result, agentName: outputAgentData.name });
@@ -279,6 +297,8 @@ export const useWorkflowExecution = (config: ExecutionConfig) => {
           break;
         }
       } finally {
+        // Always clear the timeout timer to prevent stale abort signals
+        if (timeoutTimer) { clearTimeout(timeoutTimer); }
         activeControllersRef.current.delete(controller);
       }
 
