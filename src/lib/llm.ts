@@ -5,7 +5,7 @@
 import { supabase } from './supabaseClient';
 import { apiProxy } from './http/AuthenticatedApiProxy';
 
-const API_BASE = import.meta.env.PROD ? '' : 'http://localhost:3001';
+const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '' : 'http://localhost:3001');
 
 /**
  * Get the current authenticated user's ID for server-side key resolution.

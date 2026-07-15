@@ -31,7 +31,7 @@ export default function ProjectMenu() {
     if (!apiKey.trim() || !user?.id) return;
     setSavingKey(true);
     try {
-      const API_BASE = import.meta.env.PROD ? '' : 'http://localhost:3001';
+      const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '' : 'http://localhost:3001');
       await apiProxy.post(`${API_BASE}/api/keys/save`, { userId: user.id, apiKey: apiKey.trim() });
       toast.success('API key saved!');
       setApiKey('');

@@ -42,7 +42,8 @@ export default tseslint.config(
       '@typescript-eslint/no-unused-vars': 'off',
       'no-unused-vars': 'off',
       'prefer-const': 'off',
-      'no-control-regex': 'off'
+      'no-control-regex': 'off',
+      'react-hooks/set-state-in-effect': 'off'
     }
   }
 );

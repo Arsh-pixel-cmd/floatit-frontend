@@ -17,7 +17,7 @@ export class LocalServerAuthAdapter extends AuthAdapter {
   USER_KEY: string;
   _listeners: Set<any>;
 
-  constructor(baseUrl = 'http://localhost:3001') {
+  constructor(baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001') {
     super();
     this.baseUrl = baseUrl;
     this.TOKEN_KEY = 'agentic_auth_token';

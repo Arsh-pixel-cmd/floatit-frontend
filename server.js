@@ -8,16 +8,25 @@ import { createClient } from '@supabase/supabase-js';
 dotenv.config();
 
 const app = express();
-app.use(cors());
+
+const corsOrigin = process.env.CORS_ORIGIN || '*';
+app.use(cors({
+  origin: corsOrigin === '*' ? '*' : corsOrigin.split(',').map(o => o.trim())
+}));
+
 app.use(express.json());
 
 const PORT = process.env.PORT || 3001;
+const IS_PROD = process.env.NODE_ENV === 'production';
 
 // ── SUPABASE CLIENT ──────────────────────────────────────────────
 const supabaseUrl = process.env.VITE_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseServiceKey) {
+  if (IS_PROD) {
+    throw new Error('[FATAL] Supabase credentials (VITE_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY) are missing in production!');
+  }
   console.warn('[Server] Supabase credentials missing! API Key storage may fail. Using placeholders to prevent crash.');
 }
 const supabase = createClient(supabaseUrl || 'https://placeholder.supabase.co', supabaseServiceKey || 'placeholder-key');
@@ -26,6 +35,9 @@ const supabase = createClient(supabaseUrl || 'https://placeholder.supabase.co', 
 const ENCRYPTION_SECRET = process.env.ENCRYPTION_SECRET || 'agentic-flow-default-secret-change-in-production!!';
 
 if (ENCRYPTION_SECRET === 'agentic-flow-default-secret-change-in-production!!') {
+  if (IS_PROD) {
+    throw new Error('[FATAL] ENCRYPTION_SECRET must be explicitly set to a unique, secure secret in production. Default placeholder is forbidden!');
+  }
   console.warn('[Server] WARNING: Using default ENCRYPTION_SECRET. Keys are not securely encrypted!');
 }
 
@@ -186,6 +198,9 @@ const userFallbackTracker = new Map(); // userId -> sequenceId
 const DEV_AUTH_BYPASS = process.env.DEV_AUTH_BYPASS === 'true';
 
 if (DEV_AUTH_BYPASS) {
+  if (IS_PROD) {
+    throw new Error('[FATAL] DEV_AUTH_BYPASS=true is not allowed in production! Process terminating.');
+  }
   console.warn('[Server] ⚠️  DEV_AUTH_BYPASS=true — JWT verification skipped. Do NOT use in production!');
 }
 

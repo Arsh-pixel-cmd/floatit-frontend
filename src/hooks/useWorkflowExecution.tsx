@@ -134,7 +134,6 @@ export const useWorkflowExecution = (config: ExecutionConfig) => {
         let resolved = false;
         while (!resolved) {
           if (useWorkflowStore.getState().graphStatus !== 'running') {
-            resolved = true;
             break;
           }
 
@@ -179,7 +178,6 @@ export const useWorkflowExecution = (config: ExecutionConfig) => {
             store.setNodeStatusText(nId, 'Execution halted due to error');
             
             if (err.name === 'AbortError' || useWorkflowStore.getState().graphStatus !== 'running') {
-              resolved = true;
               break;
             }
           } finally {
@@ -235,7 +233,6 @@ export const useWorkflowExecution = (config: ExecutionConfig) => {
     let resolvedOutput = false;
     while (!resolvedOutput) {
       if (useWorkflowStore.getState().graphStatus !== 'running') {
-        resolvedOutput = true;
         break;
       }
 
@@ -279,7 +276,6 @@ export const useWorkflowExecution = (config: ExecutionConfig) => {
         store.setNodeStatusText(outputNodeId, 'Synthesis error');
 
         if (err.name === 'AbortError' || useWorkflowStore.getState().graphStatus !== 'running') {
-          resolvedOutput = true;
           break;
         }
       } finally {
