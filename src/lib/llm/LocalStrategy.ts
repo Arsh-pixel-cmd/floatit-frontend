@@ -10,6 +10,6 @@ export class LocalStrategy implements IExecutionStrategy {
     useDefaultKey = false,
     signal?: AbortSignal
   ) {
-    return callLLM(userTask, agent, neuralContext, attachment, useDefaultKey, 'meta/llama-3.1-70b-instruct', signal);
+    return callLLM(userTask, agent, neuralContext, attachment, useDefaultKey, 'meta/llama-3.3-70b-instruct', signal);
   }
 }

@@ -500,20 +500,25 @@ RESPONSE FORMAT — Return a valid JSON object with exactly two keys:
 CRITICAL: Return ONLY the raw JSON object. No markdown fences. NO Markdown syntax in the UI field.`;
 
   try {
-    // Define keys to try (Primary key, then up to 2 unique fallback keys if primary fails)
-    // Define keys to try (Up to 3 attempts for primary key, and fallback keys if primary fails)
+    // Attempt strategy:
+    //  Attempt 1 — primary key + requested model (large, slow model OK)
+    //  Attempt 2 — primary key + lightweight fallback model (fast, avoids 60s+ waits)
+    //  Then FALLBACK_KEYS if configured
     const attempts = [];
-    attempts.push({ key: resolvedKey, isPrimary: true, attemptIndex: 1 });
-    attempts.push({ key: resolvedKey, isPrimary: true, attemptIndex: 2 });
-    attempts.push({ key: resolvedKey, isPrimary: true, attemptIndex: 3 });
+    attempts.push({ key: resolvedKey, isPrimary: true, attemptIndex: 1, overrideModel: null });
+    // On retry, swap to a lighter NVIDIA model to avoid hammering the same slow endpoint
+    const lightFallbackModel = resolvedKey.startsWith('nvapi-') ? 'meta/llama-3.1-8b-instruct'
+      : resolvedKey.startsWith('gsk_') ? 'llama-3.1-8b-instant'
+      : null;
+    attempts.push({ key: resolvedKey, isPrimary: true, attemptIndex: 2, overrideModel: lightFallbackModel });
 
     if (FALLBACK_KEYS.length > 0) {
       const uniqueFallbacks = Array.from(new Set(FALLBACK_KEYS)).filter(k => k !== resolvedKey);
       // Shuffle fallback keys to distribute load
       uniqueFallbacks.sort(() => 0.5 - Math.random());
       uniqueFallbacks.slice(0, 2).forEach(k => {
-        attempts.push({ key: k, isPrimary: false, attemptIndex: 1 });
-        attempts.push({ key: k, isPrimary: false, attemptIndex: 2 });
+        attempts.push({ key: k, isPrimary: false, attemptIndex: 1, overrideModel: null });
+        attempts.push({ key: k, isPrimary: false, attemptIndex: 2, overrideModel: null });
       });
     }
 
@@ -533,11 +538,17 @@ CRITICAL: Return ONLY the raw JSON object. No markdown fences. NO Markdown synta
         await new Promise(resolve => setTimeout(resolve, 2000));
       }
 
-      const { url, defaultModel } = determineProvider(currentKey, requestedModel);
+      // Use override model for retry attempts (lighter model to avoid repeated timeouts)
+      const effectiveModel = currentAttempt.overrideModel || requestedModel;
+      const { url, defaultModel } = determineProvider(currentKey, effectiveModel);
       finalModel = defaultModel;
       finalUrl = url;
 
-      console.log(`[Server] [Attempt ${i + 1}/${attempts.length}] Routing to provider: ${url} with model: ${defaultModel}`);
+      if (currentAttempt.overrideModel) {
+        console.log(`[Server] [Attempt ${i + 1}/${attempts.length}] Retrying with lighter model: ${defaultModel}`);
+      } else {
+        console.log(`[Server] [Attempt ${i + 1}/${attempts.length}] Routing to provider: ${url} with model: ${defaultModel}`);
+      }
 
       // If it's a fallback attempt, verify user hasn't switched pipelines (prevent concurrency race)
       if (!currentAttempt.isPrimary) {
@@ -549,11 +560,12 @@ CRITICAL: Return ONLY the raw JSON object. No markdown fences. NO Markdown synta
         userFallbackTracker.set(userId, sequenceId);
       }
 
-      const SERVER_LLM_TIMEOUT = 60000; // 60s timeout per attempt
+      // Attempt 1: 90s (large model needs time). Subsequent attempts: 45s (lighter model, faster).
+      const SERVER_LLM_TIMEOUT = currentAttempt.attemptIndex === 1 ? 90000 : 45000;
       const upstreamController = new AbortController();
       const upstreamTimer = setTimeout(() => {
         upstreamController.abort();
-        console.warn(`[Server] Upstream LLM request timed out after 60s on attempt ${i + 1}. Aborting.`);
+        console.warn(`[Server] Upstream LLM request timed out after ${SERVER_LLM_TIMEOUT / 1000}s on attempt ${i + 1}. Aborting.`);
       }, SERVER_LLM_TIMEOUT);
 
       try {
